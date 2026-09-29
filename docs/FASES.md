@@ -180,87 +180,37 @@ dependencias nuevas, sin cambios de CSP y sin ninguna petición de red.
 
 ---
 
-## Fase 4 — Spike: modo oscuro de PDF
+## Fase 4 — Spike: modo oscuro de PDF ✅
 
-**Objetivo.** Decidir con evidencia la estrategia de lectura oscura (T-1) y, con ella, si
-el visor usa `PDFViewer` de pdf.js o uno propio. Entregar el módulo de modo oscuro
-probado, listo para integrar en F5.
+Cerrada el 2026-09-29. Bitácora: iteración 6. **Resultado: viable.** El recoloreado
+selectivo (heurística OKLab fuera de las regiones de imagen que registra pdf.js con
+`recordImages`) deja fotos intactas (±3 por canal), texto claro a 12:1 y gráficos con su
+color, a ~10 ms por megapíxel. Todo en [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md):
+alternativas, fixtures, resultados, benchmark, limitaciones y decisión.
 
-**Dependencias.** F2 (no necesita F3: el spike carga fixtures directamente; puede usar
-`tests/fixtures/pdf/generar.mjs` como base para generar los suyos).
+Quedan como código definitivo `src/pdf/engine.ts`, `src/pdf/render.ts` y `src/pdf/dark/*`,
+con sus tests. Es temporal el laboratorio `spike.html` + `src/pdf-spike/` (se borra en F5).
 
-**Decisiones ya tomadas.** pdf.js (`pdfjs-dist` versión exacta, hoy 6.3.289); `pageColors`
-descartado como modo principal (PLAN §6.3, verificado en el código: pasa todo a gris);
-siempre existirá «página original».
+**Desviaciones respecto a la especificación**, por si una fase posterior se apoya en ella:
 
-**Decisiones abiertas (las cierra esta fase).** Estrategia B, A o híbrida; si B: CPU,
-WebGL u `OffscreenCanvas` en worker; umbrales de saturación y de contraste.
-
-**Alcance**
-
-1. Instalar `pdfjs-dist` **exacta**; script `scripts/copiar-pdfjs.mjs` que copia worker,
-   `cmaps/`, `standard_fonts/`, `wasm/` e `iccs/` a `public/pdfjs/` en `predev`/`prebuild`
-   (no se versionan: `.gitignore`). **No** copia `pdf.sandbox*`.
-2. **Corpus** en `tests/fixtures/pdf/modo-oscuro/`, cada fichero con licencia libre o
-   generado por nosotros, descrito en su `README.md`: texto puro; texto + foto a color;
-   gráfico vectorial de barras/líneas en color; diagrama con relleno gris claro; tabla con
-   filas sombreadas; título en azul marino; subrayado con `multiply`; texto dentro de un
-   grupo de transparencia; imagen con máscara suave; escaneado (imagen a página
-   completa); página con fondo de color; formulario; PDF de LaTeX con fórmulas; un
-   documento de más de 300 páginas.
-3. Página de laboratorio **solo en desarrollo** (`src/pdf/dark/lab/`, excluida del build de
-   producción) que muestra lado a lado original / estrategia B / estrategia A para cada
-   fixture.
-4. **Estrategia B** en `src/pdf/dark/`: `image-regions.ts` (recorre
-   `page.getOperatorList()` con la pila `save`/`restore`/`transform` y devuelve los
-   cuadriláteros de `paintImageXObject`, `paintInlineImageXObject` y
-   `paintImageXObjectRepeat`; **no** los de `paintImageMask*`, que son «tinta» y deben
-   remapearse), `remap.ts` (función pura píxel → píxel: poco saturado → luminosidad
-   invertida entre `--rgb-page` y `--rgb-text` en OKLab; saturado → se conserva, aclarando
-   solo si queda por debajo de 3:1 sobre la página), `apply.ts` (aplica sobre un
-   `HTMLCanvasElement` excluyendo las regiones).
-5. **Estrategia A** (prototipo mínimo, para comparar): envoltura del contexto 2D con los
-   setters de color, sobre `page.render({ canvasContext })` de la API núcleo.
-6. Medir por fixture: tiempo de post-proceso a escala 1, 2 y 4 (`performance.now()`),
-   memoria aproximada, y calidad (inspección visual + muestreo de píxeles).
-7. Escribir la decisión en PLAN §6.3 (estrategia, umbrales, limitaciones observadas) y
-   ajustar F5 si cambia algo (p. ej. visor propio en lugar de `PDFViewer`).
-
-**Fuera de alcance.** UI del visor, zoom, navegación, miniaturas; integrar en la app.
-
-**Archivos esperados.** `package.json`, `scripts/copiar-pdfjs.mjs`, `.gitignore`,
-`src/pdf/engine.ts` (carga diferida de pdf.js y `GlobalWorkerOptions.workerSrc`),
-`src/pdf/dark/*`, `src/pdf/dark/lab/*`, `tests/fixtures/pdf/modo-oscuro/*`,
-`tests/unit/pdf/remap.test.ts`, `tests/unit/pdf/image-regions.test.ts`,
-`e2e/specs/pdf-modo-oscuro.spec.ts`.
-
-**Seguridad.** `getDocument({ data, enableScripting: false, enableXfa: false, cMapUrl,
-standardFontDataUrl, wasmUrl })` con URLs del propio origen. El post-proceso lee píxeles
-propios (lienzo sin origen cruzado); nada remoto.
-
-**Tests**
-
-- Unitarios: `remap` (blanco → página, negro → texto, gris medio → gris medio, rojo puro se
-  conserva, azul marino se aclara hasta ≥ 3:1); `image-regions` sobre un operator list
-  sintético (traslación, escala, rotación 90°, `save`/`restore` anidados, imagen
-  repetida).
-- E2E (Playwright, Chromium real): para 3 fixtures con geometría conocida, muestrear
-  píxeles: fondo ≈ `--rgb-page`, texto claro, centro de la foto ≈ color original ± 3.
-
-**Criterios de aceptación**
-
-- Estrategia elegida y escrita en PLAN §6.3 con las mediciones.
-- Post-proceso de una página A4 a escala 2 en < 50 ms en la máquina de desarrollo (o
-  justificación y plan si no se alcanza).
-- En el corpus, fotos y gráficos a color conservan sus colores; el texto de cuerpo tiene
-  contraste ≥ 7:1 sobre la página.
-- Limitaciones observadas listadas (y cuáles se explican al usuario).
-
-**Documentación.** PLAN §6.3, STACK (`pdfjs-dist` con su motivo y por qué versión
-exacta), SEGURIDAD §4 (configuración de `getDocument`), bitácora con lo descartado.
-
-**Resultado esperado.** `src/pdf/dark/` probado y una decisión cerrada sobre cómo se
-construye el visor.
+- **Regiones de imagen con `recordImages`** (API pública de pdf.js 6.3), no recorriendo el
+  `OperatorList` a mano: pdf.js ya da las coordenadas recortadas por el clip. No hay
+  `image-regions.ts`; está `regiones.ts`.
+- **Estrategia A (envolver el contexto 2D) no implementada:** innecesaria con
+  `recordImages` y frágil (internos de pdf.js). Descartada por coste, no medida.
+- **`useWasm: false`**: no se copian `*.wasm` ni `iccs/` (sí los decodificadores en JS);
+  la CSP no necesita `'wasm-unsafe-eval'`. Sí necesitó `worker-src 'self'` y
+  `font-src 'self'`.
+- **Laboratorio en la build** (`spike.html`, `noindex`) y no «solo en desarrollo»: los
+  E2E van contra la build de producción, que es donde existe la CSP. Se borra en F5.
+- **Corpus parcial:** 8 páginas generadas (texto, foto, gráficos, mixta, fondos de color,
+  compleja, escaneo, diapositiva oscura) y un documento de 300 páginas. No se generaron
+  `multiply`, grupos de transparencia, máscara suave, formulario ni LaTeX (difíciles de
+  producir fielmente a mano): pasan a validarse en F5 con PDF reales.
+- **Tres reglas nacidas de la evidencia**: lienzo `alpha: true` (sin flecos LCD), imagen a
+  página completa = escaneo, y página ya oscura = no se toca.
+- **Dos hallazgos que requieren decisión** (D17 y D18 en PLAN §14.1): visor propio en
+  lugar de `PDFViewer`, y build `legacy` o moderna de pdf.js.
 
 ---
 
@@ -269,9 +219,26 @@ construye el visor.
 **Objetivo.** Leer un PDF completo con buena experiencia: render, modo oscuro, zoom,
 navegación, modos continuo/página, rotación, selección y copia, enlaces, contraseña.
 
-**Dependencias.** F3, F4. **D13** (contraseña) y **D14** (formularios) confirmadas.
+**Dependencias.** F3, F4. **D13** (contraseña), **D14** (formularios), **D17** (visor propio) y **D18** (build de pdf.js) confirmadas.
 
-**Decisiones ya tomadas** (salvo que F4 las cambie): `PDFViewer` + `EventBus` +
+> **Antes de empezar, leer [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §12.** La
+> Fase 4 cambia el punto de partida de esta fase:
+> - **D17 y D18 deben estar confirmadas** (visor propio sobre la API núcleo; build
+>   `legacy` o moderna de pdf.js).
+> - Se reutilizan `src/pdf/engine.ts`, `src/pdf/render.ts` (con `recordImages` y el
+>   lienzo `alpha: true`) y `src/pdf/dark/*` tal cual.
+> - Se **borra** el laboratorio: `spike.html` y su entrada en `vite.config.ts`,
+>   `src/pdf-spike/`, `messages.pdfSpike` y `e2e/specs/pdf-spike.spec.ts` (sus aserciones de
+>   píxeles pasan a los E2E del visor). `e2e/bench/` se reapunta al visor o se borra.
+> - Transformación **fuera del hilo principal** si pasa de ~50 ms (a 8 Mpx ya lo pasa).
+> - Virtualización con pocos lienzos vivos: ~30 MiB por página a 8 Mpx.
+> - Validar el modo oscuro con **PDF reales** (`multiply`, transparencias, LaTeX,
+>   formularios, anotaciones) y en Firefox si la web lo soporta.
+>
+> Los párrafos de esta fase que mencionan `PDFViewer` describen el plan anterior a la
+> Fase 4; si D17 se confirma, se sustituyen por el visor propio al empezar.
+
+**Decisiones ya tomadas** (plan anterior a F4, ver el aviso): `PDFViewer` + `EventBus` +
 `PDFLinkService` de `pdfjs-dist/web/pdf_viewer.mjs`, y su CSS (`pdf_viewer.css`,
 adaptado a los tokens); modo oscuro aplicado en `pagerendered`; `maxCanvasPixels` =
 16 777 216.

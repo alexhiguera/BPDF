@@ -5,11 +5,12 @@ escribir código) están en [`CLAUDE.md`](../CLAUDE.md). La arquitectura **objet
 motores, plataforma) está en [PLAN.md](PLAN.md) §4; este documento describe principios que
 ya rigen hoy y se amplía cuando cada fase los materializa.
 
-**Estado del código (2026-09-29, tras la Fase 3):** una SPA estática de Vite + React (D1)
+**Estado del código (2026-09-29, tras la Fase 4):** una SPA estática de Vite + React (D1)
 que abre y valida un PDF o un Markdown local (selector, `Ctrl/Cmd+O` o arrastre) y muestra
 su nombre, tipo y tamaño, todavía sin visor; sin backend, datos ni variables de entorno.
 La CSP estricta, los tokens de diseño, los textos centralizados y la frontera de
-plataforma ya rigen.
+plataforma ya rigen. El motor de PDF y el modo oscuro existen como módulos probados
+(`src/pdf/`), usados de momento solo por el laboratorio temporal `spike.html`.
 
 Varios principios vienen de la plantilla SaaS de R3ZON, que a su vez los destiló de
 **R3ZON ANTARES**. Se cita el origen para que quien venga después sepa qué evita cada regla
@@ -71,6 +72,24 @@ documento los desmonte y ejecute su limpieza.
 **Por qué así.** Pestañas, recientes o varios documentos cambiarían el estado del
 proveedor (una lista y un «activo»), no el modelo ni los visores: la puerta queda abierta
 sin construir nada de eso ahora.
+
+### 4 ter. El motor de PDF, en capas sin React (Fase 4)
+
+`src/pdf/` separa tres cosas que el visor combinará:
+
+- **Carga** ([`engine.ts`](../src/pdf/engine.ts)): importa pdf.js a demanda, con su worker
+  y sus recursos en el propio origen, `useWasm: false` y el documento entregado como bytes.
+- **Render** ([`render.ts`](../src/pdf/render.ts)): pinta una página con la API núcleo y
+  obtiene de pdf.js dónde quedaron sus imágenes (`recordImages`).
+- **Modo oscuro** ([`dark/`](../src/pdf/dark/)): funciones puras de color y de regiones, y
+  su aplicación por franjas sobre el lienzo.
+
+**Por qué.** El modo oscuro necesita controlar cómo se crea el lienzo y pedirle a pdf.js
+las regiones de imagen; con el `PDFViewer` de pdf.js no se puede
+([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §9). Separado así, cada pieza se prueba
+sola (la matemática de color con buffers de unos píxeles; la carga con pdf.js real en
+Node; los píxeles finales en Playwright), y el visor de la Fase 5 las reutiliza sin
+arrastrar el laboratorio, que se borra.
 
 ### 5. La menor complejidad que cumpla los requisitos
 

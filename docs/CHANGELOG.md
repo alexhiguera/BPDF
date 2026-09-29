@@ -10,6 +10,81 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 6 — *2026-09-29* — Fase 4: spike del PDF en modo oscuro
+
+Había que saber, antes de construir el visor, si el requisito central es alcanzable:
+página oscura y texto claro con las fotos y los gráficos con sus colores. **Lo es.** El
+recoloreado selectivo deja las fotos intactas (±3 por canal), el texto a 12:1 y los
+gráficos con su color, a ~10 ms por megapíxel. El detalle, con evidencia, benchmark y
+limitaciones, está en `docs/PDF_DARK_MODE_SPIKE.md`. Medido en WSL2 (Ubuntu) con el
+Chromium de Playwright.
+
+**Cómo se llegó**
+
+- **pdf.js 6.3.289**, versión exacta. Antes de instalar se leyó su código para decidir
+  sin suponer:
+  - `pageColors` pasa todo el lienzo a gris (descartado);
+  - con `useWasm: false` usa decodificadores en JavaScript y un intérprete de PostScript
+    sin `eval`, así que la CSP **no necesita `'wasm-unsafe-eval'`**;
+  - `page.render({ recordImages: true })` es una API **pública** que registra dónde pinta
+    cada imagen, ya recortada por el clip. Sustituyó al recorrido manual del
+    `OperatorList` que planeaba FASES.
+- **Fixtures generados por script**: 8 páginas A4 con una «foto» sintética de colores
+  exactos, un test que exige que el fichero versionado sea lo que produce el script, y un
+  documento de 300 páginas generado al vuelo.
+- **Laboratorio `spike.html`** con cuatro estrategias (original, inversión, solo
+  heurística, selectivo). Se evaluó con capturas de las 8 páginas × 4 estrategias y se
+  verifica con muestreo de píxeles en E2E.
+
+**Qué enseñó la evidencia y qué se cambió por ella**
+
+- La **heurística de color sola no basta**: oscurece las nubes de una foto y aclara su
+  sombra. Esto justifica las regiones de imagen.
+- **Flecos de color en el texto**: pdf.js crea el lienzo opaco y Chromium suaviza con
+  subpíxel LCD. El contexto se crea antes con `alpha: true`.
+- **Filo blanco alrededor de las fotos** por dilatar la región: margen 0.
+- **Un escaneo se quedaba blanco**: una imagen de ≥ 90 % de la página se recolorea.
+- **Una diapositiva oscura se volvería clara**: una página mayoritariamente neutra y
+  oscura no se toca.
+- **Contraste de colores**: la luminosidad mínima aproximada dejaba el azul marino en
+  2,97:1. Ahora se comprueba el contraste real, y por eso el rojo de gráfico (2,83:1) se
+  aclara 4 niveles.
+- **CSP**: pdf.js carga las sustitutas de las fuentes estándar con `FontFace` desde el
+  propio origen → `font-src 'self'`. Con `worker-src 'self'` bastó; `connect-src` no hizo
+  falta.
+
+**Dos hallazgos que piden decisión** (D17 y D18 en PLAN §14.1, sin tomar):
+
+- `PDFViewer` crea sus propios lienzos opacos y no pasa `recordImages`: el modo oscuro
+  exige un **visor propio** sobre la API núcleo.
+- La build moderna de pdf.js exige APIs de JavaScript de 2025–2026 (`toHex`,
+  `getOrInsertComputed`…) que no están en los navegadores mínimos de BPDF. En Node falló;
+  los tests usan la `legacy`.
+
+**Descartado y por qué**
+
+- Estrategia A (envolver el contexto 2D): innecesaria con `recordImages` y frágil. **No se
+  midió**; se descarta por coste.
+- Silenciar los avisos de pdf.js con un filtro en la vigilancia de los E2E: se configuró
+  `verbosity: ERRORS` en pdf.js, que es lo correcto también para quien usa la app.
+- Sacar la transformación del hilo principal en el spike: optimización prematura. Queda
+  como condición para la F5, con el dato (74–100 ms a 8 Mpx).
+
+**Errores propios del camino**
+
+- Un `cat > /tmp/…` suelto en un comando se quedó esperando entrada; se paró sin efectos.
+- El primer benchmark leía la tabla de la medición anterior (filas desplazadas una
+  página). Se vio porque una página de una imagen marcaba dos regiones; la tabla ahora dice
+  a qué página corresponde.
+- Un selector de E2E, `getByLabel("Página")`, coincidía también con el lienzo («Página 1
+  renderizada»).
+- Creí haber encontrado un fallo en `build:tamano` que era mi propio `tail -4` cortando su
+  salida.
+
+**Pendiente, anotado en TAREAS:** D17 y D18; borrar el laboratorio en la F5; validar con PDF
+reales. Aparte, `docs:enlaces` falla por el `r3zon-template.json` borrado sin commitear
+(anterior a esta fase).
+
 ### Iteración 5 — *2026-09-29* — Fase 3: apertura local de documentos
 
 BPDF ya abre un PDF o un Markdown del dispositivo: con «Abrir archivo», con `Ctrl/Cmd+O`

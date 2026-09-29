@@ -61,13 +61,15 @@ y solo abre lo que la app usa hoy. Vive en **un único fichero fuente**,
 En `vite dev` **no hay CSP**: Vite inyecta scripts y estilos en línea para desarrollar.
 Nada se da por bueno por funcionar en `dev`.
 
-**Vigente desde la Fase 2** ✅:
+**Vigente** ✅ (Fase 2; la Fase 4 añadió `worker-src` y `font-src`):
 
 ```text
 default-src 'none';
 script-src 'self';
 style-src 'self';
 img-src 'self';
+worker-src 'self';            ← Fase 4: el worker de pdf.js, desde el propio origen
+font-src 'self';              ← Fase 4: sustitutas de las fuentes estándar de PDF
 object-src 'none';
 base-uri 'none';
 form-action 'none';
@@ -80,15 +82,27 @@ como fichero y React fija estilos por CSSOM, que la CSP no bloquea. T-3 queda as
 fase que añada una librería comprueba que no lo necesita; si lo necesitara, se pide
 aprobación antes de añadirlo.
 
-**Lo que añadirá cada fase, y por qué** (nada de esto está hoy en la política):
+**Añadidas en la Fase 4, medidas** (el E2E de pdf.js da cero violaciones con ellas):
+
+| Directiva | Motivo |
+|---|---|
+| `worker-src 'self'` | El worker de pdf.js (`/pdfjs/pdf.worker.min.mjs`), donde se parsea el PDF aislado del DOM. Sin `blob:` |
+| `font-src 'self'` | pdf.js carga con `FontFace` las sustitutas de las 14 fuentes estándar (p. ej. `LiberationSans` para Helvetica) desde `/pdfjs/standard_fonts/` cuando el PDF no las incrusta. Sin ella, violación de CSP y texto con fuente de respaldo. Las fuentes **incrustadas** llegan como bytes y no pasan por la CSP |
+
+**Previstas y que resultaron innecesarias** (Fase 4):
+
+- `'wasm-unsafe-eval'`: BPDF carga pdf.js con `useWasm: false`, que usa decodificadores en
+  JavaScript y un intérprete de PostScript sin `eval` (verificado en su código). Los
+  `.wasm` ni se sirven ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §3).
+- `connect-src`: con el documento entregado como bytes, pdf.js no hace `fetch` en los
+  casos medidos. Si un PDF con fuentes CID (cmaps) lo necesitara, aparecería como
+  violación en el E2E y se añadiría con su motivo.
+
+**Lo que añadirán otras fases, y por qué** (nada de esto está hoy en la política):
 
 | Directiva | Fase | Motivo |
 |---|---|---|
-| `script-src 'wasm-unsafe-eval'` | 4–5 | pdf.js 6.3 compila WebAssembly (decodificadores JPEG 2000/JBIG2 e ICC en `wasm/`). Solo permite compilar WASM, **no** `eval` de JavaScript. pdf.js 6.3 no usa `eval` ni `new Function` (verificado en su código: `isEvalSupported` ya no existe) |
-| `worker-src 'self'` | 4–5 | El worker de pdf.js, servido desde el propio origen |
-| `connect-src 'self'` | 4–5 | pdf.js pide `cmaps/`, `standard_fonts/` y `wasm/` al propio origen |
 | `img-src blob:` | 7–8 | Imágenes locales de Markdown y diagramas Mermaid convertidos en `<img>` |
-| `font-src 'self'` | 8 | Fuentes de KaTeX servidas desde el propio origen |
 | `img-src data:` | 8, solo si KaTeX lo exige | Se prueba antes de añadirlo |
 
 **Nunca** `https:` ni otro origen en ningún `*-src`: ningún documento puede provocar una
@@ -227,17 +241,17 @@ comprueba el DOM: sin `script`, `iframe`, `object`, `embed`, `svg` en línea, at
 
 | Vector | Control | Fase |
 |---|---|---|
-| PDF malformado o hostil al parser | pdf.js parsea **en su worker** (aislado del DOM de la app). Errores capturados y mostrados como «PDF dañado». Versión exacta y actualización inmediata ante avisos (precedente: CVE-2024-4367, ejecución de JS mediante fuentes, corregida en 4.2.67) | 5 |
-| JavaScript embebido (acciones de documento, de página, de campos) | `enableScripting: false`; **no se distribuye** `pdf.sandbox.mjs` | 5 |
-| Formularios XFA | `enableXfa: false` (por defecto) | 5 |
+| PDF malformado o hostil al parser | pdf.js parsea **en su worker** (aislado del DOM de la app). Errores capturados y mostrados como «PDF dañado» (`PdfNoLegibleError`). Versión exacta (6.3.289) y actualización inmediata ante avisos (precedente: CVE-2024-4367, ejecución de JS mediante fuentes, corregida en 4.2.67) | ✅ 4 (motor y test de PDF dañado) · 5 (visor) |
+| JavaScript embebido (acciones de documento, de página, de campos) | **No se distribuyen** `pdf.sandbox*` ni `quickjs-eval.*` (el motor para ejecutarlo): un E2E comprueba que dan 404. `enableScripting` es una opción de la capa de anotaciones y se fija en `false` en la Fase 5 | ✅ 4 (ficheros) · 5 |
+| Formularios XFA | `enableXfa: false` en `opcionesDocumento` (test) | ✅ 4 |
 | Formularios AcroForm | `annotationMode: AnnotationMode.ENABLE` (se pintan, no son editables) (D14) | 5 |
 | Enlaces externos | pdf.js ya limita a `http`, `https`, `ftp`, `mailto`, `tel`; BPDF restringe a `http`, `https`, `mailto` y los abre con `noopener noreferrer` (Electron: vía main) | 5 |
 | Acciones `Launch`, `GoToR` (otro fichero), `ImportData`, `SubmitForm`, `file:` | No se ejecutan: sin scripting y con el filtro de enlaces. Test con fixture que las contiene | 5 |
 | Ficheros adjuntos embebidos | No se exponen en v1 | 5 |
-| Recursos remotos | pdf.js carga `cmaps/`, `standard_fonts/` y `wasm/` **desde el propio origen**; `connect-src 'self'`. El documento se pasa como `ArrayBuffer`, nunca como URL | 5 |
+| Recursos remotos | Worker, `cmaps/`, `standard_fonts/` y los decodificadores en JavaScript se sirven **desde el propio origen** (`scripts/copiar-pdfjs.mjs`); `useWasm: false`. El documento se pasa como bytes (`data`), nunca como URL (test). E2E: ninguna petición fuera del propio origen | ✅ 4 |
 | Agotamiento de memoria (páginas gigantes, zoom) | `maxCanvasPixels`, límite de tamaño de fichero, virtualización | 5, 13 |
 | PDFs cifrados | Contraseña solo en memoria, nunca persistida (D13) | 5 |
-| Post-proceso del modo oscuro | Trabaja sobre píxeles del lienzo propio; no interpreta contenido | 4, 5 |
+| Post-proceso del modo oscuro | Trabaja sobre píxeles del lienzo propio (mismo origen, sin `crossOrigin`); no interpreta contenido. Por franjas, sin copiar la página entera | ✅ 4 |
 
 ## 5. Electron
 

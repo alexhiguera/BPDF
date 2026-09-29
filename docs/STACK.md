@@ -1,9 +1,8 @@
 # Stack tecnológico
 
-Estado tras la Fase 3 (*2026-09-29*): la Fase 3 no añadió dependencias (la apertura de
-ficheros solo usa APIs estándar del navegador). El stack **objetivo** (pdf.js, pipeline de
-Markdown, Electron) y el motivo de cada pieza están en [PLAN.md](PLAN.md); cada fase añade
-aquí lo que instala.
+Estado tras la Fase 4 (*2026-09-29*): la Fase 4 añadió `pdfjs-dist` (el motor de PDF) para
+el spike de modo oscuro. El stack **objetivo** (pipeline de Markdown, Electron) y el motivo
+de cada pieza están en [PLAN.md](PLAN.md); cada fase añade aquí lo que instala.
 
 ## Capas
 
@@ -53,6 +52,25 @@ explica, para que el documento no se quede atrás.
 | `react`, `react-dom` | La interfaz |
 | `lucide-react` | Iconos (hoy, el indicador de carga de `Button`) |
 | `clsx`, `tailwind-merge` | La función `cn()` para combinar clases |
+| `pdfjs-dist` | El motor de PDF (pdf.js de Mozilla). **Versión exacta** (6.3.289): procesa contenido no confiable. Se carga a demanda, con `useWasm: false` y sus recursos servidos desde el propio origen ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §3) |
+
+### `pdfjs-dist`: qué trae y qué implica
+
+- **Dependencia opcional `@napi-rs/canvas`** (binario nativo, 34 MiB, sin scripts de
+  instalación). pdf.js la usa solo en Node para pintar; BPDF no pinta en Node, así que
+  **no entra en el bundle**. Se instala en desarrollo porque npm instala las opcionales
+  por defecto (y no se pueden omitir una a una sin omitir también los binarios de
+  Rolldown). Pasa por `npm audit` como el resto.
+- **Build moderna frente a `legacy`.** La moderna (la que se importa en el navegador)
+  exige APIs de JavaScript de 2025–2026 (`Map.prototype.getOrInsertComputed`,
+  `Math.sumPrecise`, `Uint8Array.prototype.toHex`…) que **no están en los navegadores
+  mínimos de `build.target`**. La `legacy` las trae con polyfills. Los tests de Node usan
+  la `legacy` (Node 24 tampoco las tiene). Qué usar en el visor lo decide la Fase 5
+  (pendiente de aprobación: PDF_DARK_MODE_SPIKE.md §12).
+- **Recursos en tiempo de ejecución** (worker, fuentes estándar, cmaps y decodificadores
+  en JavaScript): los copia `scripts/copiar-pdfjs.mjs` a `public/pdfjs/` en `predev` y
+  `prebuild`, sin los `.wasm`, el motor de JavaScript de PDF (`quickjs-eval`) ni el sandbox.
+  `public/pdfjs/` no se versiona.
 
 Todo lo demás es de desarrollo: `vite` y `@tailwindcss/vite` (build), `tailwindcss`,
 Biome, TypeScript, Vitest y Testing Library, jest-axe, jsdom, Playwright, y `yaml` (lo usa
@@ -66,6 +84,9 @@ de Electron (Fase 14).
 
 **Retiradas en la Fase 2:** `next` (runtime) y `@tailwindcss/postcss` (desarrollo,
 sustituido por `@tailwindcss/vite`).
+
+**Añadida en la Fase 4:** `pdfjs-dist` 6.3.289 (runtime). Ninguna librería de procesado de
+imagen: la transformación del modo oscuro usa solo Canvas y funciones propias.
 
 **Política** ([`CLAUDE.md`](../CLAUDE.md) §11 bis): ninguna dependencia «para más
 adelante»; versiones exactas para los motores que procesan contenido no confiable; toda

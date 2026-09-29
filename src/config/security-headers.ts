@@ -23,6 +23,13 @@ export const CSP: Directivas = {
   // CSSOM, que la CSP no bloquea.
   "style-src": ["'self'"],
   "img-src": ["'self'"],
+  // Fase 4: el worker de pdf.js (`/pdfjs/pdf.worker.min.mjs`), donde se parsea el
+  // PDF aislado del DOM. Solo desde el propio origen: nada de `blob:`.
+  "worker-src": ["'self'"],
+  // Fase 4: sustitutas de las 14 fuentes estándar de PDF (`/pdfjs/standard_fonts/`,
+  // p. ej. LiberationSans para Helvetica) que pdf.js carga con `FontFace` cuando el
+  // documento no las incrusta. Las fuentes incrustadas llegan como bytes, sin URL.
+  "font-src": ["'self'"],
   "object-src": ["'none'"],
   "base-uri": ["'none'"],
   "form-action": ["'none'"],

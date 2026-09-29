@@ -6,7 +6,9 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/copiar-pdfjs.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/copiar-pdfjs.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "build:tamano": "node scripts/tamano-bundle.mjs",
@@ -19,6 +21,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "bench:pdf": "playwright test --config playwright.bench.config.ts",
     "docs:validar": "node scripts/validar-public-docs.mjs",
     "docs:enlaces": "node scripts/verificar-enlaces-docs.mjs",
     "deps:overrides": "node scripts/verificar-overrides.mjs"
@@ -29,6 +32,7 @@
   "dependencies": {
     "clsx": "^2.1.1",
     "lucide-react": "^1.47.0",
+    "pdfjs-dist": "6.3.289",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "tailwind-merge": "^3.7.0"

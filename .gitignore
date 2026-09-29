@@ -4,6 +4,9 @@ node_modules/
 # Build de Vite
 dist/
 
+# Recursos de pdf.js copiados de node_modules (scripts/copiar-pdfjs.mjs)
+public/pdfjs/
+
 # Tests
 coverage/
 test-results/
@@ -25,3 +28,6 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 *.log
+
+# Documento grande del spike de modo oscuro: se genera con --grande
+tests/fixtures/pdf/modo-oscuro/grande.pdf

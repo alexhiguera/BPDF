@@ -243,6 +243,14 @@ No hay alternativa razonable en navegador: es el motor de Firefox, mantenido por
 con worker, capa de texto, enlaces y búsqueda. Se carga con `import()` al abrir el primer
 PDF, nunca en el bundle inicial.
 
+> **Cambio propuesto por la Fase 4, pendiente de aprobación** (PDF_DARK_MODE_SPIKE.md §12):
+> `PDFViewer` crea sus propios lienzos opacos (el texto sale con flecos de color al
+> recolorearlo) y no pasa `recordImages`, del que depende el modo oscuro. El visor tendría
+> que renderizar cada página con la API núcleo y reutilizar de pdf.js solo `TextLayer`,
+> `AnnotationLayer` y, si encaja, `PDFLinkService`. El párrafo siguiente es el plan
+> anterior. También queda pendiente elegir entre la build moderna y la `legacy` de pdf.js
+> (la moderna no funciona en los navegadores mínimos de `build.target`).
+
 Componentes de `pdfjs-dist/web/pdf_viewer.mjs` que se usarán (verificado en 6.3.289):
 `PDFViewer` / `PDFSinglePageViewer` (modos continuo y de página: `ScrollMode.VERTICAL` y
 `ScrollMode.PAGE`), `EventBus`, `PDFLinkService`, `PDFFindController`. Esto da gratis
@@ -264,6 +272,14 @@ completa, modo continuo y de página individual, atajos de teclado ([§9.4](#94-
 Configuración segura del motor: [SEGURIDAD.md](SEGURIDAD.md) §4.
 
 ### 6.3 Lectura oscura (el punto técnico difícil)
+
+> **Resuelto en la Fase 4 (2026-09-29): recoloreado selectivo.** Heurística de color en
+> OKLab (invierte la luminosidad de lo neutro y conserva lo que tiene color) aplicada solo
+> **fuera** de las regiones de imagen que registra el propio pdf.js (`recordImages`), con
+> reglas para escaneos y páginas ya oscuras. Fotos intactas (±3 por canal), texto claro a
+> 12:1, gráficos con su color, ~10 ms por megapíxel. Evidencia, benchmark, limitaciones y
+> condiciones para la Fase 5: [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md). Lo que
+> sigue es el análisis previo al spike, que se conserva como historial de la decisión.
 
 Requisito: fondo de página oscuro, texto claro, **imágenes y gráficos con sus colores**, sin
 destruir la legibilidad del contenido gráfico. `filter: invert()` sobre la página no vale:
@@ -555,12 +571,14 @@ terceros sin licencia clara.
 | **D12** | Móvil / tablet en web | Escritorio como objetivo; diseño adaptable básico sin optimizar gestos | Fase 11 |
 | **D13** | PDFs con contraseña | Soportados con un diálogo simple (pdf.js lo gestiona con `onPassword`) | Fase 5 |
 | **D14** | Formularios y anotaciones de PDF | Solo se muestran; no se rellenan ni se editan | Fase 5 |
+| **D17** | Visor PDF propio sobre la API núcleo de pdf.js en lugar de `PDFViewer` (surge de la Fase 4) | **Visor propio**: es lo que permite el modo oscuro validado. Reutiliza `TextLayer` y `AnnotationLayer`; hay que construir virtualización, zoom, modos y búsqueda ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §12) | Fases 5 y 6 |
+| **D18** | Build de pdf.js: moderna o `legacy` (surge de la Fase 4) | **`legacy`** en web: la moderna exige navegadores de 2025–2026 y no cumple `build.target`. Revisable si solo se publica Electron | Fase 5 |
 
 ### 14.2 Técnicas, resueltas por una fase
 
 | ID | Decisión | La resuelve |
 |---|---|---|
-| **T-1** | Estrategia de modo oscuro del PDF (B, A o híbrida) y, con ella, `PDFViewer` frente a visor propio | Fase 4 (spike) |
+| **T-1** | Estrategia de modo oscuro del PDF y, con ella, `PDFViewer` frente a visor propio. **Resuelta en la Fase 4:** recoloreado selectivo con las regiones de `recordImages`; exige visor propio sobre la API núcleo (pendiente de aprobación, [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §11–12) | Fase 4 ✅ |
 | **T-2** | `@vitejs/plugin-react` sí o no. **Resuelta en la Fase 2: no** (Vite transforma el JSX solo; se renuncia a Fast Refresh; [STACK.md](STACK.md)) | Fase 2 ✅ |
 | **T-3** | `style-src` sin `'unsafe-inline'`. **Desde la Fase 2 la CSP ya no lo lleva**; queda comprobar que pdf.js, KaTeX y Mermaid no lo exigen (cada fase al integrarlos; si alguno lo exigiera, se pide aprobación) | Fases 4–8; cierre en la 12 |
 | **T-4** | Trusted Types (`require-trusted-types-for 'script'`) viable con pdf.js y Mermaid | Fase 12 |

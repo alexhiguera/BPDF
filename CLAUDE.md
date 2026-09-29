@@ -14,9 +14,11 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   objetivo en [`docs/PLAN.md`](docs/PLAN.md).
 - **Principio rector:** los documentos del usuario **no salen del dispositivo**. Sin
   backend, API, base de datos, cuentas, sincronización ni telemetría.
-- **Estado:** Fase 3 cerrada. La app es una SPA estática de Vite + React (D1) que abre
+- **Estado:** Fase 4 cerrada. La app es una SPA estática de Vite + React (D1) que abre
   y valida un PDF o un Markdown local (selector o arrastre) sin mostrarlo todavía: un
-  documento a la vez (D16). Plan y estado:
+  documento a la vez (D16). El modo oscuro de PDF está validado en un spike
+  ([`docs/PDF_DARK_MODE_SPIKE.md`](docs/PDF_DARK_MODE_SPIKE.md)), con un laboratorio
+  TEMPORAL en `/spike.html` que se borra en la Fase 5. Plan y estado:
   [`docs/FASES.md`](docs/FASES.md) y [`docs/TAREAS_PENDIENTES.md`](docs/TAREAS_PENDIENTES.md).
 - **Estática, siempre:** la build (`dist/`) son ficheros. Nada de servidor, SSR, API ni
   funciones serverless, ni variables de entorno.

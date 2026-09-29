@@ -13,6 +13,8 @@ está en [`public_docs/`](../public_docs/README.md).
 - [SEGURIDAD.md](SEGURIDAD.md) — modelo de amenazas y controles de web, Markdown, PDF y
   Electron, con la fase que implementa cada uno.
 - [ELECTRON.md](ELECTRON.md) — versión de escritorio: procesos, preload, IPC, protocolos.
+- [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) — resultado del spike de la Fase 4: cómo
+  se consigue el PDF en modo oscuro, con qué evidencia, qué cuesta y qué limitaciones tiene.
 
 ### Estado actual
 - [ARCHITECTURE.md](ARCHITECTURE.md) — principios y el porqué de cada uno.

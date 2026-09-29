@@ -1,6 +1,6 @@
 # Estructura del repositorio
 
-Estado tras la Fase 3 (*2026-09-29*). Cada fase actualiza este árbol con lo que crea; lo
+Estado tras la Fase 4 (*2026-09-29*). Cada fase actualiza este árbol con lo que crea; lo
 que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas vacías).
 
 ```text
@@ -9,7 +9,9 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 ├── LICENSE                   Apache-2.0
 ├── r3zon-template.json       registro de origen: de qué plantilla nace (no se actualiza)
 ├── index.html                entrada de Vite; sin scripts en línea
-├── vite.config.ts            build estática, cabeceras de `preview`, plugin de BPDF
+├── spike.html                TEMPORAL: laboratorio del modo oscuro de PDF (F4; se borra en F5)
+├── vite.config.ts            build estática (entradas index y spike), cabeceras de `preview`, plugin de BPDF
+├── playwright.bench.config.ts  benchmark del modo oscuro (`npm run bench:pdf`, fuera de CI)
 ├── src/
 │   ├── main.tsx              arranque: crea la plataforma y monta <App/> en el ErrorBoundary
 │   ├── app/                  la aplicación: shell y vistas
@@ -40,7 +42,11 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   ├── lib/                  utils.ts (cn()) · format.ts (tamaños legibles)
 │   ├── vite-env.d.ts         tipos de Vite (imports de CSS)
 │   │
-│   ├── pdf/                  llega en F4–F6
+│   ├── pdf/                  el motor de PDF, sin React (F4; el visor llega en F5–F6)
+│   │   ├── engine.ts         carga de pdf.js a demanda y del documento (bytes, useWasm: false)
+│   │   ├── render.ts         render de una página con la API núcleo + regiones de imagen
+│   │   └── dark/             modo oscuro: color.ts (OKLab, contraste) · recolor.ts · regiones.ts · aplicar.ts
+│   ├── pdf-spike/            TEMPORAL: laboratorio y benchmark de la F4 (se borra en F5)
 │   ├── markdown/  editor/    llegan en F7–F9
 │   └── preferences/          llega en F10
 ├── electron/                 llega en F14 (proceso main y preload; fuera de src/)
@@ -52,11 +58,13 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   ├── _fixtures/            proyecto ficticio autocontenido para probar validadores
 │   └── public-docs.test.ts   el validador de public_docs
 ├── e2e/                      Playwright contra la build de producción
-│   ├── specs/                app.spec.ts (base) · abrir.spec.ts (apertura de documentos)
+│   ├── specs/                app.spec.ts (base) · abrir.spec.ts (apertura) · pdf-spike.spec.ts (modo oscuro, temporal)
+│   ├── bench/                benchmark del modo oscuro (no es un test; `npm run bench:pdf`)
 │   └── vigilancia.ts         consola, CSP y red vigiladas en cada carga
 ├── scripts/                  herramientas (.mjs, sin dependencias extra)
 │   ├── validar-public-docs.mjs · verificar-enlaces-docs.mjs · verificar-overrides.mjs
 │   ├── tamano-bundle.mjs     peso del arranque
+│   ├── copiar-pdfjs.mjs      recursos de pdf.js a public/pdfjs/ (predev/prebuild)
 │   └── lib/                  piezas puras, probadas en tests/
 ├── docs/                     documentación interna (plan, fases, bitácora, tareas)
 ├── public_docs/              documentación pública (la publica el Docusaurus de R3ZON)
@@ -64,7 +72,8 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 └── .claude/settings.json     permisos de Claude Code para el repo
 ```
 
-`dist/` (la build) no se versiona.
+`dist/` (la build) y `public/pdfjs/` (recursos de pdf.js copiados de `node_modules`) no se
+versionan.
 
 ## Dónde va cada cosa
 
@@ -79,7 +88,8 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 | Motor de un tipo de documento | `src/<motor>/` (`pdf/`, `markdown/`), sin React en su núcleo | [PLAN.md](PLAN.md) §4.1: se prueba sin montar nada |
 | Modelo, validación y estado del documento abierto | `src/documents/` | Sin UI ni plataforma: lo usan las dos plataformas y los visores |
 | Acceso a ficheros, diálogos, enlaces externos | `src/platform/` | Única frontera con la plataforma: el resto del código nunca ve rutas ni `window.bpdf` ([ELECTRON.md](ELECTRON.md) §3) |
-| Documento de prueba | `tests/fixtures/<tipo>/`, con su fila en `tests/fixtures/README.md` | Procedencia y licencia conocidas (CLAUDE.md §6) |
+| Documento de prueba | `tests/fixtures/<tipo>/`, con su fila en `tests/fixtures/README.md` | Procedencia y licencia conocidas (CLAUDE.md §6). Mejor generado por script (`tests/fixtures/pdf/modo-oscuro/generar.mjs`) |
+| Recurso de un motor que se pide en tiempo de ejecución (worker, fuentes) | copiado por un script a `public/<motor>/`, sin versionar | Se sirve desde el propio origen (CSP) y sale de la versión exacta instalada |
 | Lógica pura genérica | `src/lib/` | |
 | Herramienta de operación | `scripts/*.mjs` (lógica testeable en `scripts/lib/`) | |
 

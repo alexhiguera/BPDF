@@ -30,7 +30,8 @@ function bpdf(esBuild: boolean): Plugin {
         .replace(/<html lang="[^"]*">/, `<html lang="${html(htmlLang)}">`)
         .replaceAll("__BPDF_NAME__", html(project.name))
         .replaceAll("__BPDF_DESCRIPTION__", html(project.description))
-        .replaceAll("__BPDF_NOSCRIPT__", html(messages.app.noscript));
+        .replaceAll("__BPDF_NOSCRIPT__", html(messages.app.noscript))
+        .replaceAll("__BPDF_SPIKE_TITLE__", html(messages.pdfSpike.pageTitle));
       if (!esBuild) return sustituido;
       return {
         html: sustituido,
@@ -61,6 +62,14 @@ export default defineConfig(({ command }) => ({
   build: {
     // Navegadores mínimos: los que exige Tailwind 4 (`color-mix`, `@property`).
     target: ["chrome111", "edge111", "firefox111", "safari16.4"],
+    rolldownOptions: {
+      input: {
+        main: path.resolve(import.meta.dirname, "index.html"),
+        // Laboratorio del spike de modo oscuro (Fase 4). TEMPORAL: se quita en la
+        // Fase 5 junto con src/pdf-spike/ (docs/PDF_DARK_MODE_SPIKE.md).
+        spike: path.resolve(import.meta.dirname, "spike.html"),
+      },
+    },
   },
   preview: {
     headers: cabecerasSeguridad(),

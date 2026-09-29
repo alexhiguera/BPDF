@@ -56,6 +56,48 @@ export const messages = {
     body: "Puedes volver a intentarlo.",
     retry: "Reintentar",
   },
+  /**
+   * Laboratorio del spike de modo oscuro (Fase 4, `spike.html`). TEMPORAL: se
+   * borra con `src/pdf-spike/` en la Fase 5 (docs/PDF_DARK_MODE_SPIKE.md).
+   */
+  pdfSpike: {
+    pageTitle: "BPDF · laboratorio de modo oscuro",
+    title: "Laboratorio: PDF en modo oscuro",
+    intro:
+      "Entorno de prueba de la Fase 4. Abre un PDF y compara cómo queda cada estrategia. No es el visor.",
+    file: "Archivo PDF",
+    page: "Página",
+    scale: "Escala",
+    mode: "Estrategia",
+    modes: {
+      original: "Original (pdf.js sin tocar)",
+      invertido: "Inversión completa (referencia negativa)",
+      selectivo: "Recoloreado selectivo (preserva imágenes)",
+      heuristica: "Solo heurística de color (sin regiones de imagen)",
+    },
+    showRegions: "Marcar las regiones de imagen detectadas",
+    canvas: (pagina: number) => `Página ${pagina} renderizada`,
+    loading: "Cargando…",
+    ready: (paginas: number) => `Documento listo: ${paginas} páginas.`,
+    openedIn: (ms: string) => `Abierto por pdf.js en ${ms} ms.`,
+    timings: (render: string, transformacion: string, regiones: number) =>
+      `Render ${render} ms · transformación ${transformacion} ms · ${regiones} regiones de imagen`,
+    darkPageSkipped: "Página ya oscura: se deja como está.",
+    invalidPdf: "pdf.js no ha podido leer este PDF: está dañado o no es un PDF válido.",
+    benchmark: "Medir esta página (escalas 1, 2 y 4)",
+    benchmarkRunning: "Midiendo…",
+    benchmarkColumns: {
+      scale: "Escala",
+      canvas: "Lienzo (px)",
+      dpr: "DPR",
+      render: "Render (ms)",
+      transform: "Transformación (ms)",
+      regions: "Regiones",
+      canvasMemory: "Lienzo (MiB)",
+      stripMemory: "Transitorio (MiB)",
+      heap: "Heap JS (MiB)",
+    },
+  },
 } as const;
 
 /**

@@ -117,6 +117,12 @@ Reglas:
   `X-Content-Type-Options: nosniff`. `img-src` de la CSP de escritorio añade
   `bpdf-res:`. SVG solo como `<img>` (igual que en web).
 - Sin `file://` en ningún caso.
+- **pdf.js** (Fase 4, [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §3): su worker, las
+  fuentes estándar, los cmaps y los decodificadores en JavaScript están en `dist/pdfjs/` y
+  los sirve `app://` como cualquier otro fichero. Con `worker-src 'self'` y
+  `font-src 'self'` basta, igual que en web. `useWasm: false`: nada de WebAssembly ni de
+  `'wasm-unsafe-eval'`. El Chromium de Electron es reciente, así que la build moderna de
+  pdf.js funcionaría (D18).
 
 ## 6. Ventana y sesión
 

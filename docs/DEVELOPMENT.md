@@ -35,18 +35,30 @@ Por eso todo lo que dependa de la CSP se comprueba con `preview` o con los E2E, 
 con `dev`. Las dos modalidades devuelven 404 para rutas que no existen (`appType: "mpa"`
 en [`vite.config.ts`](../vite.config.ts): sin fallback de SPA).
 
+### Laboratorio del modo oscuro de PDF (temporal, Fase 4)
+
+`/spike.html` (en `dev` o `preview`) abre cualquier PDF local y lo pinta con cada
+estrategia: original, inversión completa, solo heurística y recoloreado selectivo. Permite
+cambiar de página y de escala, marcar las regiones de imagen detectadas y medir. Sirve para
+probar el modo oscuro con **tus** documentos reales; nada sale del navegador. Se borra en
+la Fase 5 ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md)).
+
+Los fixtures del spike se regeneran con `node tests/fixtures/pdf/modo-oscuro/generar.mjs`
+(`--grande` añade uno de 300 páginas, sin versionar).
+
 ## Scripts
 
 | Script | Qué hace |
 |---|---|
-| `dev` | Vite en modo desarrollo |
-| `build` | Build estática en `dist/` |
+| `dev` | Vite en modo desarrollo (antes, `predev` copia los recursos de pdf.js) |
+| `build` | Build estática en `dist/` (antes, `prebuild` copia los recursos de pdf.js) |
 | `build:tamano` | Peso gzip de lo que se descarga al arrancar; falla por encima de 150 KB. Requiere `build` |
 | `preview` | Sirve `dist/` con la CSP y las cabeceras de seguridad |
 | `lint` · `lint:fix` · `format` | Biome |
 | `typecheck` | `tsc --noEmit` |
 | `test` · `test:run` · `test:coverage` | Vitest (unitarios, componentes, a11y) |
 | `test:e2e` · `test:e2e:ui` | Playwright contra la build de producción (`vite preview`, puerto 3100) |
+| `bench:pdf` | Benchmark del modo oscuro de PDF (render, transformación, memoria a escalas 1, 2 y 4). Imprime una tabla; no es un test y no corre en CI |
 | `docs:validar` | Valida `public_docs/` contra el contrato y la identidad contra `project.ts` |
 | `docs:enlaces` | Enlaces rotos en `docs/`, `README.md` y `CLAUDE.md` |
 | `deps:overrides` | ¿Siguen haciendo falta los `overrides`? (hoy no hay ninguno) |
@@ -64,7 +76,13 @@ npm run test:e2e      # build de producción + Playwright (Chromium)
 - **Documentos de prueba** en `tests/fixtures/`, cada uno con su procedencia en su
   `README.md`; los casos que no merecen un fichero en disco (PDF falso, vacío, UTF-16,
   nombres con `<`, comillas o emoji) se construyen en el propio test. El PDF mínimo se
-  regenera con `node tests/fixtures/pdf/generar.mjs`.
+  regenera con `node tests/fixtures/pdf/generar.mjs`, y el del modo oscuro con
+  `node tests/fixtures/pdf/modo-oscuro/generar.mjs`.
+- **pdf.js en los tests de Node** (`tests/unit/pdf/engine.test.ts`) usa la build `legacy`:
+  la moderna exige APIs que Node 24 no trae. El render y los píxeles, en Playwright.
+- **E2E del modo oscuro** (`pdf-spike.spec.ts`): no compara capturas enteras; muestrea
+  píxeles en el interior de superficies lisas de posición conocida (la geometría la exporta
+  el generador del fixture).
 - `tests/helpers/documentos.ts`: ficheros de prueba y una **plataforma en memoria** que
   sustituye el selector del sistema por una cola de respuestas y usa la validación real.
   Los componentes que abren documentos se prueban con ella (`<App platform={…} />`).
