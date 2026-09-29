@@ -56,4 +56,12 @@ describe("inyección de HTML (docs/SEGURIDAD.md §2.3)", () => {
     const culpables = codigo().filter((f) => prohibido.test(readFileSync(f, "utf8")));
     expect(culpables).toEqual([]);
   });
+
+  it("ningún fichero de src/ lleva marcas bidireccionales invisibles (Trojan Source)", () => {
+    // Hacen que el código se lea distinto de como se ejecuta. Donde hagan falta
+    // (p. ej. para quitarlas de un nombre), se escriben como escapes \uXXXX.
+    const invisibles = /[\u202A-\u202E\u2066-\u2069\u200E\u200F\u061C]/u;
+    const culpables = codigo().filter((f) => invisibles.test(readFileSync(f, "utf8")));
+    expect(culpables).toEqual([]);
+  });
 });

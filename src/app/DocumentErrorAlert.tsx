@@ -1,0 +1,51 @@
+import { Button } from "@/components/ui/Button";
+import type { DocumentError, DocumentErrorCode } from "@/documents/errors";
+import { MAX_BYTES } from "@/documents/limits";
+import { messages } from "@/i18n/messages";
+import { formatBytes } from "@/lib/format";
+
+const t = messages.documentError;
+
+/** Motivo legible de cada error (docs/PLAN.md §9.3). */
+function reason(error: DocumentError): string {
+  const texts: Record<DocumentErrorCode, string> = {
+    unsupported: t.unsupported,
+    multiple: t.multiple,
+    empty: t.empty,
+    "too-large": t.tooLarge(formatBytes(MAX_BYTES[error.kind ?? "pdf"])),
+    "not-pdf": t.notPdf,
+    "not-utf8": t.notUtf8,
+    unreadable: t.unreadable,
+  };
+  return texts[error.code];
+}
+
+/**
+ * Aviso de un fichero que no se pudo abrir. `role="alert"` para que se anuncie
+ * al aparecer. El nombre del fichero se pinta como texto (React lo escapa) y
+ * puede ser largo o no tener espacios: se parte donde haga falta.
+ */
+export function DocumentErrorAlert({
+  error,
+  onDismiss,
+}: {
+  error: DocumentError;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      role="alert"
+      className="mx-auto mt-6 flex w-full max-w-xl flex-col gap-2 rounded-md border border-danger bg-app p-4"
+    >
+      <p className="font-medium wrap-anywhere text-danger">
+        {error.fileName ? t.title(error.fileName) : t.titleNoFile}
+      </p>
+      <p className="text-fg-muted">{reason(error)}</p>
+      <div>
+        <Button variant="secondary" onClick={onDismiss}>
+          {t.dismiss}
+        </Button>
+      </div>
+    </div>
+  );
+}

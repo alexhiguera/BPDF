@@ -54,8 +54,9 @@ F0 ─► F1 ─► F2 ─┬─► F3 ─┬─► F5 ─► F6 ─────
 | 15 | Distribución: web y escritorio | Incluye la publicación web (antes no tenía fase) |
 | 16 | Open source y documentación final | Igual; la licencia ya existe desde F1 |
 
-Paralelizables (si hay dos sesiones a la vez): **F4** con **F3**; **F7–F9** con **F5–F6**.
-Todas tocan `src/App.tsx` en un punto (montar el visor): conflicto pequeño y conocido.
+Paralelizables (si hay dos sesiones a la vez): **F7–F9** con **F5–F6**. Todas tocan
+`src/app/App.tsx` en un punto (montar el visor en lugar de `DocumentSummary`): conflicto
+pequeño y conocido.
 
 ---
 
@@ -127,66 +128,55 @@ preview` con vigilancia de consola, CSP y red; `npm run build:tamano` en CI (arr
 
 ---
 
-## Fase 3 — Apertura local de archivos
+## Fase 3 — Apertura local de archivos ✅
 
-**Objetivo.** Abrir PDF y Markdown por selector y por arrastre, validar, y dejar el
-documento en el estado de la app listo para que un visor lo muestre.
+Cerrada el 2026-09-29. Bitácora: iteración 5. Resultado: abrir un PDF o un Markdown local
+con el botón «Abrir archivo», `Ctrl/Cmd+O` o arrastrándolo a la ventana; validación por
+extensión **y** contenido (firma `%PDF-`, UTF-8 estricto), límites de tamaño
+justificados y siete errores tipados con su mensaje; **un documento a la vez** (D16):
+abrir otro lo sustituye y un fichero rechazado no cierra el abierto; vista provisional
+con nombre, tipo y tamaño. Capa `src/platform/` con la implementación web. Sin
+dependencias nuevas, sin cambios de CSP y sin ninguna petición de red.
 
-**Dependencias.** F2. **D16** (un documento a la vez).
+**Qué deja a las fases siguientes** (el contrato que usarán):
 
-**Alcance**
+- `useDocument()` da `document: OpenedDocument | null`. PDF: `{ kind: "pdf", blob }`
+  (sin leer; el visor hace `await blob.arrayBuffer()`); Markdown:
+  `{ kind: "markdown", text }`. Los visores se montan con `key={document.id}` y liberan
+  lo suyo al desmontarse ([PLAN.md](PLAN.md) §4.2, [ARCHITECTURE.md](ARCHITECTURE.md) §4 bis).
+- `Platform` con `pickDocument()` y `openDroppedFile(file)`; cada fase añade el método
+  que use ([ELECTRON.md](ELECTRON.md) §3).
+- `readDocument(file, id?)` es la única validación, también para Electron.
 
-- `src/documents/types.ts` (`OpenedDocument`, PLAN §4.2), `detect.ts` (extensión +
-  `%PDF-` en los primeros 1024 bytes; UTF-8 estricto para Markdown), `limits.ts`
-  (512 MB / 20 MB), `errors.ts` (errores tipados: no soportado, demasiado grande, vacío,
-  no UTF-8, ilegible).
-- **`src/platform/`** (aplazada desde la Fase 2): `types.ts` (interfaz `Platform` de
-  ELECTRON §3, solo con lo que esta fase usa: `pickFiles`, `fromDroppedFiles`),
-  `memory.ts` (implementación falsa para tests), `index.ts` (elige por `window.bpdf`) y un
-  contexto React `PlatformProvider`. El resto de métodos (`saveText`, `openExternal`,
-  `onExternalOpen`) los añade la fase que los usa.
-- `src/platform/web.ts`: `pickFiles` con `<input type="file" multiple>` creado al vuelo
-  (`accept=".pdf,.md,.markdown"`), `fromDroppedFiles`; las imágenes que acompañan a un
-  `.md` pasan a `resources` (mapa ruta relativa normalizada → `File`), incluida la entrada
-  de carpetas por `webkitGetAsEntry`.
-- `src/documents/DocumentProvider.tsx` + `useDocument()`: estado del documento abierto,
-  abrir (sustituye, con confirmación si hay cambios sin guardar: el indicador llega en F9,
-  aquí la API), cerrar (libera recursos).
-- Zona de soltar a pantalla completa con indicación visual accesible; botón «Abrir» y
-  `Ctrl/Cmd+O` activos.
-- Mensajes de error (PLAN §9.3) con los textos de `messages.ts`.
-- Visor provisional: nombre, tipo y tamaño del documento abierto (se sustituye en F5/F7).
+**Desviaciones respecto a la especificación**, por si una fase posterior se apoya en ella:
 
-**Fuera de alcance.** Renderizar documentos; guardar; Electron; abrir desde URL (no se
-hará: rompería el principio de privacidad).
-
-**Archivos esperados.** `src/documents/*`, `src/app/App.tsx`, `src/app/EmptyState.tsx`,
-`src/app/DropZone.tsx`, `src/app/DocumentError.tsx`, `src/platform/*`,
-`src/i18n/messages.ts`, `tests/unit/documents/*`, `tests/components/DropZone.test.tsx`,
-`tests/fixtures/` (primeros fixtures + `README.md` de procedencia), `e2e/specs/abrir.spec.ts`.
-
-**Seguridad.** Nunca confiar en `file.type`; validar por contenido. Nombres de fichero
-mostrados como texto (React ya escapa). Normalizar rutas relativas de `resources` (sin
-`..` que salga del conjunto, sin rutas absolutas). Nada de rutas de disco en el estado.
-
-**Tests**
-
-- Unitarios: detección (PDF válido, PDF con bytes previos a `%PDF-` dentro de 1024 bytes,
-  `.pdf` que es un PNG, `.md` en UTF-16 o binario, fichero vacío, justo en el límite y uno
-  por encima), normalización de rutas de `resources` (`./img/a.png`, `img/../a.png`,
-  `../a.png` rechazado, `/abs.png` rechazado, `C:\x.png` rechazado).
-- Componentes + jest-axe: zona de soltar (estados), errores.
-- E2E: abrir por selector (`setInputFiles`) un PDF y un `.md`; arrastrar (evento `drop`
-  sintético con `DataTransfer`); rechazar un `.txt` y un PDF falso.
-
-**Criterios de aceptación.** Definición de hecho común; los cinco errores tipados tienen
-mensaje y test; abrir un segundo documento sustituye al primero.
-
-**Documentación.** PLAN §5 y §4.2 (marcar implementado o corregir), STRUCTURE, bitácora,
-TAREAS.
-
-**Resultado esperado.** Se puede abrir cualquier PDF o Markdown local y la app sabe qué
-es, sin mostrarlo aún.
+- **Un fichero, no varios.** La especificación pedía `<input multiple>` y `resources`
+  (imágenes hermanas de un `.md`, también por carpetas con `webkitGetAsEntry`). D16 y la
+  sesión pidieron no construir nada para más de un documento, y `resources` solo lo usa
+  la Fase 7: **pasa a la Fase 7**, junto con su normalización de rutas relativas y sus
+  tests. Soltar varios ficheros hoy da el error `multiple`.
+- **`OpenedDocument` como unión discriminada**, con el PDF como `Blob` (no
+  `ArrayBuffer`) y el Markdown como texto; **id con contador** (no `randomUUID`, que no
+  existe fuera de contexto seguro); sin `capabilities` (Fase 9). Motivos en PLAN §4.2.
+- **`Platform` con dos métodos** (`pickDocument`, `openDroppedFile`) en lugar de
+  `pickFiles`/`fromDroppedFiles` en plural, y sin `kind`: no hay nada que lo lea.
+- **Sin `PlatformProvider` ni `platform/memory.ts`.** Solo `DocumentProvider` usa la
+  plataforma, y la recibe por propiedad (`<App platform={…}>`); la falsa para tests vive
+  en `tests/helpers/documentos.ts`, no en `src/`. El contexto de plataforma llega con el
+  primer componente que la necesite (enlaces externos, Fases 5 y 7).
+- **Sin API de «cambios sin guardar»**: solo el editor (Fase 9) puede tener cambios; la
+  añade con su indicador.
+- **Siete errores en lugar de cinco**: además de los cinco previstos, `not-pdf` (un
+  `.pdf` sin firma, con su propio mensaje en lugar de «no soportado») y `multiple`.
+- **`DocumentErrorAlert.tsx`** en lugar de `DocumentError.tsx`, para no chocar con la
+  clase `DocumentError`. Nuevos también `DocumentSummary.tsx` (vista provisional) y
+  `src/lib/format.ts` (tamaños con `Intl`).
+- **Fixtures en `tests/fixtures/`** (PDF mínimo generado por script, dos Markdown, un
+  `.txt`); los demás casos se construyen en el test. `*.pdf binary` en `.gitattributes`.
+- **La vigilancia de los E2E pasa a `e2e/vigilancia.ts`** y tolera solo el 404 de
+  `/favicon.ico` (Google Chrome lo pide; ver DEVELOPMENT.md). La heurística de textos
+  sueltos (`tests/unit/textos.test.ts`) dejó de confundir `=> Promise<T>` con texto de
+  JSX (falso positivo; su autotest cubre el caso).
 
 ---
 
@@ -196,7 +186,8 @@ es, sin mostrarlo aún.
 el visor usa `PDFViewer` de pdf.js o uno propio. Entregar el módulo de modo oscuro
 probado, listo para integrar en F5.
 
-**Dependencias.** F2 (no necesita F3: el spike carga fixtures directamente).
+**Dependencias.** F2 (no necesita F3: el spike carga fixtures directamente; puede usar
+`tests/fixtures/pdf/generar.mjs` como base para generar los suyos).
 
 **Decisiones ya tomadas.** pdf.js (`pdfjs-dist` versión exacta, hoy 6.3.289); `pageColors`
 descartado como modo principal (PLAN §6.3, verificado en el código: pasa todo a gris);
@@ -289,7 +280,10 @@ adaptado a los tokens); modo oscuro aplicado en `pagerendered`; `maxCanvasPixels
 
 - `src/pdf/PdfViewer.tsx`: monta el contenedor que exige `PDFViewer` (posición absoluta),
   carga el documento con `engine.ts`, conecta `EventBus`, destruye todo al desmontar
-  (`pdfDocument.destroy()`, `viewer.setDocument(null)`).
+  (`pdfDocument.destroy()`, `viewer.setDocument(null)`). Recibe el `OpenedPdf` de la
+  Fase 3: lee `await document.blob.arrayBuffer()` (una lectura que puede fallar si el
+  fichero cambió en disco: error «no se pudo leer») y pasa los bytes como `data`. Se monta
+  en `src/app/App.tsx` en lugar de `DocumentSummary`, con `key={document.id}`.
 - Barra de PDF (`src/pdf/PdfToolbar.tsx`): página actual/total con campo editable (ir a
   página), anterior/siguiente, zoom −/+ y selector (50–400 %, ajustar a ancho, ajustar a
   página), rotar izquierda/derecha, continuo/página (`ScrollMode.VERTICAL`/`PAGE`),
@@ -312,7 +306,8 @@ recordar página (F10).
 
 **Archivos esperados.** `src/pdf/PdfViewer.tsx`, `src/pdf/PdfToolbar.tsx`,
 `src/pdf/engine.ts`, `src/pdf/link-policy.ts`, `src/pdf/PasswordDialog.tsx`,
-`src/pdf/pdf-viewer.css` (adaptación de `pdf_viewer.css`), `src/App.tsx`,
+`src/pdf/pdf-viewer.css` (adaptación de `pdf_viewer.css`), `src/app/App.tsx`,
+`src/platform/*` (`openExternal` y el contexto de plataforma, primer uso desde un componente),
 `src/i18n/messages.ts`, `tests/unit/pdf/*`, `tests/components/PdfToolbar.test.tsx`,
 `tests/fixtures/pdf/*`, `e2e/specs/pdf.spec.ts`.
 
@@ -413,6 +408,13 @@ código con resaltado y copiar, enlaces, índice e imágenes locales.
 
 - `src/markdown/pipeline.ts`: configuración de plugins; exporta la lista para que F8 la
   amplíe.
+- **Recursos locales** (aplazados desde la Fase 3): abrir un `.md` con sus imágenes
+  hermanas eligiendo o soltando **varios ficheros** (y carpetas con
+  `webkitGetAsEntry`), sin dejar de ser un documento (D16): el `.md` es el documento y
+  el resto, su mapa `resources` (ruta relativa normalizada → `File`). Normalización con
+  tests: `./img/a.png`, `img/../a.png`, `../a.png` rechazado, `/abs.png` rechazado,
+  `C:\x.png` rechazado. Amplía `Platform` (`pickDocument`/`openDroppedFile` con varios
+  ficheros) y sustituye el error `multiple` para ese caso.
 - `src/markdown/url-policy.ts`: `sanitizeHref(url)` y `resolveImage(url, resources)`
   (funciones puras; decodifican entidades, quitan espacios y controles, comparan
   protocolos en minúsculas).
@@ -431,7 +433,8 @@ código con resaltado y copiar, enlaces, índice e imágenes locales.
 edición (F9).
 
 **Archivos esperados.** `src/markdown/*`, `src/markdown/components/*`,
-`src/styles/markdown.css`, `src/App.tsx`, `src/i18n/messages.ts`, `package.json`,
+`src/styles/markdown.css`, `src/app/App.tsx`, `src/documents/*` (`resources`),
+`src/platform/*`, `src/i18n/messages.ts`, `package.json`,
 `tests/unit/markdown/*`, `tests/components/markdown/*`,
 `tests/fixtures/markdown/` (incluido `xss/`), `e2e/specs/markdown.spec.ts`.
 
@@ -527,7 +530,8 @@ añadidos al corpus.
   teclado, `role="separator"`), vista previa con *debounce* de 200 ms, desplazamiento
   sincronizado por encabezado.
 - Estado «modificado» en `DocumentProvider` (indicador en el título y en la barra);
-  confirmación al abrir otro documento; `beforeunload` en web.
+  confirmación al abrir otro documento (antes de abrir el selector y antes de aplicar un
+  fichero soltado: `DocumentProvider.load` es el punto único); `beforeunload` en web.
 - Guardar: `platform.saveText` en web con `showSaveFilePicker` si existe (reutilizando el
   handle en guardados siguientes) o descarga `<a download>`; `Ctrl/Cmd+S`.
 - Crear un documento nuevo vacío: **fuera de alcance salvo que se pida** (anotarlo).
@@ -722,7 +726,9 @@ distribución).
 
 **Alcance.** ELECTRON §2–§7: `electron/main.ts`, `preload.ts`, `protocol.ts` (`app://` y
 `bpdf-res://`), `ipc.ts`, `validation.ts` (esquemas `zod` compartidos); instancia única,
-argv y `open-file`; `src/platform/electron.ts` completo; imágenes locales de Markdown por
+argv y `open-file`; `src/platform/electron.ts` completo (implementa `pickDocument` y
+`openDroppedFile` terminando en `readDocument(file, id)` con el id del main, más
+`onExternalOpen`; ELECTRON §3); imágenes locales de Markdown por
 `bpdf-res://`; guardar en el mismo fichero; CSP de escritorio (fuente única +
 `bpdf-res:`); scripts `electron:dev` y `electron:build` (sin instaladores); `allowScripts`
 de `electron`.

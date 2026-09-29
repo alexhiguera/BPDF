@@ -1,27 +1,87 @@
+import { useEffect, useRef } from "react";
+import { Button } from "@/components/ui/Button";
 import { project } from "@/config/project";
+import { DocumentProvider, useDocument } from "@/documents/DocumentProvider";
 import { messages } from "@/i18n/messages";
+import type { Platform } from "@/platform";
+import { DocumentErrorAlert } from "./DocumentErrorAlert";
+import { DocumentSummary } from "./DocumentSummary";
+import { DropZone } from "./DropZone";
 import { EmptyState } from "./EmptyState";
 
 /**
- * Shell de la aplicación: barra superior (cromo) y área de lectura. Una sola
- * vista y sin router: el documento abierto (Fase 3) decidirá qué se monta en
- * `<main>`.
+ * La aplicación. Recibe la plataforma (web hoy, Electron en la Fase 14) desde
+ * `main.tsx`, y los tests una falsa.
  */
-export function App() {
+export function App({ platform }: { platform: Platform }) {
   return (
-    <div className="flex min-h-dvh flex-col">
+    <DocumentProvider platform={platform}>
+      <Shell />
+    </DocumentProvider>
+  );
+}
+
+/**
+ * Shell: barra superior (cromo) y área de lectura. Una sola vista y sin
+ * router: el documento abierto decide qué se monta en `<main>`.
+ */
+function Shell() {
+  const { document, error, openWithPicker, openDropped, close, dismissError } = useDocument();
+  const main = useRef<HTMLElement>(null);
+
+  useOpenShortcut(openWithPicker);
+
+  return (
+    <DropZone onFiles={openDropped}>
       <a
         href="#contenido"
         className="sr-only rounded-md bg-primary px-3 py-2 text-primary-fg focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
       >
         {messages.app.skipToContent}
       </a>
-      <header className="border-b border-border bg-app px-4 py-2">
+      <header className="flex items-center justify-between gap-4 border-b border-border bg-app px-4 py-2">
         <span className="font-semibold">{project.name}</span>
+        {/* Sin documento, la acción está en el centro del estado vacío. */}
+        {document && (
+          <Button variant="secondary" onClick={openWithPicker}>
+            {messages.open.button}
+          </Button>
+        )}
       </header>
-      <main id="contenido" tabIndex={-1} className="flex flex-1 bg-reading">
-        <EmptyState />
+      <main ref={main} id="contenido" tabIndex={-1} className="flex flex-1 flex-col bg-reading">
+        {error && <DocumentErrorAlert error={error} onDismiss={dismissError} />}
+        {document ? (
+          <DocumentSummary
+            key={document.id}
+            document={document}
+            onClose={() => {
+              close();
+              main.current?.focus(); // el botón pulsado desaparece con el documento
+            }}
+          />
+        ) : (
+          <EmptyState onOpen={openWithPicker} />
+        )}
       </main>
-    </div>
+    </DropZone>
   );
+}
+
+/**
+ * `Ctrl+O` / `Cmd+O` abre el selector (docs/PLAN.md §9.4) en lugar del
+ * «Abrir archivo» del navegador, que cargaría el fichero fuera de la app. Es
+ * el único listener global: un atajo de teclado tiene que funcionar tenga el
+ * foco quien lo tenga.
+ */
+function useOpenShortcut(open: () => void) {
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "o") {
+        e.preventDefault();
+        open();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 }

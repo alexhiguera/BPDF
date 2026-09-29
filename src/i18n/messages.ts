@@ -17,8 +17,39 @@ export const messages = {
   },
   emptyState: {
     title: "Tu lector de PDF y Markdown",
-    status: "BPDF está en desarrollo: todavía no se pueden abrir documentos.",
+    body: "Abre un PDF o un Markdown, o arrástralo a esta ventana.",
     privacy: "Tus documentos no salen de este dispositivo.",
+  },
+  open: {
+    button: "Abrir archivo",
+    shortcut: "Atajo: Ctrl+O (⌘O en Mac)",
+  },
+  dropZone: {
+    hint: "Suelta el archivo para abrirlo",
+  },
+  document: {
+    /** Nombre que se muestra si el fichero no trae uno utilizable. */
+    untitled: "Sin nombre",
+    kinds: { pdf: "PDF", markdown: "Markdown" },
+    kindLabel: "Tipo",
+    sizeLabel: "Tamaño",
+    pendingViewer:
+      "BPDF ya ha comprobado y cargado el documento. La vista de lectura llegará en una próxima versión.",
+    close: "Cerrar documento",
+  },
+  documentError: {
+    title: (fileName: string) => `No se ha podido abrir «${fileName}»`,
+    titleNoFile: "No se ha podido abrir el archivo",
+    dismiss: "Descartar aviso",
+    unsupported: "BPDF abre archivos PDF (.pdf) y Markdown (.md, .markdown).",
+    multiple: "Suelta un solo archivo: BPDF abre un documento cada vez.",
+    empty: "El archivo está vacío.",
+    tooLarge: (max: string) => `El archivo supera el tamaño máximo para este tipo (${max}).`,
+    notPdf: "El archivo se llama .pdf, pero su contenido no es un PDF.",
+    notUtf8:
+      "El archivo no es texto en UTF-8. Si es un Markdown, guárdalo con esa codificación y vuelve a abrirlo.",
+    unreadable:
+      "No se ha podido leer el archivo. Comprueba que sigue existiendo y que tienes permiso para abrirlo.",
   },
   error: {
     title: "Algo ha fallado",
@@ -27,6 +58,16 @@ export const messages = {
   },
 } as const;
 
-/** La forma de los textos, con cualquier cadena: lo que tendrá que cumplir otro idioma. */
-type Forma<T> = { readonly [K in keyof T]: T[K] extends string ? string : Forma<T[K]> };
+/**
+ * La forma de los textos, con cualquier cadena: lo que tendrá que cumplir otro
+ * idioma. Los textos con datos (un nombre, un tamaño) son funciones que
+ * devuelven la cadena; otro idioma las traduce con los mismos parámetros.
+ */
+type Forma<T> = {
+  readonly [K in keyof T]: T[K] extends string
+    ? string
+    : T[K] extends (...args: infer A) => string
+      ? (...args: A) => string
+      : Forma<T[K]>;
+};
 export type Messages = Forma<typeof messages>;

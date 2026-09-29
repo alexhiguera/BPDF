@@ -61,14 +61,47 @@ npm run test:e2e      # build de producción + Playwright (Chromium)
 - Unitarios en `tests/unit/`, componentes y accesibilidad en `tests/components/`
   (pragma `// @vitest-environment jsdom`). Los proyectos ficticios para probar
   validadores están en `tests/_fixtures/`.
+- **Documentos de prueba** en `tests/fixtures/`, cada uno con su procedencia en su
+  `README.md`; los casos que no merecen un fichero en disco (PDF falso, vacío, UTF-16,
+  nombres con `<`, comillas o emoji) se construyen en el propio test. El PDF mínimo se
+  regenera con `node tests/fixtures/pdf/generar.mjs`.
+- `tests/helpers/documentos.ts`: ficheros de prueba y una **plataforma en memoria** que
+  sustituye el selector del sistema por una cola de respuestas y usa la validación real.
+  Los componentes que abren documentos se prueban con ella (`<App platform={…} />`).
+- **Probar a mano la apertura:** `npm run build && npm run preview` y abre, arrastra o
+  pulsa `Ctrl/Cmd+O`. Lo que se ve hoy es la vista provisional (nombre, tipo y tamaño).
 - Hay guardarraíles que no prueban una función sino una regla: contraste de los tokens
   (`tokens.test.ts`), invariantes de la CSP y prohibición de `innerHTML`
   (`seguridad.test.ts`), y textos centralizados (`textos.test.ts`).
 - Los E2E vigilan en cada carga los errores de consola, las violaciones de CSP y
-  cualquier petición fuera del propio origen, con un test de control que comprueba que
-  esa vigilancia funciona.
+  cualquier petición fuera del propio origen (`e2e/vigilancia.ts`), con un test de
+  control que comprueba que esa vigilancia funciona. Única tolerancia: el 404 de
+  `/favicon.ico`, que pide Google Chrome (no el Chromium de CI) mientras no haya favicon
+  (Fase 11).
+- El selector de archivos se prueba con el evento `filechooser` de Playwright (el
+  `<input type="file">` se crea al vuelo, fuera del DOM), y arrastrar y soltar con eventos
+  sintéticos y un `DataTransfer` real del navegador.
 - Playwright necesita Chromium: `npx playwright install chromium` la primera vez. Si ya
   hay un servidor en el puerto 3100, en local lo reutiliza; en CI siempre construye.
+- **macOS 13 (o un sistema que Playwright ya no admita):** `playwright install` falla
+  («does not support chromium on mac13»). Se puede usar el Google Chrome instalado con
+  una configuración **local, sin versionar**, que herede la del repo y solo cambie el
+  canal:
+
+  ```ts
+  // p. ej. fuera del repo: pw-chrome.config.ts
+  import base from "<ruta al repo>/playwright.config.ts";
+  const [chromium] = base.projects ?? [];
+  export default {
+    ...base,
+    testDir: "<ruta al repo>/e2e/specs",
+    projects: [{ ...chromium, use: { ...chromium?.use, channel: "chrome" } }],
+    webServer: { ...base.webServer, cwd: "<ruta al repo>" },
+  };
+  ```
+
+  y `npx playwright test -c <ruta>/pw-chrome.config.ts`. CI sigue usando el Chromium de
+  Playwright.
 
 ## Ramas y CI
 

@@ -2,8 +2,9 @@
 
 > **Estado: diseño objetivo** (Fase 0, *2026-09-29*). Nada de Electron existe todavía ni
 > se instala antes de la Fase 14. Lo que sí afecta desde ya: la capa `src/platform/`
-> (Fase 3), la regla de que el renderer nunca ve rutas de disco y la CSP de
-> `src/config/security-headers.ts` (Fase 2), que el protocolo `app://` servirá tal cual.
+> (existe desde la Fase 3, con la implementación web), la regla de que el renderer nunca
+> ve rutas de disco y la CSP de `src/config/security-headers.ts` (Fase 2), que el
+> protocolo `app://` servirá tal cual.
 
 Versión de referencia al planificar: Electron **44.4.5** (npm, 2026-09-29). Electron da
 soporte a las tres últimas mayores (~8 semanas cada una): la Fase 14 toma la estable
@@ -41,26 +42,41 @@ Server Actions ni rutas de servidor (ver D1 en [PLAN.md](PLAN.md) §3).
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 3. Contrato `Platform` (nace en la Fase 3)
+## 3. Contrato `Platform`
+
+**Vigente desde la Fase 3** ([`src/platform/types.ts`](../src/platform/types.ts)), solo
+con lo que la app usa hoy (un documento a la vez, D16):
 
 ```ts
 interface Platform {
-  kind: "web" | "electron";
-  /** Muestra el selector y devuelve los documentos elegidos (vacío si se cancela). */
-  pickFiles(): Promise<OpenedDocument[]>;
-  /** Convierte ficheros soltados en la ventana en documentos. */
-  fromDroppedFiles(files: File[]): Promise<OpenedDocument[]>;
-  /** Documentos que el sistema pide abrir (argv, «Abrir con…»). En web, nunca llama. */
-  onExternalOpen(cb: (doc: OpenedDocument) => void): () => void;
-  /** Guarda texto: en el mismo fichero si la plataforma puede, o «Guardar como». */
-  saveText(doc: OpenedDocument, text: string, opts: { saveAs: boolean }): Promise<SaveResult>;
-  /** Abre un enlace externo ya validado por la política de URLs. */
-  openExternal(url: string): void;
+  /** Selector del sistema; `null` si se cancela; rechaza con DocumentError si no vale. */
+  pickDocument(): Promise<OpenedDocument | null>;
+  /** Un fichero soltado en la ventana (el DOM da un `File` en web y en Electron). */
+  openDroppedFile(file: File): Promise<OpenedDocument>;
 }
 ```
 
-`src/platform/index.ts` elige la implementación al arrancar según exista `window.bpdf`.
-Los tests de componentes usan una implementación falsa en memoria.
+Devuelve documentos y no `File` porque en Electron el diálogo lo abre el main, que lee
+el fichero y asigna un id ligado a su ruta. Las dos implementaciones terminan en
+`readDocument(file, id?)` ([`src/documents/read.ts`](../src/documents/read.ts)): misma
+validación (extensión, tamaño, contenido) y mismo modelo, y la de Electron pasa el id del
+main. Cómo encaja la Fase 14:
+
+- `pickDocument()` → `window.bpdf.openDialog()` → `{ id, name, bytes }` →
+  `readDocument(new File([bytes], name), id)`. El main valida antes (§7), y el renderer
+  vuelve a validar: no se fía de nadie.
+- `openDroppedFile(file)` → `window.bpdf.registerDropped(file)` → `{ id }` →
+  `readDocument(file, id)`.
+
+**Lo que añadirá cada fase** (y solo entonces): `openExternal(url)` (enlaces de PDF y
+Markdown, Fases 5 y 7), `saveText(doc, text, { saveAs })` (Fase 9), `onExternalOpen(cb)`
+(«Abrir con…» y argv, Fase 14). Si la Fase 7 admite soltar un `.md` con sus imágenes,
+`openDroppedFile` pasará a recibir varios ficheros.
+
+`src/platform/index.ts` (`createPlatform()`) devuelve hoy la web; la Fase 14 añade la
+rama de Electron según exista `window.bpdf`. No se simula antes: no hay preload que
+detectar. `App` recibe la plataforma como propiedad desde `main.tsx`, y los tests de
+componentes pasan una falsa (`tests/helpers/documentos.ts`) que usa la validación real.
 
 ## 4. API del preload (`window.bpdf`)
 

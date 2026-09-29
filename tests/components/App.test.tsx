@@ -1,16 +1,30 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "@/app/App";
 import { ErrorBoundary } from "@/app/ErrorBoundary";
 import { project } from "@/config/project";
 import { messages } from "@/i18n/messages";
+import { BYTES_PNG, fichero, PDF_VALIDO, PlataformaEnMemoria } from "../helpers/documentos";
 
-describe("App", () => {
+const t = messages.document;
+
+function montar(plataforma = new PlataformaEnMemoria()) {
+  const utils = render(<App platform={plataforma} />);
+  return { ...utils, plataforma };
+}
+
+/** Pulsa «Abrir archivo» y espera a que la apertura termine. */
+async function abrir() {
+  const [boton] = screen.getAllByRole("button", { name: messages.open.button });
+  await act(async () => fireEvent.click(boton!));
+}
+
+describe("App: estructura", () => {
   it("pinta la estructura semántica: enlace de salto, cabecera y contenido principal", () => {
-    render(<App />);
+    montar();
     expect(screen.getByRole("banner")).toHaveTextContent(project.name);
     const main = screen.getByRole("main");
     expect(main).toHaveAttribute("id", "contenido");
@@ -21,8 +35,145 @@ describe("App", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(messages.emptyState.title);
   });
 
-  it("no tiene violaciones de accesibilidad", async () => {
-    const { container } = render(<App />);
+  it("el estado vacío ofrece abrir un archivo, el atajo y la frase de privacidad", () => {
+    montar();
+    expect(screen.getAllByRole("button", { name: messages.open.button })).toHaveLength(1);
+    expect(screen.getByText(messages.open.shortcut)).toBeInTheDocument();
+    expect(screen.getByText(messages.emptyState.privacy)).toBeInTheDocument();
+  });
+
+  it("no tiene violaciones de accesibilidad en el estado vacío", async () => {
+    const { container } = montar();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+describe("App: abrir documentos", () => {
+  it("abre un PDF con el botón y muestra su nombre, tipo y tamaño (sin su contenido)", async () => {
+    montar(new PlataformaEnMemoria().elegira(fichero("informe.pdf", PDF_VALIDO)));
+    await abrir();
+    const titulo = screen.getByRole("heading", { level: 1 });
+    expect(titulo).toHaveTextContent("informe.pdf");
+    expect(titulo).toHaveFocus();
+    expect(screen.getByText(t.kinds.pdf)).toBeInTheDocument();
+    expect(screen.getByText(`${PDF_VALIDO.length} B`)).toBeInTheDocument();
+    expect(screen.queryByText(/%PDF/)).toBeNull();
+  });
+
+  it("abre un Markdown sin mostrar ni interpretar su contenido", async () => {
+    const hostil = "# Título\n<script>window.__x = 1</script><img src=x onerror=alert(1)>";
+    const { container } = montar(new PlataformaEnMemoria().elegira(fichero("notas.md", hostil)));
+    await abrir();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("notas.md");
+    expect(screen.getByText(t.kinds.markdown)).toBeInTheDocument();
+    expect(screen.queryByText(/Título/)).toBeNull();
+    expect(container.querySelector("script, img")).toBeNull();
+  });
+
+  it("con un documento abierto, la cabecera ofrece abrir otro, que lo sustituye", async () => {
+    montar(
+      new PlataformaEnMemoria()
+        .elegira(fichero("primero.pdf", PDF_VALIDO))
+        .elegira(fichero("segundo.md", "# 2")),
+    );
+    await abrir();
+    const enCabecera = within(screen.getByRole("banner"));
+    await act(async () =>
+      fireEvent.click(enCabecera.getByRole("button", { name: messages.open.button })),
+    );
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("segundo.md");
+    expect(screen.queryByText("primero.pdf")).toBeNull();
+  });
+
+  it("cancelar el selector deja la app como estaba", async () => {
+    const { plataforma } = montar(new PlataformaEnMemoria().elegira(null));
+    await abrir();
+    expect(plataforma.selectoresAbiertos).toBe(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(messages.emptyState.title);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("Ctrl+O y Cmd+O abren el selector; sin modificador, no", async () => {
+    const { plataforma } = montar();
+    await act(async () => fireEvent.keyDown(window, { key: "o", ctrlKey: true }));
+    await act(async () => fireEvent.keyDown(window, { key: "O", metaKey: true }));
+    await act(async () => fireEvent.keyDown(window, { key: "o" }));
+    await act(async () => fireEvent.keyDown(window, { key: "o", ctrlKey: true, shiftKey: true }));
+    expect(plataforma.selectoresAbiertos).toBe(2);
+  });
+
+  it("cerrar el documento vuelve al estado vacío y deja el foco en el contenido", async () => {
+    montar(new PlataformaEnMemoria().elegira(fichero("a.md", "# a")));
+    await abrir();
+    fireEvent.click(screen.getByRole("button", { name: t.close }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(messages.emptyState.title);
+    expect(screen.getByRole("main")).toHaveFocus();
+  });
+
+  it("un fichero rechazado muestra el aviso y no toca el documento abierto", async () => {
+    montar(
+      new PlataformaEnMemoria()
+        .elegira(fichero("bueno.md", "# a"))
+        .elegira(fichero("falso.pdf", BYTES_PNG)),
+    );
+    await abrir();
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: messages.open.button })),
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(messages.documentError.notPdf);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("bueno.md");
+  });
+
+  it("abre un fichero soltado en cualquier parte de la ventana", async () => {
+    montar();
+    const f = fichero("soltado.md", "# s");
+    await act(async () =>
+      fireEvent.drop(screen.getByRole("banner"), {
+        dataTransfer: { types: ["Files"], files: [f] },
+      }),
+    );
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("soltado.md");
+  });
+});
+
+describe("App: nombres de fichero hostiles", () => {
+  const NOMBRES = [
+    `<img src=x onerror="alert(1)">.md`,
+    `"><svg onload=alert(1)><script>alert(1)<\\script>.pdf`,
+    `comillas "dobles" y 'simples'.md`,
+    `año ñandú 日本語 🙂 emoji.md`,
+    `   espacios   por   todas partes   .md`,
+  ];
+
+  it.each(NOMBRES)("muestra «%s» como texto y nunca como HTML", async (nombre) => {
+    const contenido = nombre.endsWith(".pdf") ? PDF_VALIDO : "# x";
+    const { container } = montar(new PlataformaEnMemoria().elegira(fichero(nombre, contenido)));
+    await abrir();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(nombre.trim());
+    expect(container.querySelector("main img, main script, main svg")).toBeNull();
+  });
+
+  it("también en el aviso de error", async () => {
+    const nombre = `<b onmouseover="alert(1)">negrita<b>.txt`;
+    const { container } = montar(new PlataformaEnMemoria().elegira(fichero(nombre, "x")));
+    await abrir();
+    expect(screen.getByRole("alert")).toHaveTextContent(messages.documentError.title(nombre));
+    expect(container.querySelector("b")).toBeNull();
+  });
+});
+
+describe("App: accesibilidad con documento y con error", () => {
+  it("sin violaciones con un documento abierto y un aviso de error a la vez", async () => {
+    const { container } = montar(
+      new PlataformaEnMemoria()
+        .elegira(fichero("a.pdf", PDF_VALIDO))
+        .elegira(fichero("b.txt", "x")),
+    );
+    await abrir();
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: messages.open.button })),
+    );
+    expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();
   });
 });

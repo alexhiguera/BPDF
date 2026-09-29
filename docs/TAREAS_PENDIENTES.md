@@ -12,19 +12,19 @@ archivos, tests, criterios de aceptación). El diseño que construyen: [PLAN.md]
 
 ## Estado hoy — *2026-09-29*
 
-Medido con Node 24.21.0 y npm 11.19.0 en WSL, al cerrar la Fase 2, tras una instalación
-limpia (`npm ci`).
+Medido con Node 24.19.0 y npm 11.17.0 en macOS 13, al cerrar la Fase 3, tras una
+instalación limpia (`npm ci`).
 
 | Comprobación | Resultado |
 |---|---|
-| Código | SPA estática de Vite 8 + React 19: shell accesible y estado vacío. Sin backend, datos ni variables de entorno. **Todavía no abre documentos** |
+| Código | SPA estática de Vite 8 + React 19. **Abre y valida** un PDF o un Markdown local (selector, `Ctrl/Cmd+O`, arrastre), uno a la vez (D16), y muestra nombre, tipo y tamaño. **Todavía no muestra el contenido** (visores: F5 y F7). Sin backend, datos ni variables de entorno |
 | `npm run lint` · `typecheck` | ✅ |
-| `npm run test:run` | ✅ 66 tests en 9 ficheros |
-| `npm run test:e2e` | ✅ 6 tests contra la build de producción (`vite preview`, Chromium) |
-| `npm run build` · `build:tamano` | ✅ `dist/` estático · arranque 80 KB gzip (límite 150) · 2 avisos conocidos e inocuos (`"use client"` en dos ficheros de `lucide-react`, STACK.md) |
-| CSP | ✅ `default-src 'none'`, sin `unsafe-*` ni orígenes externos; cero violaciones en E2E |
+| `npm run test:run` | ✅ 181 tests en 16 ficheros |
+| `npm run test:e2e` | ✅ 23 tests contra la build de producción (`vite preview`), estables con `--repeat-each=3`. En esta máquina, con **Google Chrome 153** y una configuración local: Playwright 1.63 no instala Chromium en macOS 13 ([DEVELOPMENT.md](DEVELOPMENT.md)). CI usa su Chromium |
+| `npm run build` · `build:tamano` | ✅ `dist/` estático · arranque 83,0 KB gzip (límite 150) · 2 avisos conocidos e inocuos (`"use client"` en dos ficheros de `lucide-react`, STACK.md) |
+| CSP | ✅ Sin cambios en la Fase 3: `default-src 'none'`, sin `unsafe-*` ni orígenes externos; cero violaciones y ninguna petición externa en los E2E de apertura; cabeceras comprobadas con `curl -I` contra `vite preview` |
 | `npm run docs:validar` · `docs:enlaces` | ✅ |
-| `npm audit --audit-level=high` | ✅ 0 vulnerabilidades · 0 overrides · 0 paquetes con scripts de instalación |
+| `npm audit --audit-level=high` | ✅ 0 vulnerabilidades · 0 overrides. En macOS, `npm ci` avisa de `fsevents` sin cubrir por `allowScripts` (ver «Otras») |
 | Dependencias de runtime | 5: `react`, `react-dom`, `lucide-react`, `clsx`, `tailwind-merge` |
 | CI en GitHub | ⚪ Sin ejecuciones conocidas |
 | Licencia | ✅ Apache-2.0 |
@@ -34,7 +34,6 @@ limpia (`npm ci`).
 Detalle, opciones y recomendación de cada una en [PLAN.md §14](PLAN.md#14-decisiones). Una
 fase no empieza con una decisión que necesita sin confirmar.
 
-- [ ] 🟠 **D16** Un documento a la vez en v1 (recomendado) — bloquea F3
 - [ ] 🟠 **D6** HTML embebido en Markdown: no se interpreta (recomendado) — bloquea F7
 - [ ] 🟠 **D7** Imágenes remotas en Markdown: bloqueadas (recomendado) — bloquea F7
 - [ ] 🟡 **D13** PDFs con contraseña: diálogo simple (recomendado) — bloquea F5
@@ -48,11 +47,12 @@ fase no empieza con una decisión que necesita sin confirmar.
 
 ## Fases
 
-- [ ] 🔴 **F3** Apertura local de archivos (capa `platform/`, selector, arrastre, validación) — **siguiente**; necesita **D16**
-- [ ] 🔴 **F4** Spike: modo oscuro de PDF (decide T-1) — puede ir en paralelo con F3
+- [ ] 🔴 **F4** Spike: modo oscuro de PDF (decide T-1) — **siguiente**
 - [ ] 🔴 **F5** Visor PDF: núcleo
 - [ ] 🟠 **F6** Visor PDF: miniaturas, búsqueda, atajos, pantalla completa
-- [ ] 🔴 **F7** Markdown: lectura (GFM, código, TOC, imágenes locales, seguridad)
+- [ ] 🔴 **F7** Markdown: lectura (GFM, código, TOC, imágenes locales, seguridad). Incluye
+  lo aplazado de la F3: abrir un `.md` con sus imágenes (varios ficheros o carpeta) y
+  normalizar sus rutas ([FASES.md](FASES.md), Fase 7)
 - [ ] 🟠 **F8** Markdown: matemáticas (KaTeX) y Mermaid
 - [ ] 🟠 **F9** Editor Markdown, vista previa y modo dividido
 - [ ] 🟡 **F10** Preferencias (infraestructura con `zod`, panel, posición por documento, borrado)
@@ -70,8 +70,13 @@ fase no empieza con una decisión que necesita sin confirmar.
   a ningún hosting real (depende de D5).
 - [ ] 🟡 Comprobar que `ci.yml`, `e2e.yml` y `security.yml` corren en GitHub (nunca se han
   ejecutado en un runner), y revisar entonces [mejoras.md](mejoras.md) → CI.
-- [ ] 🟢 Añadir `*.pdf binary` a `.gitattributes` cuando entren los primeros fixtures PDF
-  (F3/F4): con `text=auto eol=lf`, un PDF con pocos bytes binarios podría tratarse como
-  texto y romperse al normalizar finales de línea.
 - [ ] 🟢 Favicon e icono de BPDF → F11. Hoy no hay ninguno (no se inventa identidad
-  visual): el navegador pide `/favicon.ico` y recibe 404.
+  visual): el navegador pide `/favicon.ico` y recibe 404. Google Chrome lo anota en
+  consola, y `e2e/vigilancia.ts` tolera ese único 404: **quitar la tolerancia** al añadir
+  el favicon.
+- [ ] 🟢 `fsevents@2.3.3` (dependencia de Vite, solo en macOS) aparece en `npm ci` como
+  paquete con scripts de instalación sin aprobar. Trae su binario ya compilado
+  (`fsevents.node`) y su `package.json` no declara `install`, así que omitirlo no cambia
+  nada; falta decidir si se deniega explícitamente en `allowScripts` (CLAUDE.md §11 bis).
+  Ojo: npm 11.17 llama al comando `npm approve-scripts`, y STACK.md documenta
+  `npm install-scripts` (npm 11.19): comprobar cuál vale y unificar.

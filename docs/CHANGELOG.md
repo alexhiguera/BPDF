@@ -10,6 +10,136 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 5 — *2026-09-29* — Fase 3: apertura local de documentos
+
+BPDF ya abre un PDF o un Markdown del dispositivo: con «Abrir archivo», con `Ctrl/Cmd+O`
+o arrastrándolo a la ventana. Lo valida por extensión **y** contenido, lo deja en el
+estado de la app listo para los visores (Fases 5 y 7) y muestra su nombre, tipo y tamaño;
+todavía no su contenido. Se confirma **D16: un documento a la vez**, sin pestañas,
+historial ni recientes. Nace `src/platform/`, aplazada desde la Fase 2, ahora con su
+primer uso real. Sin dependencias nuevas, sin cambios de CSP y sin ninguna petición de red.
+Línea base: árbol limpio en `04c1291`, todo en verde (66 tests).
+
+**Modelo y capa de documentos** (`src/documents/`)
+
+- `OpenedDocument` es una unión discriminada: el PDF conserva su `Blob` **sin leerlo**
+  (en web, el `File` apunta al disco y no ocupa memoria; el visor lo leerá para pdf.js)
+  y el Markdown guarda solo su texto (los bytes se descartan al decodificar). El diseño de
+  la Fase 0 tenía `data: ArrayBuffer | string`: leer el PDF entero al abrirlo era tener
+  una copia en memoria que nadie usaba aún.
+- `readDocument()` es la única validación, en este orden: extensión → vacío → tamaño →
+  contenido, sin leer más de lo necesario (de un PDF, solo 1024 bytes). La usarán tal
+  cual las dos plataformas; Electron pasará el id de su proceso main.
+- Detección: firma `%PDF-` en los primeros 1024 bytes (lo que toleran Acrobat y
+  pdf.js); Markdown en UTF-8 estricto **y sin NUL**, porque un UTF-16 sin BOM de texto
+  ASCII es UTF-8 válido y solo lo delatan los NUL. `file.type` no se lee nunca.
+- Límites con su porqué escrito en `limits.ts` (PDF 512 MiB, Markdown 20 MiB),
+  comprobados antes de leer. Medido a mano: un PDF disperso de 513 MiB se rechaza en
+  ~60 ms y un Markdown de casi 20 MiB se abre en ~170 ms (leer 48 ms, decodificar 19 ms).
+- Siete errores tipados, cada uno con su texto: los cinco previstos más `not-pdf` (un
+  `.pdf` sin firma merece un mensaje más claro que «no soportado») y `multiple` (soltar
+  varios ficheros, D16).
+- `DocumentProvider`: un documento; abrir otro lo sustituye; **un fichero rechazado no
+  cierra el que se leía**; turnos para que un Markdown lento no pise a uno soltado
+  después; cerrar descarta la apertura en curso. No posee recursos que liberar a mano (ni
+  URL de objeto ni documentos de pdf.js): los visores futuros se montan con
+  `key={document.id}` y limpian al desmontarse.
+
+**Plataforma** (`src/platform/`)
+
+- `Platform` con dos métodos, los únicos que se usan: `pickDocument()` y
+  `openDroppedFile(file)`. El contrato de la Fase 0 tenía cinco, en plural; el primer uso
+  real ya cambió dos. Guardar, enlaces externos y «Abrir con…» llegan con sus fases.
+- Web: `<input type="file">` creado al vuelo, fuera del DOM (el control accesible es el
+  botón), con `accept` de solo extensiones. Cancelar resuelve `null` por el evento
+  `cancel` o por un `change` sin ficheros; si un navegador no avisara, la promesa queda
+  pendiente sin bloquear nada, porque la interfaz no espera por ella.
+- `createPlatform()` devuelve la web; la rama de Electron llega en la Fase 14. No se
+  simula `window.bpdf` antes.
+
+**Interfaz**
+
+- Estado vacío con «Abrir archivo», el atajo y la frase de privacidad; vista provisional
+  (nombre, tipo, tamaño, «Cerrar documento») con el foco en su título al abrir; «Abrir
+  archivo» en la cabecera cuando hay documento; aviso de error con `role="alert"` que se
+  puede descartar.
+- Zona de soltar a pantalla completa con manejadores de React sobre la raíz de la app:
+  ningún listener en `window` para arrastrar (el único global es `Ctrl/Cmd+O`, que tiene
+  que funcionar tenga el foco quien lo tenga). Cuenta entradas y salidas para no
+  parpadear entre hijos, ignora arrastres de texto o enlaces y evita que el navegador
+  abra el fichero en la pestaña.
+- Nombres de fichero: sin ruta, sin controles ni marcas bidireccionales (`U+202E` haría
+  que un `.md` se viera como `.pdf`), en NFC, y validados sobre ese mismo nombre.
+
+**Tests** (181 Vitest en 16 ficheros, antes 66 en 9; 23 E2E, antes 6)
+
+- Unitarios: detección (PDF con basura delante dentro y fuera de los 1024 bytes, PNG
+  renombrado, UTF-16 con y sin BOM, Latin-1, binario, BOM de UTF-8), nombres,
+  `readDocument` (límite exacto y un byte por encima sin reservar 512 MiB, solo lee la
+  cabecera del PDF, no se fía del MIME, fallo de lectura → `unreadable`), plataforma web
+  con un `<input>` real de jsdom (elegir, cancelar, `change` vacío; ni `fetch` ni
+  `createObjectURL`).
+- Componentes + jest-axe: `DocumentProvider` (sustitución, cancelar, error que conserva
+  el documento, carreras, cerrar), `DropZone` (estados, hijos, texto arrastrado),
+  `DocumentErrorAlert` (cada código con su mensaje), `App` (nombres hostiles como texto,
+  `Ctrl/Cmd+O`, foco al abrir y al cerrar, axe con documento y error a la vez).
+- E2E contra la build: estado inicial; selector (`filechooser`) con PDF y Markdown;
+  sustituir; cancelar; `Ctrl+O`; arrastrar (eventos sintéticos con un `DataTransfer`
+  real); rechazar `.txt`, PDF falso, vacío, UTF-16 y varios a la vez; nombres hostiles;
+  un Markdown con `<script>`, `<img onerror>`, `<iframe>` remoto y `javascript:` que no
+  ejecuta nada ni pide nada a la red. Todos con cero errores de consola, cero
+  violaciones de CSP y ninguna petición externa.
+- Fixtures en `tests/fixtures/` con su procedencia: un PDF mínimo **generado por
+  script** (comprobado con pdf.js 6.3.289 instalado aparte: 1 página y el texto
+  correcto), dos Markdown y un `.txt`. `*.pdf binary` en `.gitattributes`.
+
+**Desviaciones respecto a `FASES.md`** (detalle en su sección de la Fase 3)
+
+- Varios ficheros y `resources` (imágenes de un `.md`, carpetas) pasan a la **Fase 7**,
+  su primer uso; hoy soltar varios da `multiple`.
+- Sin `PlatformProvider` ni `platform/memory.ts`: la plataforma llega por propiedad a
+  `App` y la falsa vive en `tests/helpers/`, no en `src/`.
+- Sin API de «cambios sin guardar» (Fase 9) ni `capabilities` en el documento.
+- Id con contador en lugar de `crypto.randomUUID()` (que no existe fuera de contexto
+  seguro).
+
+**Descartado y por qué**
+
+- Aceptar MIME en `accept` (`application/pdf`, `text/markdown`): el MIME del navegador
+  sale de la extensión, y con él algunos sistemas amplían el filtro a extensiones que
+  después se rechazarían.
+- Leer el PDF entero al abrirlo para «tenerlo listo»: una copia en memoria sin uso hasta
+  la Fase 5.
+- Un `<input type="file">` fijo en el DOM con su `<label>`: duplicaba en el árbol de
+  accesibilidad lo que ya es el botón, y ataba la UI a la implementación web.
+- Listeners de arrastre en `window`/`document`: la zona envuelve toda la app y basta
+  con los de React.
+- Un indicador de «abriendo…»: abrir un PDF lee 1 KB y un Markdown de casi 20 MiB tarda
+  ~170 ms; llegará con el visor, cuando cargar sí tarde.
+
+**Errores propios del camino**
+
+- `displayName` cortaba también por `\`, que es un carácter válido en nombres de Linux
+  (`a\b.md` se mostraba como `b.md`). Lo destapó un test con un nombre hostil; ahora
+  solo corta por `/`, que ningún sistema admite en un nombre.
+- La heurística de textos sueltos (`tests/unit/textos.test.ts`) tomó
+  `=> Promise<OpenedDocument | null>` por texto de JSX. Era un falso positivo: se
+  ajustó la expresión (un `>` precedido de `=` no abre texto) y su autotest cubre el
+  caso; lo que tiene que detectar lo sigue detectando.
+- Al escribir la expresión de caracteres invisibles, la herramienta de edición convirtió
+  los escapes `\u202E` en los caracteres reales: el fuente llevaba marcas
+  bidireccionales invisibles («Trojan Source»). Se detectó con `od` y se reescribió con
+  escapes ASCII; los tests construyen esos caracteres con `String.fromCodePoint`. Para
+  que no vuelva a pasar en silencio, `tests/unit/seguridad.test.ts` falla si algún
+  fichero de `src/` los contiene.
+- En esta máquina (macOS 13), Playwright 1.63 no instala su Chromium. Los E2E se
+  ejecutaron con Google Chrome 153 mediante una configuración local sin versionar
+  (DEVELOPMENT.md). Chrome pide `/favicon.ico` (el Chromium de CI no) y su 404 hacía
+  fallar la vigilancia de consola en todos los E2E: se tolera solo ese 404 hasta que
+  exista el favicon (Fase 11).
+- Una primera medición dio 30 s para abrir el Markdown de 20 MiB: era la espera de mi
+  script, no la app. Medido bien, ~170 ms.
+
 ### Iteración 4 — *2026-09-29* — Fase 2: base de la app en Vite + React
 
 La portada de Next.js heredada se sustituye por una SPA **estática** de Vite 8 + React 19

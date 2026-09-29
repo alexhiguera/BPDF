@@ -5,9 +5,11 @@ escribir código) están en [`CLAUDE.md`](../CLAUDE.md). La arquitectura **objet
 motores, plataforma) está en [PLAN.md](PLAN.md) §4; este documento describe principios que
 ya rigen hoy y se amplía cuando cada fase los materializa.
 
-**Estado del código (2026-09-29, tras la Fase 2):** una SPA estática de Vite + React (D1)
-con el shell de la app y un estado vacío; sin backend, datos ni variables de entorno. La
-CSP estricta, los tokens de diseño y los textos centralizados ya rigen.
+**Estado del código (2026-09-29, tras la Fase 3):** una SPA estática de Vite + React (D1)
+que abre y valida un PDF o un Markdown local (selector, `Ctrl/Cmd+O` o arrastre) y muestra
+su nombre, tipo y tamaño, todavía sin visor; sin backend, datos ni variables de entorno.
+La CSP estricta, los tokens de diseño, los textos centralizados y la frontera de
+plataforma ya rigen.
 
 Varios principios vienen de la plantilla SaaS de R3ZON, que a su vez los destiló de
 **R3ZON ANTARES**. Se cita el origen para que quien venga después sepa qué evita cada regla
@@ -42,8 +44,33 @@ web para que Electron no obligue a rehacer nada ([ELECTRON.md](ELECTRON.md)).
 
 ### 4. Una sola frontera de plataforma
 
-Solo `src/platform/` (llega en la Fase 3) sabe si la app corre en web o en Electron. El resto del
-código recibe documentos, no ficheros ni rutas.
+Solo `src/platform/` sabe si la app corre en web o en Electron. El resto del código
+recibe documentos (`OpenedDocument`), no ficheros ni rutas.
+
+**Cómo es hoy (Fase 3).** La interfaz `Platform` tiene dos métodos, los únicos que se
+usan: `pickDocument()` y `openDroppedFile(file)`. La web los implementa con APIs
+estándar (`<input type="file">` y `Blob.arrayBuffer()`); Electron (Fase 14) lo hará con
+IPC. Las dos terminan en la misma función, `readDocument`, que valida y construye el
+documento: la plataforma aporta el fichero y, si quiere, el id; la validación no se
+duplica. Cada método nuevo llega con la fase que lo usa ([ELECTRON.md](ELECTRON.md) §3).
+
+**Por qué no más.** Un contrato con métodos que nadie llama se diseña a ciegas y se
+equivoca; el de la Fase 0 tenía cinco, y el primer uso real ya cambió dos (un documento
+en vez de una lista, por D16).
+
+### 4 bis. Un documento a la vez
+
+`DocumentProvider` (`src/documents/`) guarda **un** documento (D16) y el último error de
+apertura. Abrir otro lo sustituye; un fichero rechazado no cierra el que se leía; solo
+aplica su resultado la última apertura. El estado no posee recursos que liberar a mano:
+el PDF es un `Blob` y el Markdown una cadena, y el recolector los libera al dejar de
+estar referenciados. Lo que sí habrá que liberar (documentos de pdf.js, URL de objeto de
+imágenes) lo crearán los visores, montados con `key={document.id}` para que cambiar de
+documento los desmonte y ejecute su limpieza.
+
+**Por qué así.** Pestañas, recientes o varios documentos cambiarían el estado del
+proveedor (una lista y un «activo»), no el modelo ni los visores: la puerta queda abierta
+sin construir nada de eso ahora.
 
 ### 5. La menor complejidad que cumpla los requisitos
 

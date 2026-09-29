@@ -16,8 +16,9 @@ function componentes(dir = "src"): string[] {
   });
 }
 
-// Texto entre `>` y `<` con al menos una letra, fuera de expresiones `{…}`.
-const TEXTO_JSX = />\s*[^<>{}\s][^<>{}]*[A-Za-zÁÉÍÓÚÑáéíóúñ][^<>{}]*</;
+// Texto entre `>` y `<` con al menos una letra, fuera de expresiones `{…}`. El
+// `>` de una flecha (`=> Promise<T>`) no abre texto de JSX.
+const TEXTO_JSX = /(?<!=)>\s*[^<>{}\s][^<>{}]*[A-Za-zÁÉÍÓÚÑáéíóúñ][^<>{}]*</;
 const ATRIBUTO_VISIBLE = /\b(aria-label|title|alt|placeholder)="[^"]*[A-Za-zÁÉÍÓÚÑáéíóúñ]/;
 
 describe("textos de la interfaz centralizados", () => {
@@ -36,6 +37,7 @@ describe("textos de la interfaz centralizados", () => {
   it("la heurística detecta los casos que tiene que detectar", () => {
     expect(TEXTO_JSX.test("<p>Hola</p>")).toBe(true);
     expect(TEXTO_JSX.test("<h1>{t.title}</h1>")).toBe(false);
+    expect(TEXTO_JSX.test("async (leer: () => Promise<Doc | null>) => {")).toBe(false);
     expect(ATRIBUTO_VISIBLE.test('<button aria-label="Cerrar">')).toBe(true);
     expect(ATRIBUTO_VISIBLE.test("<button aria-label={t.close}>")).toBe(false);
   });

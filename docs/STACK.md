@@ -1,6 +1,7 @@
 # Stack tecnológico
 
-Estado tras la Fase 2 (*2026-09-29*). El stack **objetivo** (pdf.js, pipeline de
+Estado tras la Fase 3 (*2026-09-29*): la Fase 3 no añadió dependencias (la apertura de
+ficheros solo usa APIs estándar del navegador). El stack **objetivo** (pdf.js, pipeline de
 Markdown, Electron) y el motivo de cada pieza están en [PLAN.md](PLAN.md); cada fase añade
 aquí lo que instala.
 

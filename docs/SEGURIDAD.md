@@ -1,7 +1,8 @@
 # BPDF — Seguridad y privacidad (diseño)
 
-> **Estado: diseño objetivo** (Fase 0, *2026-09-29*). Cada control indica la fase que lo
-> implementa ([FASES.md](FASES.md)). Cuando un control exista, esa fase lo marca aquí como
+> **Estado: diseño objetivo** (Fase 0, *2026-09-29*); implementados los controles de las
+> Fases 2 (CSP, cabeceras, DOM) y 3 (apertura de ficheros, §2.6). Cada control indica la
+> fase que lo implementa ([FASES.md](FASES.md)). Cuando un control exista, esa fase lo marca aquí como
 > implementado y enlaza su test. Las auditorías realizadas van a
 > [auditoria.md](auditoria.md).
 
@@ -117,6 +118,9 @@ en las fases que los usen (6 y 7).
   justificada y aislada si llegara a hacer falta: pasar por DOMPurify en un solo módulo.
   Se vigila con un test que busca esos usos en `src/` ✅ (`tests/unit/seguridad.test.ts`,
   Fase 2).
+- Ningún fichero de `src/` lleva marcas bidireccionales invisibles («Trojan Source»: el
+  código se lee distinto de como se ejecuta); donde hacen falta se escriben como escapes
+  `\uXXXX`. Mismo test ✅ (Fase 3).
 - Trusted Types (`require-trusted-types-for 'script'`) como defensa en Chromium y
   Electron, si pdf.js y Mermaid lo permiten (T-4, Fase 12).
 - ids generados desde contenido (encabezados de Markdown) con prefijo `md-`: evita que un
@@ -146,6 +150,27 @@ en las fases que los usen (6 y 7).
 - Nada se carga de CDN: todo se sirve desde el propio origen (sin SRI que mantener).
 - Actions de GitHub fijadas por SHA (propuesta ya existente en `mejoras.md`) antes de
   publicar releases (Fase 15).
+
+### 2.6 Apertura de ficheros ✅ (Fase 3)
+
+Primer punto en el que entra contenido del usuario. Todo fichero es hostil hasta que se
+valida, y validar **no** es interpretar: la Fase 3 no parsea, no renderiza ni ejecuta nada
+del documento.
+
+| Riesgo | Control | Test |
+|---|---|---|
+| Un fichero que miente sobre su tipo (`.pdf` que es un PNG, `.md` binario) | Tipo por extensión **y** contenido: firma `%PDF-` en los primeros 1024 bytes; Markdown en UTF-8 estricto sin NUL. **Nunca** `file.type` (MIME), que el navegador saca de la extensión | `tests/unit/documents/detect.test.ts`, `read.test.ts` («no se fía del MIME») |
+| Nombre de fichero con HTML o scripts (`<img onerror>`, `"><svg onload>`) | El nombre solo se pinta como texto de React (escapado); ninguna API que interprete HTML (§2.3) | `tests/components/App.test.tsx`, `DocumentErrorAlert.test.tsx`, `e2e/specs/abrir.spec.ts` (nombres hostiles: sin `img`/`svg`/`script` en el DOM, sin diálogos) |
+| Nombre que finge otra extensión con marcas bidireccionales (`U+202E`) o lleva controles | `displayName` los quita y la extensión se valida sobre el nombre resultante, el mismo que se ve | `detect.test.ts`, `read.test.ts` |
+| Rutas de disco en el estado | El documento guarda un nombre sin ruta, nunca una ruta ni un `FileSystemHandle` (en web el navegador no las da; en Electron, el mapa `id → ruta` vive solo en el main) | `detect.test.ts` («quita cualquier ruta») |
+| Agotamiento de memoria | Límites por tipo con su justificación en `src/documents/limits.ts` (PDF 512 MiB, Markdown 20 MiB), comprobados **antes** de leer; un PDF solo se lee en sus primeros 1024 bytes; Markdown se queda solo con el texto | `read.test.ts` (justo en el límite y 1 byte por encima; «solo lee la cabecera»); prueba manual con un PDF disperso de 513 MiB (rechazo en ~60 ms sin leerlo) |
+| Contenido que se ejecute al abrir | Nada se interpreta: un Markdown con `<script>`, `<img onerror>`, `<iframe>` remoto y enlaces `javascript:` es solo texto en memoria | `read.test.ts`, `App.test.tsx`, `abrir.spec.ts` (`html-y-script.md`: nada se ejecuta ni se pide a la red) |
+| Peticiones de red o URL que sobrevivan al documento | Lectura con `Blob.arrayBuffer()`; sin `fetch`, subida ni URL de objeto (`blob:`), así que no hay nada que revocar. Los visores futuros que las creen (imágenes de Markdown, Fase 7) las revocan al desmontarse, y se montan con `key={document.id}` | `tests/unit/platform/web.test.ts`, `tests/components/DocumentProvider.test.tsx` (ni `fetch` ni `createObjectURL`); `abrir.spec.ts` (ninguna petición fuera del origen) |
+| Soltar un fichero fuera de la app lo abre el navegador en la pestaña | La zona de soltar cubre la ventana entera y cancela el comportamiento por defecto solo en arrastres de ficheros | `tests/components/DropZone.test.tsx` |
+| Resultado tardío de una apertura anterior | Solo aplica su resultado la última apertura (turnos); cerrar descarta la que esté en curso | `DocumentProvider.test.tsx` |
+
+La CSP no cambia en esta fase: leer ficheros locales no necesita ninguna directiva nueva
+(cero violaciones en los E2E de apertura).
 
 ## 3. Markdown
 
@@ -245,7 +270,10 @@ Resumen; el diseño completo está en [ELECTRON.md](ELECTRON.md).
   retiraron Sentry y Speed Insights de la plantilla, y no queda ninguna dependencia que
   envíe datos (`docs/STACK.md` → Observabilidad).
 - **Ninguna petición de red provocada por un documento** (CSP + `url-policy`). La única red
-  es cargar la propia app (web) o ninguna (Electron).
+  es cargar la propia app (web) o ninguna (Electron). Desde la Fase 3 los E2E de apertura
+  lo comprueban en cada recorrido (§2.6).
+- **Abrir un documento no guarda nada**: ni nombre, ni contenido, ni ruta, ni historial.
+  Solo vive en memoria mientras está abierto (D16: uno a la vez, sin recientes).
 - Persistencia mínima ([PLAN.md](PLAN.md) §8): preferencias y, si D8 lo confirma,
   posiciones por huella, sin nombres ni contenido. Borrables desde la interfaz.
 - Sin cookies.

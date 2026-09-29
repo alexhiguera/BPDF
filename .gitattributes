@@ -5,6 +5,9 @@
 # ocupa el fichero completo sin haber cambiado nada.
 * text=auto eol=lf
 
+# Un PDF mezcla texto y binario, y su tabla xref guarda desplazamientos en bytes:
+# normalizar sus finales de línea lo rompería. `binary` = sin conversión ni diff.
+*.pdf binary
 *.png binary
 *.jpg binary
 *.ico binary

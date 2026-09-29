@@ -1,7 +1,8 @@
 # BPDF — Diseño objetivo
 
 > **Estado:** escrito en la Fase 0 (*2026-09-29*); D1–D4 y D15 confirmadas y Fase 1
-> cerrada el mismo día. Este documento describe **cómo será** BPDF. Cómo es hoy:
+> cerrada el mismo día. D16 confirmada y §4.2 y §5 implementados en la Fase 3
+> (*2026-09-29*). Este documento describe **cómo será** BPDF. Cómo es hoy:
 > `ARCHITECTURE.md`, `STACK.md` y `STRUCTURE.md`.
 >
 > Documentos hermanos: [SEGURIDAD.md](SEGURIDAD.md) (modelo de amenazas y controles),
@@ -119,7 +120,7 @@ la CSP y Electron. **Confirmada** el 2026-09-29 y **aplicada en la Fase 2**.
 ├───────────── motores de documento (sin UI, cargados a demanda) ──────┤
 │ pdf/ (pdf.js + modo oscuro)       markdown/ (pipeline unified)        │
 ├──────────────────── plataforma (única frontera) ─────────────────────┤
-│ web.ts: <input type=file>, drag&drop, descarga, localStorage          │
+│ web.ts: <input type=file> (F3) · descarga para guardar (F9)           │
 │ electron.ts: window.bpdf (preload) → IPC validado → proceso main      │
 └──────────────────────────────────────────────────────────────────────┘
 ```
@@ -138,28 +139,60 @@ Reglas:
 
 ### 4.2 Modelo de documento
 
+**Implementado en la Fase 3** ([`src/documents/types.ts`](../src/documents/types.ts)):
+
 ```ts
 type DocumentKind = "pdf" | "markdown";
 
-interface OpenedDocument {
-  id: string;                 // crypto.randomUUID(); opaco, válido solo en esta sesión
-  name: string;               // nombre visible del fichero, nunca una ruta
-  kind: DocumentKind;
-  size: number;               // bytes
-  data: ArrayBuffer | string; // PDF: bytes · Markdown: texto UTF-8
-  resources?: LocalResources; // Markdown: ficheros hermanos disponibles (imágenes)
-  capabilities: { save: boolean; resolveRelative: boolean }; // qué permite la plataforma
-}
+type OpenedDocument =
+  | { id: string; name: string; size: number; kind: "pdf"; blob: Blob }
+  | { id: string; name: string; size: number; kind: "markdown"; text: string };
+// id: opaco, válido solo en esta sesión (contador en web; en Electron, el que asigne el main)
+// name: nombre visible ya saneado, nunca una ruta · size: bytes
 ```
 
-- **Detección de tipo:** extensión (`.pdf`, `.md`, `.markdown`) **y** contenido: un PDF
-  debe empezar por `%PDF-` en los primeros 1024 bytes; un Markdown debe decodificar como
-  UTF-8 (`TextDecoder` con `fatal: true`; si falla, error claro). Nunca por el MIME que da
-  el navegador (es solo la extensión).
-- **Límites** (constantes en `src/documents/limits.ts`, ajustables con evidencia):
-  PDF ≤ 512 MB, Markdown ≤ 20 MB. Por encima: mensaje, no se intenta.
-- **Un documento a la vez en v1** (D16). Abrir otro sustituye al actual tras confirmar si
-  hay cambios sin guardar.
+Cambios respecto al diseño de la Fase 0, y por qué:
+
+- **Unión discriminada** en lugar de `data: ArrayBuffer | string`: el tipo dice qué
+  contiene cada documento y el compilador obliga a comprobar `kind`.
+- **PDF como `Blob`, no `ArrayBuffer`**: en web el `File` apunta al disco y no ocupa
+  memoria hasta que se lee. Abrir solo lee los primeros 1024 bytes; el visor (Fase 5) hará
+  `await blob.arrayBuffer()` y pdf.js transferirá esos bytes a su worker sin copiarlos.
+  Leerlo entero al abrir sería tener una copia en memoria sin que nadie la use aún.
+- **Markdown: solo el texto**; los bytes leídos se descartan tras decodificar.
+- **Id con un contador**, no `crypto.randomUUID()`: solo tiene que ser único y no
+  derivar del nombre, y `randomUUID` no existe fuera de un contexto seguro.
+- **Sin `resources` ni `capabilities`**: las añaden las fases que los usan (imágenes de
+  Markdown, Fase 7; guardar, Fase 9). No se diseñan campos sin uso.
+
+Reglas:
+
+- **Detección de tipo** ([`src/documents/detect.ts`](../src/documents/detect.ts)):
+  extensión (`.pdf`, `.md`, `.markdown`, sin distinguir mayúsculas) **y** contenido: un
+  PDF debe llevar `%PDF-` dentro de los primeros 1024 bytes (lo mismo que toleran Acrobat y
+  pdf.js); un Markdown debe decodificar como UTF-8 estricto (`TextDecoder` con
+  `fatal: true`) y no contener NUL (así se rechaza también el UTF-16 sin BOM). **Nunca**
+  por el MIME que da el navegador (sale de la extensión o del sistema operativo). El
+  filtro `accept` del selector solo lista extensiones: con MIME, algunos sistemas amplían
+  el filtro a extensiones que después se rechazarían.
+- **Nombre para mostrar:** sin ruta, sin caracteres de control ni marcas de dirección
+  de texto (un `U+202E` haría que `informe‹RLO›fdp.md` se viera como «informedm.pdf») y
+  en NFC. La extensión se valida sobre ese mismo nombre: lo que se ve es lo que se ha
+  comprobado. Siempre se muestra como texto.
+- **Límites** ([`src/documents/limits.ts`](../src/documents/limits.ts), con su
+  justificación técnica en el propio fichero): PDF ≤ 512 MiB (el visor lo cargará entero
+  en memoria para pdf.js), Markdown ≤ 20 MiB (el texto se decodifica entero y el render
+  construye varios árboles encima). Por encima: mensaje, sin leer nada. Se revisan con
+  las mediciones de la Fase 13. Medido en la Fase 3 (Chrome 153, macOS): abrir un
+  Markdown de casi 20 MiB tarda ~170 ms (leer 48 ms, decodificar 19 ms).
+- **Errores tipados** ([`src/documents/errors.ts`](../src/documents/errors.ts)):
+  `unsupported`, `multiple`, `empty`, `too-large`, `not-pdf`, `not-utf8`, `unreadable`,
+  cada uno con su texto en `messages.ts` (§9.3).
+- **Un documento a la vez en v1** (D16, confirmada). Abrir otro lo sustituye; si la
+  apertura falla, el documento abierto se conserva. La confirmación de cambios sin guardar
+  llega con el editor (Fase 9), que es quien puede tenerlos. El estado vive en
+  [`DocumentProvider`](../src/documents/DocumentProvider.tsx): pestañas o varios
+  documentos cambiarían ese estado, no el modelo.
 
 ### 4.3 Estructura objetivo de `src/`
 
@@ -174,8 +207,8 @@ src/
 ├── i18n/messages.ts         ✅ todos los textos visibles (D2)
 ├── styles/globals.css       ✅ tokens de diseño + Tailwind
 ├── components/ui/           ✅ primitivos accesibles (Button, Field, Input)
-├── documents/               F3: tipos, detección, límites, estado del documento abierto
-├── platform/                F3: types.ts · web.ts · memory.ts · index.ts (electron.ts en F14)
+├── documents/               ✅ F3: tipos, detección, límites, errores, lectura, estado del documento abierto
+├── platform/                ✅ F3: types.ts · web.ts · index.ts (electron.ts en F14)
 ├── pdf/                     F4–F6: engine.ts (carga diferida de pdf.js) · PdfViewer.tsx ·
 │                            dark/ (modo oscuro) · thumbnails · find · shortcuts
 ├── markdown/                F7–F8: pipeline.ts · MarkdownView.tsx · url-policy.ts · toc.ts ·
@@ -189,13 +222,17 @@ electron/                    F14: main.ts · preload.ts · protocol.ts · ipc.ts
 
 | Vía | Web | Electron |
 |---|---|---|
-| Selector | `<input type="file" accept=".pdf,.md,.markdown">` oculto tras un botón; `Ctrl/Cmd+O` | Diálogo nativo en el proceso main (`dialog.showOpenDialog`) vía IPC |
-| Arrastrar y soltar | `dragover`/`drop` en la ventana; se aceptan varios ficheros para dar a un `.md` sus imágenes hermanas | Igual (DOM); `webUtils.getPathForFile` en el preload solo si hace falta guardar o resolver relativos |
+| Selector | ✅ F3: `<input type="file" accept=".pdf,.md,.markdown">` creado al vuelo (fuera del DOM) por el botón «Abrir archivo»; `Ctrl/Cmd+O` | Diálogo nativo en el proceso main (`dialog.showOpenDialog`) vía IPC |
+| Arrastrar y soltar | ✅ F3: zona a pantalla completa con manejadores de React sobre la raíz de la app (sin listeners en `window`); **un fichero** (D16). Varios ficheros (un `.md` con sus imágenes) llegan en la Fase 7 | Igual (DOM); `webUtils.getPathForFile` en el preload solo si hace falta guardar o resolver relativos |
 | Argumentos / «Abrir con…» | No aplica | `process.argv` (Windows/Linux), `open-file` (macOS), `second-instance` con bloqueo de instancia única; el main lee y valida, y envía el contenido |
 | Guardar (Markdown) | `showSaveFilePicker` si existe (Chromium), si no descarga con `<a download>` y Blob | IPC `saveDocument(id, texto)`: el main solo escribe en ficheros que el usuario abrió o eligió con «Guardar como» |
 
-La interfaz `Platform` ([ELECTRON.md](ELECTRON.md) §3) nace en la Fase 3 con la
-implementación web (se retrasó de la Fase 2 para no crear una abstracción sin uso); la de Electron llega en la Fase 14 sin tocar el resto de la app.
+La interfaz `Platform` ([ELECTRON.md](ELECTRON.md) §3) existe desde la Fase 3 con la
+implementación web ([`src/platform/`](../src/platform/)) y dos métodos, los únicos que se
+usan hoy: `pickDocument()` y `openDroppedFile(file)`. Las dos implementaciones terminan en
+la misma validación (`readDocument`); la de Electron llega en la Fase 14 sin tocar el
+resto de la app. Guardar, enlaces externos y «Abrir con…» se añaden en las fases que los
+usan. **Abrir desde una URL no se hará:** rompería el principio de privacidad.
 
 ## 6. Visor PDF
 
@@ -378,14 +415,18 @@ con un bloque `[data-theme="light"]`.
 
 ### 9.3 Pantallas
 
-- **Vacía:** zona de soltar a pantalla completa, botón «Abrir archivo», atajo visible y
-  la frase de privacidad («Tus documentos no salen de este dispositivo»).
+- **Vacía** (✅ F3): zona de soltar a pantalla completa, botón «Abrir archivo», atajo
+  visible y la frase de privacidad («Tus documentos no salen de este dispositivo»).
+- **Documento abierto, provisional** (F3, hasta que lleguen los visores de las Fases 5 y
+  7): nombre, tipo y tamaño, «Cerrar documento» y «Abrir archivo» en la cabecera.
 - **PDF:** barra (abrir, miniaturas, página n/N, zoom, ajustar, rotar, modo, página
   oscura/original, buscar, pantalla completa); panel de miniaturas a la izquierda.
 - **Markdown:** barra (abrir, índice, lectura/edición/dividido, guardar, tamaño de letra);
   índice a la izquierda; hoja centrada con ancho de lectura (~72 caracteres).
 - **Errores:** fichero no soportado, demasiado grande, PDF dañado, con contraseña (D13),
-  Markdown no UTF-8. Cada uno con texto claro y sin detalles técnicos crudos.
+  Markdown no UTF-8. Cada uno con texto claro y sin detalles técnicos crudos. Los de
+  apertura (✅ F3) se muestran como aviso (`role="alert"`) que se puede descartar, sin
+  cerrar el documento abierto; «PDF dañado» y contraseña llegan con el visor (Fase 5).
 
 ### 9.4 Atajos de teclado
 
@@ -489,7 +530,7 @@ terceros sin licencia clara.
 
 ## 14. Decisiones
 
-### 14.0 Confirmadas (*2026-09-29*)
+### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3)
 
 | ID | Decisión | Dónde se aplica |
 |---|---|---|
@@ -498,6 +539,7 @@ terceros sin licencia clara.
 | **D3** | Licencia **Apache-2.0** | Fase 1: `LICENSE` (texto canónico de apache.org) y `license` en `package.json` |
 | **D4** | Documentación pública **en el Docusaurus de R3ZON** (`docs.r3zon.com/bpdf`), sin que BPDF dependa de ese repositorio para compilar ni probar | Fase 1: se conserva `public_docs/` y su validador |
 | **D15** | BPDF **se separa del core SaaS** de la plantilla; conserva solo infraestructura, tooling y componentes útiles | Fase 1: `r3zon-template.json` como registro de origen; `docs/TEMPLATE.md` |
+| **D16** | **Un documento abierto a la vez**: sin pestañas, varios documentos, historial, recientes ni gestor de documentos. La arquitectura no lo impide más adelante | Fase 3: `DocumentProvider` guarda uno; abrir otro lo sustituye ([§4.2](#42-modelo-de-documento)) |
 
 ### 14.1 Pendientes de confirmación (usuario)
 
@@ -513,7 +555,6 @@ terceros sin licencia clara.
 | **D12** | Móvil / tablet en web | Escritorio como objetivo; diseño adaptable básico sin optimizar gestos | Fase 11 |
 | **D13** | PDFs con contraseña | Soportados con un diálogo simple (pdf.js lo gestiona con `onPassword`) | Fase 5 |
 | **D14** | Formularios y anotaciones de PDF | Solo se muestran; no se rellenan ni se editan | Fase 5 |
-| **D16** | Varios documentos | **Uno a la vez** en v1 (pestañas después, si se piden) | Fase 3 |
 
 ### 14.2 Técnicas, resueltas por una fase
 

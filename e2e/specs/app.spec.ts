@@ -2,36 +2,13 @@ import { expect, test } from "@playwright/test";
 import { project } from "../../src/config/project";
 import { cspCabecera, cspMeta } from "../../src/config/security-headers";
 import { messages } from "../../src/i18n/messages";
+import { abrir } from "../vigilancia";
 
 /**
  * La app base contra la build de producción (`vite preview`). Cada carga vigila
- * tres cosas que ninguna otra puerta ve: errores en consola, violaciones de CSP
- * y peticiones fuera del propio origen (docs/SEGURIDAD.md §2 y §6).
+ * errores de consola, violaciones de CSP y peticiones fuera del propio origen
+ * (`e2e/vigilancia.ts`).
  */
-
-type Vigilancia = { errores: string[]; violaciones: string[]; externas: string[] };
-
-async function abrir(page: import("@playwright/test").Page, ruta = "/"): Promise<Vigilancia> {
-  const v: Vigilancia = { errores: [], violaciones: [], externas: [] };
-  const origen = new URL(test.info().project.use.baseURL ?? "").origin;
-  page.on("console", (m) => {
-    if (m.type() === "error" || m.type() === "warning") v.errores.push(m.text());
-  });
-  page.on("pageerror", (e) => v.errores.push(e.message));
-  page.on("request", (r) => {
-    if (new URL(r.url()).origin !== origen) v.externas.push(r.url());
-  });
-  await page.exposeFunction("__violacionCsp", (d: string) => v.violaciones.push(d));
-  await page.addInitScript(() => {
-    document.addEventListener("securitypolicyviolation", (e) => {
-      (window as unknown as { __violacionCsp: (d: string) => void }).__violacionCsp(
-        `${e.violatedDirective} ${e.blockedURI}`,
-      );
-    });
-  });
-  await page.goto(ruta);
-  return v;
-}
 
 test("la app carga sin errores, sin violaciones de CSP y sin salir del propio origen", async ({
   page,
