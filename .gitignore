@@ -1,0 +1,27 @@
+# Dependencias
+node_modules/
+
+# Build de Vite
+dist/
+
+# Tests
+coverage/
+test-results/
+playwright-report/
+blob-report/
+
+# Entorno: BPDF no usa variables de entorno, pero un .env nunca se versiona.
+.env
+.env.*
+
+# Herramientas locales opcionales (ver CLAUDE.md → «Herramientas opcionales»)
+graphify-out/
+.claude/settings.local.json
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log

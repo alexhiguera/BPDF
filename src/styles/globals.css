@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/*
+ * Tokens de diseño de BPDF (docs/PLAN.md §9.2). Paleta inspirada en ChatGPT
+ * Dark; oscuro por defecto y único tema en v1 (D10).
+ *
+ * Tailwind 4 «CSS-first»: no hay tailwind.config.js. Los colores son tripletes
+ * RGB en `:root` y `@theme` los expone como utilidades (`bg-app`, `text-fg`…).
+ * Tripletes y no colores cerrados: los modificadores de opacidad (`bg-accent/35`)
+ * siguen funcionando y un tema futuro solo reescribe `:root`.
+ *
+ * Regla: ningún componente escribe un color a mano; usa estas utilidades.
+ * `tests/unit/tokens.test.ts` calcula el contraste WCAG de cada par que se usa
+ * junto: cambiar un valor aquí sin cumplirlo rompe el test.
+ */
+:root {
+  color-scheme: dark;
+
+  /* Planos: tres tonos distintos, ninguno negro puro. */
+  --rgb-app: 23 23 23; /* cromo: barra superior, paneles */
+  --rgb-reading: 33 33 33; /* área de lectura, detrás de las páginas */
+  --rgb-page: 43 43 43; /* página PDF oscura, hoja de Markdown */
+  --rgb-elevated: 48 48 48; /* menús, diálogos, campos */
+
+  /* Texto. `fg-subtle` solo sobre `app` y `reading`: sobre `page` no llega a 4,5:1. */
+  --rgb-fg: 236 236 236;
+  --rgb-fg-muted: 180 180 180;
+  --rgb-fg-subtle: 142 142 142;
+
+  /* Bordes y separadores. */
+  --rgb-border: 61 61 61;
+
+  /* Interacción. El acento es para foco, estado activo y progreso; nunca de fondo
+   * bajo texto claro (3,2:1). La acción principal es un botón claro. */
+  --rgb-accent: 16 163 127;
+  --rgb-primary: 236 236 236;
+  --rgb-primary-fg: 13 13 13;
+
+  /* Estados. */
+  --rgb-danger: 248 113 113;
+}
+
+@theme inline {
+  --color-app: rgb(var(--rgb-app));
+  --color-reading: rgb(var(--rgb-reading));
+  --color-page: rgb(var(--rgb-page));
+  --color-elevated: rgb(var(--rgb-elevated));
+  --color-fg: rgb(var(--rgb-fg));
+  --color-fg-muted: rgb(var(--rgb-fg-muted));
+  --color-fg-subtle: rgb(var(--rgb-fg-subtle));
+  --color-border: rgb(var(--rgb-border));
+  --color-accent: rgb(var(--rgb-accent));
+  --color-primary: rgb(var(--rgb-primary));
+  --color-primary-fg: rgb(var(--rgb-primary-fg));
+  --color-danger: rgb(var(--rgb-danger));
+}
+
+body {
+  background-color: var(--color-reading);
+  color: var(--color-fg);
+  font-family: system-ui, sans-serif;
+}
+
+/* Foco visible en todo lo enfocable, también fuera de los primitivos. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background-color: rgb(var(--rgb-accent) / 0.35);
+  color: var(--color-fg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

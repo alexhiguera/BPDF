@@ -1,0 +1,22 @@
+<!doctype html>
+<!--
+  Los __BPDF_*__ y el lang de <html> los pone vite.config.ts con los valores de
+  src/config/project.ts y src/i18n/messages.ts (fuente única). En la build se
+  añade además la CSP como <meta> (src/config/security-headers.ts).
+  Sin scripts en línea: lo exige la CSP (script-src 'self').
+-->
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="__BPDF_DESCRIPTION__" />
+    <meta name="application-name" content="__BPDF_NAME__" />
+    <title>__BPDF_NAME__</title>
+  </head>
+  <body>
+    <noscript>__BPDF_NOSCRIPT__</noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,262 @@
+# Instrucciones para Claude
+
+Este repositorio es **BPDF**. Nació de la plantilla de proyectos SaaS de R3ZON y se separó
+de ella (decisión D15): conserva su forma de trabajar, no su código SaaS. Aquí están las
+reglas que cambian cómo se trabaja; el resto está en [`docs/`](docs/README.md). Cada regla
+lleva su motivo: una norma sin motivo se salta en cuanto estorba.
+
+## 0. Invariantes del proyecto
+
+Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mantenlos al día.
+
+- **Producto:** BPDF, visor gratuito y open source (Apache-2.0) de PDF y Markdown, oscuro
+  por defecto. Identidad en [`src/config/project.ts`](src/config/project.ts); diseño
+  objetivo en [`docs/PLAN.md`](docs/PLAN.md).
+- **Principio rector:** los documentos del usuario **no salen del dispositivo**. Sin
+  backend, API, base de datos, cuentas, sincronización ni telemetría.
+- **Estado:** Fase 2 cerrada. La app es una SPA estática de Vite + React (D1) con el
+  shell y un estado vacío; todavía no abre documentos. Plan y estado:
+  [`docs/FASES.md`](docs/FASES.md) y [`docs/TAREAS_PENDIENTES.md`](docs/TAREAS_PENDIENTES.md).
+- **Estática, siempre:** la build (`dist/`) son ficheros. Nada de servidor, SSR, API ni
+  funciones serverless, ni variables de entorno.
+- **Entornos:** solo local. La web estática (hosting pendiente de D5) y el escritorio
+  (Electron) llegan en las fases 15 y 14.
+- **Datos de producción:** ninguno. No hay producción ni usuarios.
+- **Alcance:** web primero, después Electron. Fuera de alcance: usuarios, auth, backend,
+  base de datos, almacenamiento remoto. Solo el usuario reabre lo que está fuera.
+- **Decisiones pendientes:** las D-n abiertas de [`docs/PLAN.md`](docs/PLAN.md) §14.
+  Ninguna fase empieza con una decisión que necesita sin confirmar.
+
+## Comandos
+
+```bash
+nvm use                   # Node 24 (.nvmrc). En WSL, el Node del sistema es otro
+npm ci                    # instalar
+npm run dev               # Vite en http://localhost:5173 (SIN CSP: ver §13)
+npm run lint              # Biome (lint:fix para corregir)
+npm run typecheck
+npm run test:run          # Vitest: unitarios, componentes y accesibilidad
+npm run test:e2e          # Playwright contra la build de producción (vite preview)
+npm run build             # build estática en dist/
+npm run build:tamano      # peso del arranque (tras build; límite 150 KB gzip)
+npm run preview           # sirve dist/ con la CSP y las cabeceras de seguridad
+npm run docs:validar      # public_docs + identidad del proyecto
+npm run docs:enlaces      # enlaces de docs internos
+npm run deps:overrides    # ¿siguen haciendo falta los overrides de package.json?
+```
+
+## 1. Pregunta antes de decidir algo importante
+
+Si una decisión cambia la **arquitectura, la seguridad, la privacidad, el alcance o algo
+que el usuario percibe**, pregunta antes y espera respuesta. No la tomes en silencio,
+aunque parezca evidente. Las decisiones menores se toman eligiendo la opción más
+sencilla, y se dejan escritas (en la bitácora o en el comentario del código).
+
+Motivo: una decisión importante tomada en silencio se descubre tarde, cuando ya hay
+código encima.
+
+## 2. Git
+
+**Nunca ejecutes `git commit` ni `git push` sin autorización explícita.** Deja los
+cambios en el árbol de trabajo y di qué hay listo. El commit y el push los decide el
+usuario.
+
+- **La autorización no se hereda.** Aprobar un push no aprueba el siguiente.
+- **Mencionar el push no es autorizarlo.** «Luego pusheamos» describe un plan, no da
+  permiso.
+- **Pegar el log de un fallo es pedir un diagnóstico**, no un despliegue. Corregir un
+  error propio tampoco autoriza a subir la corrección.
+
+> Precedente (proyecto de origen de la plantilla, 2026-08-15): dos push sin permiso. El
+> primero se justificó con un «para poder pushear» del usuario; el segundo, tras pegar un
+> log.
+
+**Mensajes de commit: Conventional Commits en inglés técnico.**
+`feat(scope): add …` · `fix(pdf): handle truncated file` · `refactor(markdown): …` ·
+`docs: …` · `test: …` · `chore: …` · `ci: …`.
+
+`.claude/settings.json` pide confirmación para `git commit`, `git push` y `git tag`: es
+la red, no la regla.
+
+## 3. Definición de «hecho»
+
+Una tarea está terminada cuando **todo** esto es verdad:
+
+1. `npm run lint`, `npm run typecheck`, `npm run test:run`, `npm run build` y
+   `npm run build:tamano` en verde.
+2. Hay **test nuevo de lo nuevo** (y de la regresión, si era un fallo).
+3. Si tocó UI, rutas o cabeceras: `npm run test:e2e` en verde (y §10).
+4. [`docs/CHANGELOG.md`](docs/CHANGELOG.md) tiene su entrada, con el **porqué**.
+5. [`docs/TAREAS_PENDIENTES.md`](docs/TAREAS_PENDIENTES.md) al día: lo cerrado, borrado;
+   **lo que ha salido, añadido**.
+6. Si cambió algo que describe `docs/` o `public_docs/`, está actualizado, con su fecha;
+   `npm run docs:enlaces` y `npm run docs:validar` en verde.
+7. Los cambios están **en el árbol de trabajo** y has dicho qué hay listo.
+
+Motivo: documentar «al final» no ocurre. En el proyecto de origen de la plantilla se
+acumularon seis commits sin documentar y los docs acabaron describiendo un estado que ya
+no existía, que es peor que no tenerlos.
+
+## 4. Privacidad: los documentos no salen del dispositivo
+
+- **Ninguna petición de red provocada por un documento**: ni imágenes remotas, ni
+  fuentes, ni scripts, ni nada que un PDF o un Markdown pueda pedir. La CSP lo refuerza;
+  la regla es no escribir el código que lo haría.
+- **Sin telemetría, analítica ni informes de errores** hacia ningún servicio. Tampoco
+  «anónimos».
+- **No se persiste contenido de documentos**, ni nombres de fichero, ni rutas. Lo que se
+  guarde en local (preferencias) está listado en [`docs/PLAN.md`](docs/PLAN.md) §8; un
+  dato nuevo se añade ahí antes de guardarlo.
+- **El renderer nunca ve rutas de disco** (tampoco en Electron): ve documentos con un id
+  opaco ([`docs/ELECTRON.md`](docs/ELECTRON.md)).
+
+Motivo: es la razón de ser del producto. Una sola petición de red provocada por un
+documento revela a un tercero qué se lee y cuándo.
+
+## 5. Seguridad
+
+Modelo de amenazas y controles: [`docs/SEGURIDAD.md`](docs/SEGURIDAD.md). Cada fase
+implementa los de lo que construye; no hay «seguridad al final».
+
+- **Prohibido `dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`,
+  `insertAdjacentHTML` y `document.write`.** El contenido de un documento es hostil por
+  definición.
+- **URLs de documentos** (enlaces, imágenes) pasan siempre por la política de URLs del
+  motor correspondiente: solo `http:`, `https:`, `mailto:` y anclas.
+- **Mínimo privilegio**: ningún componente (renderer, motor, página) recibe un permiso
+  que no necesita.
+- **Secretos:** BPDF no tiene. Si algún día hace falta uno (firma de código en CI), vive
+  solo en los secretos de CI, nunca en el repo ni con prefijo público.
+- No leas ficheros `.env*` ni de secretos, por ninguna vía. `.claude/settings.json`
+  bloquea los lectores habituales, pero es una red, no una garantía.
+
+## 6. Tests
+
+- **Test nuevo de lo nuevo.** Si arreglas un fallo, primero un test que lo reproduzca.
+- **Lo que depende del navegador real** (canvas de PDF, portapapeles, CSP, descargas) se
+  prueba en Playwright, no con mocks en jsdom.
+- **Contenido hostil con corpus**: todo parser de contenido no confiable tiene su corpus
+  de casos maliciosos y malformados ([`docs/SEGURIDAD.md`](docs/SEGURIDAD.md) §3.3).
+- **Un test que no puede ejecutarse no pasa en silencio**: falla o avisa de forma
+  visible. Una suite que se salta sola da una tranquilidad falsa.
+- Componentes: Testing Library (por rol y etiqueta, como un usuario) + jest-axe.
+- Fixtures con procedencia y licencia conocidas, nunca documentos de terceros sin
+  licencia.
+- No borres ni debilites un test para que pase. Si el test estaba mal, dilo y explícalo.
+
+## 7. Documentación interna (`docs/`)
+
+**Bitácora — [`docs/CHANGELOG.md`](docs/CHANGELOG.md).** Al cerrar un bloque de
+trabajo, arriba del todo:
+
+```
+### Iteración N — *YYYY-MM-DD* — Título
+```
+
+Contexto en un párrafo y bullets. **El porqué, no solo el qué**: dentro de tres meses el
+qué está en el diff y el porqué no. Incluye lo **descartado** y los errores propios del
+camino. El número solo tiene que ser único: **nunca se renumera**.
+
+**Tareas — [`docs/TAREAS_PENDIENTES.md`](docs/TAREAS_PENDIENTES.md).** Solo tareas
+abiertas. `[ ]` pendiente · `[~]` en curso · prioridad 🔴 🟠 🟡 🟢. Al cerrar una,
+**se borra la línea** y se escribe en la bitácora. Arriba, «Estado hoy» con cifras
+reales y su fecha. **Lo que no es una tarea no vive ahí**: una regla va aquí, a
+CLAUDE.md; una «tarea» que no se puede cerrar nunca es una regla disfrazada.
+
+**Fases — [`docs/FASES.md`](docs/FASES.md).** La especificación de cada fase. Si una fase
+descubre algo que cambia las siguientes, se corrige ahí en la misma tarea.
+
+Si un cambio afecta a lo que describe un documento de `docs/`, se actualiza en la misma
+tarea. Un documento desactualizado es trabajo incompleto.
+
+## 8. Anunciar al usuario lo que cambia
+
+**Todo cambio que el usuario de BPDF pueda percibir se le anuncia.** Si no le cambia nada
+(refactor, tipos, tests), **no se anuncia**: un aviso lleno de ruido interno deja de
+leerse. Hasta que exista el registro de cambios para usuarios (Fase 15), menciónalo al
+entregar para que quien mantiene el proyecto decida.
+
+La bitácora (`docs/CHANGELOG.md`) y el anuncio al usuario son registros distintos: uno lo
+lee quien mantiene el código, el otro quien usa el producto.
+
+## 9. Documentación pública (`public_docs/`)
+
+`public_docs/` es la documentación pública de BPDF, que publica el repositorio de
+Docusaurus de R3ZON (D4). **Este repo es la fuente de verdad**; aquel solo la consume, y
+BPDF no depende de él para compilar ni para probar. Contrato:
+[`public_docs/README.md`](public_docs/README.md). Redacción:
+[`public_docs/CONVENCIONES.md`](public_docs/CONVENCIONES.md).
+
+- **`last_update.date` se actualiza a mano, en el mismo commit** en que cambia un paso,
+  el nombre de un botón o un límite. Una errata no mueve la fecha. Nunca se deriva de git
+  ni de `new Date()`: la sincronización copia el árbol entero y todas las páginas
+  saldrían con la misma fecha.
+- Lo mismo con las fechas literales de
+  [`src/config/public-site.ts`](src/config/public-site.ts) (de ahí sale `sitemap.xml`):
+  quien cambia el contenido visible de una página pública, cambia su fecha ahí.
+- **Verifica cada dato contra el código** antes de escribirlo. Una función que no existe
+  todavía no tiene guía: como mucho, `estado: proximamente`. Si el código se contradice,
+  no elijas: anótalo como bloqueante en TAREAS y no escribas esa página.
+- Solo Markdown y JSON de datos: **nada de lógica de Docusaurus** aquí.
+- Si cambias una ruta que aparece en `public_docs/_meta/rutas-app.json` o renombras una
+  página, actualiza `_meta/` en el mismo commit.
+
+## 10. Comprobaciones que ninguna puerta hace por ti
+
+- **Tras tocar cabeceras, CSP o rutas, pide las URLs de verdad** (`curl -I` contra el
+  build de producción servido en local): el código compila y los tests pasan, pero una
+  cabecera que no llega solo la ve quien hace la petición.
+- **Tras tocar un motor de documento, ábrelo con documentos reales**, no solo con los
+  fixtures: el corpus de tests nunca cubre todo lo que hay ahí fuera.
+
+## 11. Origen: la plantilla R3ZON
+
+BPDF se creó desde R3ZON SaaS Template v1.0.0 ([`r3zon-template.json`](r3zon-template.json))
+y **no adopta versiones nuevas de su core** (D15): la plantilla es un SaaS y BPDF no. Si
+una mejora de proceso de la plantilla (documentación, CI, validadores) sirve aquí, se
+trae a mano, se revisa y se anota en la bitácora. Detalle:
+[`docs/TEMPLATE.md`](docs/TEMPLATE.md).
+
+## 11 bis. Dependencias
+
+- **Cada dependencia de runtime se justifica** en la tabla de
+  [`docs/STACK.md`](docs/STACK.md) (un test lo exige). No se añade ninguna «para más
+  adelante»: entra en la fase que la usa.
+- **Versiones exactas** para los motores que procesan contenido no confiable (pdf.js,
+  KaTeX, Mermaid, resaltador, cadena de Markdown).
+- Tras instalar o actualizar un paquete, si npm avisa de *install scripts not covered
+  by allowScripts*: `npm install-scripts ls`, revisa qué ejecuta cada script y apruébalo
+  con `npm install-scripts approve <paquete>` (o deniégalo si no hace falta). Commitea
+  `package.json` y el lockfile juntos. Motivo: npm 11 **omite en silencio** los scripts no
+  aprobados, y la aprobación va ligada a la versión exacta. Electron (Fase 14) lo
+  necesitará. Detalle en [`docs/STACK.md`](docs/STACK.md).
+- Un `override` solo con motivo escrito en `docs/STACK.md`; `npm run deps:overrides` dice
+  si sigue haciendo falta.
+
+## 12. Herramientas opcionales
+
+Nada de esto es requisito para desarrollar, probar ni desplegar.
+
+- **graphify** (grafo de conocimiento del repo): si está instalado y existe
+  `graphify-out/`, consúltalo antes de abrir ficheros a ciegas (`graphify query "…"`).
+  `graphify-out/` está en `.gitignore`.
+- **Servidores MCP** (p. ej. GitHub): configuración local de cada máquina; el repo no
+  incluye `.mcp.json`.
+
+## 13. Vite, CSP y textos
+
+- **La CSP solo existe en la build.** `vite dev` inyecta scripts y estilos en línea que
+  una CSP estricta bloquearía, así que en desarrollo no hay CSP. Todo lo que dependa de
+  ella se prueba con `npm run test:e2e` o `npm run preview`, nunca dando por bueno lo que
+  funciona en `dev`.
+- **La CSP y las cabeceras viven en un único fichero:**
+  [`src/config/security-headers.ts`](src/config/security-headers.ts). Se abre una
+  directiva solo cuando una fase la necesita, con su motivo escrito al lado, y nunca con
+  `'unsafe-inline'` ni `'unsafe-eval'` sin aprobación
+  ([`docs/SEGURIDAD.md`](docs/SEGURIDAD.md) §2.1).
+- **Todo texto visible sale de [`src/i18n/messages.ts`](src/i18n/messages.ts)** (D2). Un
+  test busca texto suelto en los componentes.
+- **Colores solo desde los tokens** de [`src/styles/globals.css`](src/styles/globals.css)
+  (`bg-app`, `text-fg`, `outline-accent`…); nunca un color escrito en un componente.
+- Los imports de ficheros TypeScript desde `vite.config.ts` llevan extensión `.ts`: el
+  cargador nativo de configuración de Vite lo exigirá.

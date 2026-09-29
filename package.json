@@ -1,0 +1,56 @@
+{
+  "name": "bpdf",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Visor de PDF y Markdown para leer en modo oscuro. Los documentos no salen del dispositivo.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "build:tamano": "node scripts/tamano-bundle.mjs",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "docs:validar": "node scripts/validar-public-docs.mjs",
+    "docs:enlaces": "node scripts/verificar-enlaces-docs.mjs",
+    "deps:overrides": "node scripts/verificar-overrides.mjs"
+  },
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.47.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwind-merge": "^3.7.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.14",
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/jest-axe": "^3.5.9",
+    "@types/node": "^24.13.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitest/coverage-v8": "^5.0.1",
+    "jest-axe": "^11.0.0",
+    "jsdom": "^30.1.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.1",
+    "yaml": "^2.9.1"
+  }
+}
