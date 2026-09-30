@@ -10,6 +10,50 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 11 — *2026-09-30* — Cabeceras HTTP en Vercel y cierre de la Fase 8
+
+Decisiones de la Fase 8 tomadas por el usuario: cabeceras en Vercel, **aprobadas**;
+`$…$` en línea se mantiene (el caso «$5 y $10» queda como limitación documentada, se
+escribe `\$5`); Mermaid se queda en 11.17.2 (la 12 será una tarea aparte); el fondo claro
+para imágenes transparentes sigue pendiente.
+
+**Qué se hizo y por qué**
+
+- **`vercel.json` generado, no escrito a mano.** Vercel lee las cabeceras de un JSON en la
+  raíz del repositorio, así que no puede importar `security-headers.ts`. Para no tener dos
+  copias de la CSP (la que se relaja es la que nadie mira), `reglasVercel()` las deriva de
+  `cabecerasPara` y `npm run cabeceras:vercel` escribe el fichero; `tests/unit/vercel.test.ts`
+  falla si el versionado no coincide, igual que los fixtures generados.
+- **Tres reglas que no se solapan** (`/((?!assets/|mermaid\.html$).*)`, `/mermaid.html`,
+  `/assets/(.*)`): el resultado no depende de cómo combine Vercel varias coincidencias. El
+  test comprueba, ruta a ruta (`/`, `/pdfjs/…`, `/mermaid.html`, `/assets/…`, una
+  inexistente), que coincide exactamente una regla y que da lo mismo que `vite preview`.
+- **Solo cabeceras**: nada de reescrituras, redirecciones ni configuración de build (el
+  proyecto de Vercel no está en el repositorio y no se toca).
+- **`npm run cabeceras:verificar -- <url>`**: la comprobación de CLAUDE.md §10 convertida en
+  comando. Pide `/`, `/mermaid.html` y un módulo del marco y compara cada cabecera con la
+  fuente. Contra `vite preview`: todo coincide. Contra `bpdf.r3zon.com` antes de desplegar:
+  ninguna cabecera de seguridad y `/mermaid.html` en 404 (la Fase 8 no estaba publicada).
+- **DEPLOYMENT.md** decía que BPDF no estaba desplegado: ahora describe Vercel, el fichero y
+  cómo comprobarlo. D5 no se da por cerrada, y el dominio de `project.ts` sigue siendo el de
+  ejemplo (trabajo de SEO, aparcado).
+
+**Lo que NO se pudo hacer**: comprobar las cabeceras en `bpdf.r3zon.com` con
+`vercel.json` aplicado. Vercel despliega desde git y no hubo commit ni push. Queda como
+tarea 🔴 en TAREAS, con el comando exacto.
+
+**Errores propios por el camino**: la barra de `mermaid\.html` se perdió dos veces al
+escribir por el shell (una en el código, que dejaba el punto como comodín, y otra en su
+test); lo cazó el propio test de bordes.
+
+**Verificación.** Desde `npm ci`: lint, typecheck, 768 tests (43 ficheros), build,
+`build:tamano` (89,6 KB), 69 E2E (el marco de Mermaid funciona con esas mismas cabeceras en
+`vite preview`: cero violaciones y ninguna petición externa), `npm audit` (0),
+`docs:validar` y `docs:enlaces`, todo en verde. `cabeceras:verificar` contra `vite preview`:
+las tres rutas coinciden con la fuente.
+
+---
+
 ### Iteración 10 — *2026-09-30* — Fase 8: fórmulas (KaTeX) y diagramas (Mermaid)
 
 El Markdown ya muestra fórmulas LaTeX (`$…$`, `$$…$$`, ```` ```math ````) y diagramas

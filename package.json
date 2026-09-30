@@ -25,7 +25,9 @@
     "bench:markdown": "playwright test --config playwright.bench.config.ts markdown",
     "docs:validar": "node scripts/validar-public-docs.mjs",
     "docs:enlaces": "node scripts/verificar-enlaces-docs.mjs",
-    "deps:overrides": "node scripts/verificar-overrides.mjs"
+    "deps:overrides": "node scripts/verificar-overrides.mjs",
+    "cabeceras:vercel": "node scripts/generar-vercel.mjs",
+    "cabeceras:verificar": "node scripts/verificar-cabeceras.mjs"
   },
   "engines": {
     "node": ">=24.0.0 <25"

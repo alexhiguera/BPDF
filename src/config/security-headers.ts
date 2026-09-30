@@ -148,3 +148,32 @@ export function cabecerasPara(ruta: string): Record<string, string> {
   if (camino.startsWith("/assets/")) return { ...base, "Access-Control-Allow-Origin": "*" };
   return base;
 }
+
+/** Una regla de cabeceras de `vercel.json`. */
+export type ReglaVercel = {
+  source: string;
+  headers: { key: string; value: string }[];
+};
+
+/**
+ * Las cabeceras para el hosting (Vercel, `bpdf.r3zon.com`), sacadas de
+ * `cabecerasPara`: la misma política que `vite preview` y los E2E. Tres reglas
+ * que NO se solapan (así no depende del orden en que Vercel aplica varias
+ * coincidencias):
+ *
+ * - todo lo que no es `/mermaid.html` ni `/assets/…`: las de la app;
+ * - `/mermaid.html`: la CSP del marco y `X-Frame-Options: SAMEORIGIN`;
+ * - `/assets/…`: las de la app más `Access-Control-Allow-Origin: *`.
+ *
+ * `vercel.json` se genera con `npm run cabeceras:vercel` y un test comprueba
+ * que coincide con esto: no se edita a mano.
+ */
+export function reglasVercel(): ReglaVercel[] {
+  const aLista = (h: Record<string, string>) =>
+    Object.entries(h).map(([key, value]) => ({ key, value }));
+  return [
+    { source: "/((?!assets/|mermaid\\.html$).*)", headers: aLista(cabecerasPara("/")) },
+    { source: RUTA_MARCO_MERMAID, headers: aLista(cabecerasPara(RUTA_MARCO_MERMAID)) },
+    { source: "/assets/(.*)", headers: aLista(cabecerasPara("/assets/x")) },
+  ];
+}

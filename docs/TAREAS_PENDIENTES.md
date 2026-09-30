@@ -62,18 +62,17 @@ fase no empieza con una decisión que necesita sin confirmar.
 
 ## Otras
 
-- [ ] 🟠 **Despliegue: la documentación no coincide con la realidad.** DEPLOYMENT.md dice
-  que BPDF no está desplegado, pero está publicado en Vercel (`bpdf.r3zon.com`). Allí no
-  hay cabeceras de seguridad propias: la CSP solo llega por `<meta>` (sin
-  `frame-ancestors`, `X-Frame-Options` ni el resto de SEGURIDAD §2.2), aunque sí
-  `Access-Control-Allow-Origin: *` en los estáticos, que el marco de Mermaid necesita.
-  Falta la configuración del hosting (`vercel.json` generado desde `cabecerasPara`, con
-  la política propia de `/mermaid.html`) → F12/F15 y D5
-- [ ] 🟡 **Fórmulas con un solo dólar** (`$…$`, como en GitHub): dos precios en un párrafo
-  («$5 y $10») se leen como fórmula; hay que escribir `\$`. Alternativa: solo `$$…$$`
-  (`singleDollarTextMath: false`). Decisión de producto
-- [ ] 🟡 **Mermaid 12**: la F8 usa 11.17.2 porque la 12.0.0 era un major reciente. Evaluarla
-  (con `mermaid-hostil.md` y `formulas-diagramas.spec.ts`) cuando tenga parches
+- [ ] 🔴 **Comprobar las cabeceras en producción tras desplegar** `vercel.json`:
+  `npm run cabeceras:verificar -- https://bpdf.r3zon.com` (y `curl -I` de `/` y
+  `/mermaid.html`), más abrir un Markdown con diagramas en la web publicada y mirar
+  consola, CSP y red. Antes del despliegue (*2026-09-30*): ninguna cabecera de seguridad y
+  `/mermaid.html` en 404 (la Fase 8 aún no estaba publicada). No se pudo hacer sin
+  commit y push
+- [ ] 🟡 **Dominio en `project.ts`**: sigue siendo `app.example.com` aunque la web está
+  en `bpdf.r3zon.com` (afecta a `robots.txt`, `sitemap.xml` y `public_docs/`; es
+  trabajo de SEO/indexación, aparcado). Formalizar D5 al hacerlo
+- [ ] 🟡 **Mermaid 12** como tarea propia (decidido: la F8 se queda en 11.17.2). Evaluarla
+  con `mermaid-hostil.md` y `formulas-diagramas.spec.ts`
 - [ ] 🟡 **Marco de Mermaid en Firefox y Safari**: el iframe con origen opaco pide sus
   módulos en modo CORS; probado solo en Chromium
 - [ ] 🟢 **Medir la memoria de verdad** (→ F13): `performance.memory` de Chrome está
@@ -106,8 +105,8 @@ fase no empieza con una decisión que necesita sin confirmar.
   portapapeles (copiar código solo escribe), pero la cabecera no se tocó en la F7
 
 - [ ] 🟠 CSP definitiva → F12. La base estricta existe desde F2; cada fase añade solo las
-  directivas de su tabla en [SEGURIDAD.md](SEGURIDAD.md) §2.1. Las cabeceras aún no llegan
-  a ningún hosting real (depende de D5).
+  directivas de su tabla en [SEGURIDAD.md](SEGURIDAD.md) §2.1. Las cabeceras llegan a la
+  web publicada con `vercel.json` (generado; pendiente de comprobar tras desplegar).
 - [ ] 🟡 Revisar [mejoras.md](mejoras.md) → CI (versiones de las Actions, fijarlas por SHA):
   los workflows ya han corrido en verde en GitHub.
 - [ ] 🟡 **Probar el visor con un PDF de ofimática** (LibreOffice o Word: estilos, tablas,

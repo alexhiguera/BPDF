@@ -58,7 +58,10 @@ y solo abre lo que la app usa hoy. Vive en **un único fichero fuente**,
 - la cabecera de `vite preview` (lo que prueban los E2E);
 - un `<meta http-equiv>` en `dist/index.html`, para que la build lleve su política
   aunque el hosting no mande cabeceras (el hosting está pendiente de D5);
-- la configuración del hosting (Fase 12/15) y el protocolo `app://` de Electron (Fase 14).
+- las cabeceras de la web publicada: [`vercel.json`](../vercel.json), **generado** con
+  `npm run cabeceras:vercel` (`reglasVercel`; un test comprueba que no se queda atrás) ✅
+  (*2026-09-30*; [DEPLOYMENT.md](DEPLOYMENT.md));
+- el protocolo `app://` de Electron (Fase 14).
 
 En `vite dev` **no hay CSP**: Vite inyecta scripts y estilos en línea para desarrollar.
 Nada se da por bueno por funcionar en `dev`.

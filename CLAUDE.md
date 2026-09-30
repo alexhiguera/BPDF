@@ -49,6 +49,8 @@ npm run preview           # sirve dist/ con la CSP y las cabeceras de seguridad
 npm run docs:validar      # public_docs + identidad del proyecto
 npm run docs:enlaces      # enlaces de docs internos
 npm run deps:overrides    # ¿siguen haciendo falta los overrides de package.json?
+npm run cabeceras:vercel  # regenera vercel.json desde security-headers.ts
+npm run cabeceras:verificar -- https://bpdf.r3zon.com  # cabeceras reales vs. la fuente
 ```
 
 ## 1. Pregunta antes de decidir algo importante
@@ -256,7 +258,9 @@ Nada de esto es requisito para desarrollar, probar ni desplegar.
   ella se prueba con `npm run test:e2e` o `npm run preview`, nunca dando por bueno lo que
   funciona en `dev`.
 - **La CSP y las cabeceras viven en un único fichero:**
-  [`src/config/security-headers.ts`](src/config/security-headers.ts). Se abre una
+  [`src/config/security-headers.ts`](src/config/security-headers.ts). `vercel.json` (las
+  cabeceras de la web publicada) se **genera** desde él con `npm run cabeceras:vercel`:
+  nunca se edita a mano (un test lo vigila). Se abre una
   directiva solo cuando una fase la necesita, con su motivo escrito al lado, y nunca con
   `'unsafe-inline'` ni `'unsafe-eval'` sin aprobación
   ([`docs/SEGURIDAD.md`](docs/SEGURIDAD.md) §2.1).

@@ -72,6 +72,8 @@ protegido, sin texto y CJK).
 | `docs:validar` | Valida `public_docs/` contra el contrato y la identidad contra `project.ts` |
 | `docs:enlaces` | Enlaces rotos en `docs/`, `README.md` y `CLAUDE.md` |
 | `deps:overrides` | ¿Siguen haciendo falta los `overrides`? (hoy no hay ninguno) |
+| `cabeceras:vercel` | Regenera `vercel.json` (cabeceras de la web publicada) desde `src/config/security-headers.ts`. Tras cambiar la CSP o una cabecera; `tests/unit/vercel.test.ts` falla si no se hace |
+| `cabeceras:verificar -- <url>` | Pide `/`, `/mermaid.html` y un módulo del marco a un despliegue (o a `vite preview`) y compara cada cabecera con la fuente. Sale con error si falta o difiere alguna |
 
 ## Tests
 

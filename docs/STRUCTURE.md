@@ -10,6 +10,7 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 ├── index.html                entrada de Vite; sin scripts en línea
 ├── mermaid.html              segunda entrada: el marco aislado de Mermaid (F8), con su propia CSP
 ├── vite.config.ts            build estática, workers como módulos ES, cabeceras de `preview`, plugin de BPDF
+├── vercel.json               cabeceras HTTP de la web publicada: GENERADO (`npm run cabeceras:vercel`)
 ├── playwright.bench.config.ts  benchmarks de los visores (`npm run bench:pdf` · `bench:markdown`, fuera de CI)
 ├── src/
 │   ├── main.tsx              arranque: crea la plataforma y monta <App/> en el ErrorBoundary
@@ -93,6 +94,7 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   └── vigilancia.ts         consola, CSP y red vigiladas en cada carga
 ├── scripts/                  herramientas (.mjs, sin dependencias extra)
 │   ├── validar-public-docs.mjs · verificar-enlaces-docs.mjs · verificar-overrides.mjs
+│   ├── generar-vercel.mjs · verificar-cabeceras.mjs   vercel.json desde la fuente; cabeceras reales
 │   ├── tamano-bundle.mjs     peso del arranque
 │   ├── copiar-pdfjs.mjs      recursos de pdf.js a public/pdfjs/ (predev/prebuild)
 │   └── lib/                  piezas puras, probadas en tests/
