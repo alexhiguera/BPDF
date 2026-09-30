@@ -29,7 +29,8 @@ const aviso = (page: Page) => page.getByRole("alert");
 /** Pulsa el control y elige en el diálogo del sistema (que Playwright intercepta). */
 async function elegir(page: Page, control: Locator, archivos: Eleccion) {
   const [selector] = await Promise.all([page.waitForEvent("filechooser"), control.click()]);
-  expect(selector.isMultiple()).toBe(false);
+  // Múltiple: un documento suelto, o un Markdown con sus imágenes (Fase 7 bis).
+  expect(selector.isMultiple()).toBe(true);
   await selector.setFiles(archivos);
 }
 
@@ -102,7 +103,11 @@ test("abrir otro documento sustituye al anterior", async ({ page }) => {
   await elegir(page, botonAbrir(page), PDF);
   await expect(titulo(page)).toHaveText("minimo.pdf");
   // Con un documento abierto, el botón está en la cabecera.
-  await elegir(page, page.getByRole("banner").getByRole("button"), MD);
+  await elegir(
+    page,
+    page.getByRole("banner").getByRole("button", { name: messages.open.button }),
+    MD,
+  );
   await expect(titulo(page)).toHaveText("basico.md");
   await expect(page.getByText("minimo.pdf")).toHaveCount(0);
   // Del PDF no queda nada: ni su visor ni sus páginas.
@@ -167,7 +172,7 @@ test("rechaza un .txt, un PDF falso, un fichero vacío y soltar varios a la vez"
   await expect(aviso(page)).toContainText(t.empty);
 
   await soltar(page, [soltable(PDF), soltable(MD)]);
-  await expect(aviso(page)).toContainText(t.multiple);
+  await expect(aviso(page)).toContainText(t.incompatible);
 
   // Nada de eso abrió un documento, y el aviso se puede descartar.
   await expect(titulo(page)).toHaveText(messages.emptyState.title);

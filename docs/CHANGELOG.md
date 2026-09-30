@@ -10,6 +10,186 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 10 — *2026-09-30* — Fase 8: fórmulas (KaTeX) y diagramas (Mermaid)
+
+El Markdown ya muestra fórmulas LaTeX (`$…$`, `$$…$$`, ```` ```math ````) y diagramas
+Mermaid (```` ```mermaid ````), todo local y a demanda. Se empezó por una inspección del
+árbol (los cambios pendientes eran exactamente los de la Fase 7 bis) y por medir en el
+navegador real antes de diseñar, y eso cambió el diseño dos veces. Diseño completo en
+[ARCHITECTURE.md](ARCHITECTURE.md) §4 septies.
+
+**Qué se hizo y por qué**
+
+- **KaTeX sin HTML.** `rehype-katex`, lo previsto, convierte la cadena HTML de KaTeX con
+  `innerHTML` en el navegador. En su lugar, BPDF pide a KaTeX su árbol y crea los nodos
+  con el `toNode()` de KaTeX (`createElement`, `setAttribute`, estilos por CSSOM), en un
+  nodo que React no gestiona. `trust: false`, `maxExpand`, `maxSize`, macros nuevas por
+  fórmula (un `\gdef` no se filtra a otra), `throwOnError` con el código como reserva.
+- **Estilos de KaTeX por atributo.** Leyendo su código antes de integrarlo: `\vec`,
+  `\oiint`/`\oiiint` y `\pmb` ponen `style` con `setAttribute`, que la CSP bloquea. Se
+  quita del árbol y el ancho se suple con CSS. Cero violaciones medidas con esos comandos.
+- **Mermaid en un marco aislado** (decisión preguntada y confirmada). La primera prueba en
+  el navegador dio 250 violaciones de CSP en un documento de cinco diagramas: Mermaid mide
+  el texto dibujando en el documento con `<style>` y atributos `style`. Ninguna opción de
+  Mermaid lo evita. En vez de `'unsafe-inline'` en la app, Mermaid corre en `mermaid.html`,
+  dentro de un iframe con `sandbox="allow-scripts"` (origen opaco), con su propia CSP
+  (estilos en línea sí, red no), y habla con la app por `postMessage`. La app gana solo
+  `frame-src 'self'`.
+- **El SVG, saneado en el marco y verificado en la app.** La segunda sorpresa: el saneador
+  con `DOMParser` en la app producía violaciones de CSP (el documento que crea `DOMParser`
+  hereda la CSP de quien lo crea; medido aislado). Se partió en dos: `sanearSvg` con DOM
+  en el marco, donde los estilos están permitidos, y `verificarSvg` en la app, sin DOM,
+  que recorre el XML y rechaza entero lo que no cumpla la lista blanca. La app no se fía
+  del marco.
+- **Nodos con imagen de Mermaid** (`@{ img: … }`): al probar el documento hostil, Mermaid
+  intentaba cargar la imagen dentro del marco para medirla; la CSP del marco lo cortaba,
+  pero dejaba errores. El marco los rechaza antes de dibujar, con su propio aviso.
+- **Configuración de Mermaid**: `securityLevel: "strict"`, `htmlLabels: false`, topes, y
+  `secure` con todo lo que un `%%{init}%%` podría usar para relajar la seguridad o
+  inyectar CSS. Mermaid 11.17.2 y no la 12.0.0 (un major de tres semanas).
+- **A demanda**: KaTeX con la primera fórmula; el marco (y Mermaid) con el primer
+  diagrama, y cada diagrama al entrar en pantalla. Un Markdown sin nada de eso no
+  descarga nada (E2E).
+- **Vite y `data:`**: las fuentes de KaTeX de menos de 4 KB se incrustaban como `data:` y
+  `font-src 'self'` las bloqueaba. `assetsInlineLimit: 0`: nada se incrusta.
+- **Cabeceras por ruta** en `vite preview` (`cabecerasPara`): `/mermaid.html` con su CSP y
+  `X-Frame-Options: SAMEORIGIN`; `/assets/` con `Access-Control-Allow-Origin: *`, porque el
+  marco pide sus módulos desde un origen opaco (modo CORS).
+- **Discrepancia encontrada**: DEPLOYMENT.md dice que BPDF no está desplegado, pero está
+  publicado en Vercel (`bpdf.r3zon.com`). Una petición HEAD muestra que allí no hay
+  cabeceras de seguridad propias (la CSP llega solo por `<meta>`) y sí
+  `Access-Control-Allow-Origin: *` en los estáticos, así que el marco funcionará. No se tocó
+  el despliegue (anotado en TAREAS).
+
+**Seguridad comprobada en el navegador, no solo en tests.** Documentos hostiles de KaTeX
+(`\href`, `\url`, `\html*`, `\includegraphics`, macros recursivas y exponenciales,
+`\gdef`, `\rule` gigante, colores inyectados) y de Mermaid (`click`, `link`, `callback`,
+HTML y scripts en etiquetas, `%%{init}%%` con `securityLevel: "loose"` y `themeCSS`, nodos
+con imagen remota y `data:`, ids hostiles): cero errores, cero violaciones, ninguna
+petición externa, nada ejecutado. El aislamiento del marco se comprobó desde dentro: origen
+`null`, sin acceso a `parent.document` ni a `localStorage`. Abierta directamente,
+`mermaid.html` no responde a nada.
+
+**Rendimiento y bundle.** Medido con `npm run bench:markdown`: 30 fórmulas en
+0,42 s y 1500 en 2,4 s; 3 diagramas en 0,83 s y 30 en 2,2 s (~60 ms cada uno, en el marco,
+al entrar en pantalla); un Markdown sin fórmulas ni diagramas tarda lo mismo que antes y no
+descarga nada de esto. Arranque 89,2 → 89,6 KB gzip; lector de Markdown 71 → 75 KB; KaTeX
+77 KB + 4 KB de CSS y sus fuentes; Mermaid ~50 KB de entrada y ~870 KB en trozos por tipo
+de diagrama, todo a demanda. El primer benchmark se colgó 30 minutos: no era la app, sino
+el propio benchmark bajando pantalla a pantalla por un documento de más de un millón de
+píxeles con consultas de Playwright sobre 72 000 elementos. Ahora salta a cada diagrama.
+
+**Errores propios por el camino**
+
+- Un `String.replace` con `` $` `` en el texto de sustitución (el comentario sobre `$…$`)
+  corrompió `pipeline.ts`: `$` y comilla invertida son un patrón especial. El fichero no tenía
+  cambios pendientes y se restauró desde git.
+- Una expresión regular escrita a través del shell perdió su `\b` (quedó un carácter de
+  retroceso invisible); se reescribió desde un fichero.
+- El primer diseño del componente de diagrama revocaba su URL justo al crearla (la
+  limpieza del efecto de dibujo corría al pasar a «listo»).
+- Tests mal planteados que hubo que corregir: esperaban no ver la palabra «javascript» en
+  la salida de KaTeX (sin `trust`, KaTeX pinta el comando como texto rojo); contaban cuatro
+  fórmulas en bloque donde hay tres; y uno de `mermaid.html` daba por bueno recibir su
+  propio mensaje.
+
+**Verificación.** Desde `npm ci`: lint, typecheck, 752 tests (42 ficheros), build,
+`build:tamano` (89,6 KB), 69 E2E, `npm audit` (0), `docs:validar` y `docs:enlaces`, todo en
+verde. `curl -I` contra la build servida: la app con `frame-src 'self'` y sin
+`unsafe-inline`; `/mermaid.html` con su política en cabecera y `<meta>`; `/assets/` con
+CORS; ningún `data:` en la build. Capturas revisadas de fórmulas y diagramas.
+
+**Para quien usa BPDF** (anuncio, CLAUDE.md §8): el Markdown ya muestra fórmulas
+(`$…$` y `$$…$$`) y diagramas Mermaid. Todo se dibuja en tu equipo, sin pedir nada a
+internet. Si una fórmula o un diagrama no son válidos, se ve su código; para escribir un
+precio con `$`, escríbelo como `\$`.
+
+---
+
+### Iteración 9 — *2026-09-30* — Fase 7 bis: recursos locales de Markdown
+
+Un Markdown ya puede mostrar sus imágenes locales, siempre que el usuario las entregue
+con él: eligiendo el `.md` junto con ellas, abriendo su carpeta o soltando cualquiera de
+las dos cosas. El encargo la llamó «Fase 8»; en el plan es la tarea aplazada de la F7 y se
+registra como **7 bis**, antes de KaTeX y Mermaid, sin renumerar. Decisiones del encargo:
+HTML crudo como texto (visto bueno a D6 tal como quedó), parser lento y < 1 s fuera, D16
+intacto. Diseño en [ARCHITECTURE.md](ARCHITECTURE.md) §4 sexies.
+
+**Qué se hizo y por qué**
+
+- **El principio manda el diseño: BPDF nunca busca ficheros.** El navegador ya lo impone
+  (un `File` suelto no da acceso a sus hermanos); en vez de rodearlo, la app pide la
+  entrega explícita y todo lo demás trabaja sobre ese conjunto. `resolverRecurso` solo
+  puede devolver algo del mapa de lo entregado: no hay ninguna operación que toque otro
+  fichero, así que «no acceder a lo no seleccionado» no depende de acertar con cada
+  ruta hostil, aunque también se prueba con 25 variantes.
+- **Modelo mínimo**: `resources` en `OpenedMarkdown`, un mapa de ruta relativa
+  normalizada → `RecursoLocal` (`Blob` sin leer), el directorio del `.md` y las rutas
+  ambiguas. Sin rutas de disco (el navegador no las da y Electron no las mandará), sin
+  Node, sin un «sistema de ficheros» abstracto.
+- **La apertura, común a las plataformas** (`abrirSeleccion`): un fichero suelto se abre
+  como siempre; varios deben ser un `.md` y sus imágenes; una carpeta con varios `.md`
+  pregunta cuál. Así Electron solo tendrá que construir la misma `Seleccion` en su main.
+- **Una sola vía de ficheros**: «Abrir archivo» admite selección múltiple en lugar de
+  añadir un «Abrir Markdown con recursos». Un fichero suelto funciona igual que antes, y
+  el texto del estado vacío explica cómo ver las imágenes. «Abrir carpeta» sí es un botón
+  aparte: un mismo diálogo no deja elegir ficheros y carpetas.
+- **Lo soltado se captura dentro del evento** (`DropZone`): el navegador invalida
+  `DataTransfer` y sus entradas de carpeta al acabar el `drop`. La interfaz `Platform`
+  recibe una copia (`Soltado`), lo que además permite probarlo en jsdom, que no tiene
+  `DataTransfer`.
+- **Resolución exacta**: decodificar una vez, rechazar `\`, absolutas y esquemas,
+  normalizar segmento a segmento y buscar sin tolerar mayúsculas distintas ni buscar por
+  nombre. Adivinar sería resolver a un fichero que el documento no nombra.
+- **URL `blob:` bajo demanda** (`AlmacenUrls`): se crean cuando una imagen se monta, una
+  por recurso con recuento de usos, y se revocan todas al desmontar el visor. Adquirir y
+  liberar en un efecto con limpieza funciona también con el doble montaje de React en
+  desarrollo; un almacén que solo revocara al desmontar habría dejado URL revocadas en
+  caché tras ese doble montaje.
+- **CSP: `img-src 'self' blob:`**, lo único que se abre. `data:` se descartó (copia la
+  imagen en Base64 y admitiría cualquier `data:`). Un test exige `blob:` solo en `img-src`.
+- **Errores nuevos** en lugar de `multiple` (que suponía «un fichero y nada más»):
+  `no-markdown`, `several-markdown`, `incompatible`, `folder-no-markdown`,
+  `folder-too-large` y `mixed-drop`. Los problemas de una imagen no son errores de
+  apertura: son marcadores en su sitio, cada uno con su motivo.
+
+**SVG: lo que se comprobó en el navegador y no se había supuesto.** Como `<img>`, un SVG
+no ejecuta scripts ni carga recursos. El E2E también abre la URL `blob:` del SVG hostil
+como página, lo que alguien podría hacer desde el menú contextual. Primero pareció una
+fuga: Playwright registró dos peticiones a `tracker.example`. Al mirar el fallo, las dos
+terminaban en `failure: csp`: el documento `blob:` **hereda la CSP de BPDF**, que corta sus
+imágenes externas antes de la red y no deja correr su `<script>` ni su `onload`. El test
+ahora exige eso exactamente (ninguna respuesta; todo intento cortado por CSP) en vez de
+«ningún intento», que era falso. Se descartó sanear el SVG (superficie grande y frágil) y
+rasterizarlo (pierde nitidez, y la CSP ya cubre el caso).
+
+**Rendimiento (medido).** Resolver una ruta ~1,5 µs; construir el conjunto ~3,4 µs por
+fichero. 50 imágenes de 6 Mpx elegidas con 50 que no se usan: texto en 0,64 s, primera
+imagen en 0,67 s, **50 URL** (ninguna para las no usadas), heap de JavaScript 14 MiB. El
+arranque sube 2,8 KB gzip (89,2 de 150) por la apertura de selecciones; el lector, 1 KB.
+
+**Errores propios por el camino**
+
+- Un `\n` dentro de una cadena de un script de edición acabó como salto de línea real
+  en el `key` del panel de elección (TSX roto). Se quitó el `key`, que no hacía falta.
+- El test del SVG exigía cero intentos de red (ver arriba): medía lo equivocado.
+- La sonda de URL revocadas genera, como es lógico, «Failed to load resource» en consola;
+  la vigilancia lo contaba como error. Ahora el test aparta exactamente esos.
+- Un ejemplo de enlace en ARCHITECTURE rompió `docs:enlaces`.
+
+**Verificación.** Desde `npm ci`: lint, typecheck, 660 tests (38 ficheros), build,
+`build:tamano` (89,2 KB), 62 E2E, `npm audit` (0), `docs:validar` y `docs:enlaces` (210),
+todo en verde. `curl -I`: la cabecera y el `<meta>` llevan `img-src 'self' blob:`.
+Capturas revisadas: documento con todos los formatos, marcadores y panel de elección.
+
+**Para quien usa BPDF** (anuncio, CLAUDE.md §8): un Markdown ya muestra sus imágenes si
+lo abres junto con ellas (elige el `.md` y sus imágenes a la vez, o usa el nuevo botón
+«Abrir carpeta», o arrástralos); si la carpeta tiene varios Markdown, BPDF pregunta cuál
+abrir. BPDF no busca nada más en tu equipo, y las imágenes de internet siguen sin
+cargarse.
+
+---
+
 ### Iteración 8 — *2026-09-30* — Fase 7: lector de Markdown
 
 Primera versión que **lee** un Markdown: GFM con `react-markdown` + `remark-gfm`, resaltado

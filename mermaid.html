@@ -1,0 +1,18 @@
+<!doctype html>
+<!--
+  Marco aislado de Mermaid (Fase 8, docs/ARCHITECTURE.md §4 septies). BPDF lo
+  carga en un iframe con sandbox="allow-scripts" (origen opaco) y le pide
+  diagramas por postMessage. En la build lleva su propia CSP como <meta>
+  (src/config/security-headers.ts, CSP_MARCO_MERMAID). No es una página para
+  visitar: fuera de ese iframe no hace nada.
+-->
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="robots" content="noindex" />
+    <title>BPDF · Mermaid</title>
+  </head>
+  <body>
+    <script type="module" src="/src/markdown/marco-mermaid.ts"></script>
+  </body>
+</html>

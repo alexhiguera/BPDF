@@ -33,13 +33,16 @@
   "dependencies": {
     "clsx": "^2.1.1",
     "highlight.js": "11.11.1",
+    "katex": "0.18.9",
     "lowlight": "3.3.0",
     "lucide-react": "^1.47.0",
+    "mermaid": "11.17.2",
     "pdfjs-dist": "6.3.289",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-markdown": "10.1.0",
     "remark-gfm": "4.0.1",
+    "remark-math": "6.0.0",
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {

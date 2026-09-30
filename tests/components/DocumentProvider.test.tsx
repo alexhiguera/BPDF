@@ -7,6 +7,7 @@ import {
   DocumentProvider,
   useDocument,
 } from "@/documents/DocumentProvider";
+import type { OpenedMarkdown } from "@/documents/types";
 import type { Platform } from "@/platform";
 import {
   BYTES_PNG,
@@ -14,6 +15,7 @@ import {
   ficheroLento,
   PDF_VALIDO,
   PlataformaEnMemoria,
+  soltado,
 } from "../helpers/documentos";
 
 /** Monta el proveedor y devuelve una referencia viva a su valor. */
@@ -104,23 +106,34 @@ describe("DocumentProvider: un documento a la vez (D16)", () => {
 describe("DocumentProvider: ficheros soltados", () => {
   it("abre el fichero soltado", async () => {
     const v = montar(new PlataformaEnMemoria());
-    await act(() => v().openDropped([fichero("a.md", "# a")]));
+    await act(() => v().openDropped(soltado(fichero("a.md", "# a"))));
     expect(v().document).toMatchObject({ kind: "markdown", text: "# a" });
   });
 
-  it("rechaza soltar varios a la vez con el error multiple, sin leer ninguno", async () => {
+  it("rechaza soltar dos Markdown a la vez (un documento cada vez, D16) sin leer ninguno", async () => {
     const plataforma = new PlataformaEnMemoria();
-    const abrir = vi.spyOn(plataforma, "openDroppedFile");
+    const a = fichero("a.md", "a");
+    const leer = vi.spyOn(a, "arrayBuffer");
     const v = montar(plataforma);
-    await act(() => v().openDropped([fichero("a.md", "a"), fichero("b.md", "b")]));
-    expect(v().error).toMatchObject({ code: "multiple", fileName: undefined });
-    expect(abrir).not.toHaveBeenCalled();
+    await act(() => v().openDropped(soltado(a, fichero("b.md", "b"))));
+    expect(v().error).toMatchObject({ code: "several-markdown", fileName: undefined });
+    expect(leer).not.toHaveBeenCalled();
     expect(v().document).toBeNull();
+  });
+
+  it("soltar un Markdown con sus imágenes lo abre con ellas como recursos", async () => {
+    const v = montar(new PlataformaEnMemoria());
+    await act(() =>
+      v().openDropped(soltado(fichero("a.md", "![x](logo.png)"), fichero("logo.png", "png"))),
+    );
+    expect(v().document?.kind).toBe("markdown");
+    const doc = v().document as OpenedMarkdown;
+    expect([...doc.resources.ficheros.keys()]).toEqual(["logo.png"]);
   });
 
   it("soltar una lista vacía no hace nada", async () => {
     const v = montar(new PlataformaEnMemoria());
-    await act(() => v().openDropped([]));
+    await act(() => v().openDropped(soltado()));
     expect(v().document).toBeNull();
     expect(v().error).toBeNull();
   });
@@ -132,9 +145,9 @@ describe("DocumentProvider: carreras y liberación", () => {
     const v = montar(new PlataformaEnMemoria());
     let primera: Promise<void> = Promise.resolve();
     act(() => {
-      primera = v().openDropped([lento.file]);
+      primera = v().openDropped(soltado(lento.file as File));
     });
-    await act(() => v().openDropped([fichero("rapido.md", "# rápido")]));
+    await act(() => v().openDropped(soltado(fichero("rapido.md", "# rápido"))));
     expect(v().document).toMatchObject({ name: "rapido.md" });
     lento.liberar();
     await act(() => primera);
@@ -147,7 +160,7 @@ describe("DocumentProvider: carreras y liberación", () => {
     await act(() => v().openWithPicker());
     let enCurso: Promise<void> = Promise.resolve();
     act(() => {
-      enCurso = v().openDropped([lento.file]);
+      enCurso = v().openDropped(soltado(lento.file as File));
     });
     act(() => v().close());
     expect(v().document).toBeNull();
@@ -179,7 +192,8 @@ describe("DocumentProvider: carreras y liberación", () => {
     const consola = vi.spyOn(console, "error").mockImplementation(() => {});
     const rota: Platform = {
       pickDocument: () => Promise.reject(new TypeError("fallo interno")),
-      openDroppedFile: () => Promise.reject(new TypeError("fallo interno")),
+      pickFolder: () => Promise.reject(new TypeError("fallo interno")),
+      openDropped: () => Promise.reject(new TypeError("fallo interno")),
       openExternal: () => {},
     };
     const v = montar(rota);

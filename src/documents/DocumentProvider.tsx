@@ -7,22 +7,30 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Platform } from "@/platform";
+import type { Platform, Soltado } from "@/platform";
 import { DocumentError } from "./errors";
-import type { OpenedDocument } from "./types";
+import type { Apertura, EleccionMarkdown, OpenedDocument } from "./types";
 
 type DocumentState = {
   /** El documento abierto. Uno solo (D16). */
   document: OpenedDocument | null;
   /** El último intento de apertura que falló, hasta que se descarta o se abre otro. */
   error: DocumentError | null;
+  /** Una carpeta con varios Markdown esperando a que el usuario elija el principal. */
+  choice: EleccionMarkdown | null;
 };
 
 export type DocumentContextValue = DocumentState & {
-  /** Selector del sistema. Cancelar no cambia nada. */
+  /** Selector de archivos del sistema (uno, o un Markdown con sus imágenes). Cancelar no cambia nada. */
   openWithPicker(): Promise<void>;
-  /** Ficheros soltados en la ventana. Más de uno es un error (D16). */
-  openDropped(files: readonly File[]): Promise<void>;
+  /** Selector de carpeta. */
+  openFolder(): Promise<void>;
+  /** Lo soltado en la ventana, ya capturado dentro del evento (ver `Soltado`). */
+  openDropped(soltado: Soltado): Promise<void>;
+  /** Abre el Markdown elegido de `choice`. */
+  choose(index: number): Promise<void>;
+  /** Descarta la elección pendiente: el documento abierto sigue como estaba. */
+  cancelChoice(): void;
   /** Cierra el documento y vuelve al estado vacío. */
   close(): void;
   dismissError(): void;
@@ -58,44 +66,60 @@ export function DocumentProvider({
   platform: Platform;
   children: ReactNode;
 }) {
-  const [state, setState] = useState<DocumentState>({ document: null, error: null });
+  const [state, setState] = useState<DocumentState>({ document: null, error: null, choice: null });
   const turn = useRef(0);
 
-  const load = useCallback(async (read: () => Promise<OpenedDocument | null>) => {
+  // `read` se llama en el acto (sin `await` antes): `openDropped` depende de ello
+  // para que la plataforma lea lo soltado dentro del evento.
+  const load = useCallback(async (read: () => Promise<Apertura | null>) => {
     const mine = ++turn.current;
     try {
-      const document = await read();
-      if (mine !== turn.current || !document) return;
-      setState({ document, error: null });
+      const result = await read();
+      if (mine !== turn.current || !result) return;
+      if (result.kind === "choose-markdown") {
+        setState((s) => ({ document: s.document, error: null, choice: result }));
+      } else {
+        setState({ document: result, error: null, choice: null });
+      }
     } catch (e) {
       if (mine !== turn.current) return;
-      setState((s) => ({ document: s.document, error: asDocumentError(e) }));
+      setState((s) => ({ document: s.document, error: asDocumentError(e), choice: null }));
     }
   }, []);
 
   const openWithPicker = useCallback(() => load(() => platform.pickDocument()), [load, platform]);
-
+  const openFolder = useCallback(() => load(() => platform.pickFolder()), [load, platform]);
   const openDropped = useCallback(
-    (files: readonly File[]) =>
-      load(async () => {
-        const [file, ...rest] = files;
-        if (!file) return null;
-        if (rest.length > 0) throw new DocumentError("multiple");
-        return platform.openDroppedFile(file);
-      }),
+    (soltado: Soltado) => load(() => platform.openDropped(soltado)),
     [load, platform],
   );
 
+  const choice = state.choice;
+  const choose = useCallback(
+    (index: number) => (choice ? load(() => choice.choose(index)) : Promise.resolve()),
+    [load, choice],
+  );
+  const cancelChoice = useCallback(() => setState((s) => ({ ...s, choice: null })), []);
+
   const close = useCallback(() => {
     turn.current++; // una apertura en curso ya no debe aplicarse
-    setState({ document: null, error: null });
+    setState({ document: null, error: null, choice: null });
   }, []);
 
   const dismissError = useCallback(() => setState((s) => ({ ...s, error: null })), []);
 
   const value = useMemo(
-    () => ({ ...state, openWithPicker, openDropped, close, dismissError }),
-    [state, openWithPicker, openDropped, close, dismissError],
+    () => ({
+      ...state,
+      openWithPicker,
+      openFolder,
+      openDropped,
+      choose,
+      cancelChoice,
+      close,
+      dismissError,
+    }),
+    [state, openWithPicker, openFolder, openDropped, choose, cancelChoice, close, dismissError],
   );
   return <DocumentContext value={value}>{children}</DocumentContext>;
 }

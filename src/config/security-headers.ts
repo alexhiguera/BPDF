@@ -22,7 +22,11 @@ export const CSP: Directivas = {
   // La hoja de estilos de la build. Sin 'unsafe-inline': React fija estilos por
   // CSSOM, que la CSP no bloquea.
   "style-src": ["'self'"],
-  "img-src": ["'self'"],
+  // Fase 7 bis: las imágenes locales de un Markdown se pintan con URL `blob:` que
+  // crea BPDF desde los ficheros que el usuario entregó (`AlmacenUrls`). Una URL
+  // `blob:` solo puede crearla código del propio origen y no sale a la red. Nada de
+  // `data:` ni `https:`: las imágenes remotas siguen bloqueadas (D7).
+  "img-src": ["'self'", "blob:"],
   // Fase 4: el worker de pdf.js (`/pdfjs/pdf.worker.min.mjs`), donde se parsea el
   // PDF aislado del DOM. Solo desde el propio origen: nada de `blob:`.
   "worker-src": ["'self'"],
@@ -36,6 +40,9 @@ export const CSP: Directivas = {
   // worker y no llega al documento. Solo 'self': el documento nunca sale de BPDF
   // (entra como bytes) y ningún PDF puede pedir nada a otro origen.
   "connect-src": ["'self'"],
+  // Fase 8: el marco aislado de Mermaid (`/mermaid.html`, abajo). Solo el propio
+  // origen: ningún documento puede enmarcar otra cosa.
+  "frame-src": ["'self'"],
   "object-src": ["'none'"],
   "base-uri": ["'none'"],
   "form-action": ["'none'"],
@@ -82,4 +89,62 @@ export function cabecerasSeguridad(): Record<string, string> {
     // Sin `preload`: entrar en la lista de precarga es un compromiso del dominio.
     "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
   };
+}
+
+/**
+ * Fase 8: la página del marco de Mermaid (`/mermaid.html`,
+ * docs/SEGURIDAD.md §2.1). Mermaid dibuja con `<style>` y atributos `style`
+ * en línea, que la CSP de la app prohíbe; en vez de relajarla, Mermaid corre en
+ * esta página, dentro de un iframe con `sandbox="allow-scripts"` (origen
+ * opaco: no puede tocar el DOM, el almacenamiento ni las cookies de BPDF), con
+ * esta política propia:
+ *
+ * - `style-src 'unsafe-inline'`: lo único que Mermaid necesita y la app no da.
+ * - Sin red: `connect-src`, `img-src` y `font-src` a `'none'`. El diagrama llega
+ *   por `postMessage` y el SVG vuelve igual; nada más entra ni sale.
+ * - `frame-ancestors 'self'`: solo BPDF puede enmarcarla (solo en cabecera).
+ */
+export const CSP_MARCO_MERMAID: Directivas = {
+  "default-src": ["'none'"],
+  "script-src": ["'self'"],
+  "style-src": ["'self'", "'unsafe-inline'"],
+  "img-src": ["'none'"],
+  "font-src": ["'none'"],
+  "connect-src": ["'none'"],
+  "worker-src": ["'none'"],
+  "object-src": ["'none'"],
+  "base-uri": ["'none'"],
+  "form-action": ["'none'"],
+  "frame-ancestors": ["'self'"],
+};
+
+/** Ruta de la página del marco (una entrada más de la build). */
+export const RUTA_MARCO_MERMAID = "/mermaid.html";
+
+export const cspMarcoCabecera = (): string => serializar(CSP_MARCO_MERMAID);
+export const cspMarcoMeta = (): string => serializar(CSP_MARCO_MERMAID, SOLO_CABECERA);
+
+/**
+ * Cabeceras según la ruta, para `vite preview` y el hosting:
+ *
+ * - `/mermaid.html`: la CSP del marco, y `X-Frame-Options: SAMEORIGIN` (la
+ *   enmarca BPDF, nadie más).
+ * - `/assets/…`: además, `Access-Control-Allow-Origin: *`. El marco tiene origen
+ *   opaco (`null`), así que sus módulos se piden en modo CORS; son ficheros
+ *   públicos de la build, sin credenciales ni datos. (El hosting actual ya lo
+ *   manda en todos los estáticos.)
+ * - Todo lo demás: las de siempre.
+ */
+export function cabecerasPara(ruta: string): Record<string, string> {
+  const base = cabecerasSeguridad();
+  const camino = ruta.split("?")[0] ?? ruta;
+  if (camino === RUTA_MARCO_MERMAID) {
+    return {
+      ...base,
+      "Content-Security-Policy": cspMarcoCabecera(),
+      "X-Frame-Options": "SAMEORIGIN",
+    };
+  }
+  if (camino.startsWith("/assets/")) return { ...base, "Access-Control-Allow-Origin": "*" };
+  return base;
 }

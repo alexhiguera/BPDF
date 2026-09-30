@@ -2,7 +2,8 @@
 
 > **Estado: diseño objetivo** (Fase 0, *2026-09-29*); implementados los controles de las
 > Fases 2 (CSP, cabeceras, DOM), 3 (apertura de ficheros, §2.6), 4 (motor de PDF), 5
-> (visor PDF, §4) y 7 (Markdown, §3; *2026-09-30*). Cada control indica la
+> (visor PDF, §4), 7 (Markdown, §3), 7 bis (recursos locales de Markdown, §2.6 y §3) y 8
+> (fórmulas y diagramas, §2.1 y §3; *2026-09-30*). Cada control indica la
 > fase que lo implementa ([FASES.md](FASES.md)). Cuando un control exista, esa fase lo marca aquí como
 > implementado y enlaza su test. Las auditorías realizadas van a
 > [auditoria.md](auditoria.md).
@@ -62,16 +63,17 @@ y solo abre lo que la app usa hoy. Vive en **un único fichero fuente**,
 En `vite dev` **no hay CSP**: Vite inyecta scripts y estilos en línea para desarrollar.
 Nada se da por bueno por funcionar en `dev`.
 
-**Vigente** ✅ (Fase 2; la Fase 4 añadió `worker-src` y `font-src`; la Fase 5, `connect-src`):
+**Vigente** ✅ (Fase 2; la Fase 4 añadió `worker-src` y `font-src`; la Fase 5, `connect-src`; la Fase 7 bis, `blob:` en `img-src`; la Fase 8, `frame-src`):
 
 ```text
 default-src 'none';
 script-src 'self';
 style-src 'self';
-img-src 'self';
+img-src 'self' blob:;          ← Fase 7 bis: imágenes locales de un Markdown
 worker-src 'self';            ← Fase 4: el worker de pdf.js, desde el propio origen
 font-src 'self';              ← Fase 4: sustitutas de las fuentes estándar de PDF
 connect-src 'self';           ← Fase 5: cmaps de pdf.js (fuentes CID), desde su worker
+frame-src 'self';             ← Fase 8: el marco aislado de Mermaid (/mermaid.html)
 object-src 'none';
 base-uri 'none';
 form-action 'none';
@@ -105,12 +107,43 @@ aprobación antes de añadirlo.
 |---|---|
 | `connect-src 'self'` | pdf.js pide al propio origen, con `fetch` **desde su worker**, los mapas de caracteres (`/pdfjs/cmaps/*.bcmap`) de las fuentes CID no incrustadas (japonés, chino, coreano). Sin ella, ese texto **desaparece en silencio**: la violación ocurre en el worker (que recibe la cabecera con su script), no llega al `securitypolicyviolation` del documento y Chromium no la pasa a la consola que ve Playwright. Por eso los E2E no la detectaron en la Fase 4. Se prueba por su efecto: `e2e/specs/visor-pdf.spec.ts` abre un PDF con texto japonés no incrustado y comprueba que se ve, se pide el cmap y se encuentra al buscar. Solo `'self'`: el documento entra como bytes y ningún PDF puede provocar una petición a otro origen |
 
+**Añadida en la Fase 8, medida:**
+
+| Directiva | Motivo |
+|---|---|
+| `frame-src 'self'` | El marco aislado de Mermaid (`/mermaid.html`, en un iframe con `sandbox="allow-scripts"`). Mermaid dibuja con `<style>` y atributos `style` en línea; con la CSP de la app eran 250 violaciones en cinco diagramas (medido). En vez de añadir `'unsafe-inline'` a la app, Mermaid corre en esa página, con **su propia política** (`CSP_MARCO_MERMAID`, abajo). `tests/unit/seguridad.test.ts`, `e2e/specs/formulas-diagramas.spec.ts` |
+
+**La política del marco** (`/mermaid.html`, cabecera y `<meta>`; Fase 8):
+
+```text
+default-src 'none';
+script-src 'self';
+style-src 'self' 'unsafe-inline';   ← lo único que Mermaid necesita y la app no da
+img-src 'none'; font-src 'none'; connect-src 'none'; worker-src 'none';   ← sin red
+object-src 'none'; base-uri 'none'; form-action 'none';
+frame-ancestors 'self'              ← solo en la cabecera; X-Frame-Options: SAMEORIGIN
+```
+
+`'unsafe-inline'` queda confinado a un documento de **origen opaco** (el iframe no tiene
+`allow-same-origin`): no alcanza el DOM, el almacenamiento ni las cookies de BPDF (E2E), no
+puede pedir nada a la red, y solo recibe el texto del diagrama. Como sus módulos se piden
+desde un origen opaco (modo CORS), `/assets/` se sirve con `Access-Control-Allow-Origin: *`
+(`cabecerasPara`; son ficheros públicos de la build).
+
+**Encontrado en la Fase 8, sin cambiar la CSP:** Vite incrustaba como `data:` los
+recursos de menos de 4 KB (fuentes de KaTeX) y `font-src 'self'` los bloqueaba.
+`build.assetsInlineLimit: 0`: la build no incrusta nada.
+
+**Añadida en la Fase 7 bis, medida:**
+
+| Directiva | Motivo |
+|---|---|
+| `img-src blob:` | Las imágenes que el usuario entrega con un Markdown se pintan con URL `blob:` que crea BPDF desde esos `File` (`AlmacenUrls`). Sin ella, violación de CSP y ninguna imagen. Una URL `blob:` solo la puede crear código del propio origen y no sale a la red. Alternativa descartada: `data:` (copia la imagen entera en Base64 y abriría la puerta a cualquier `data:`). `tests/unit/seguridad.test.ts` exige que `blob:` esté **solo** en `img-src`; `e2e/specs/recursos.spec.ts` pinta PNG, JPEG, GIF, WebP y SVG con cero violaciones |
+
 **Lo que añadirán otras fases, y por qué** (nada de esto está hoy en la política):
 
 | Directiva | Fase | Motivo |
 |---|---|---|
-| `img-src blob:` | 8 y la de las imágenes locales de Markdown | Imágenes locales de Markdown y diagramas Mermaid convertidos en `<img>`. **La Fase 7 no la añadió**: aún no carga ninguna imagen (§3.1) |
-| `img-src data:` | 8, solo si KaTeX lo exige | Se prueba antes de añadirlo |
 
 **Nunca** `https:` ni otro origen en ningún `*-src`: ningún documento puede provocar una
 petición a terceros. Es lo que materializa la privacidad (D7).
@@ -156,8 +189,11 @@ necesidad; se revisa en la Fase 12.
   una sola política para PDF y Markdown, §3.2 y §4), abiertos **por la plataforma**
   (`Platform.openExternal`): en web, `window.open(url, "_blank", "noopener,noreferrer")`,
   que vuelve a aplicar la política; nunca navegan la ventana de la app ✅ (Fase 5).
-- Sin iframes propios (`frame-src 'none'`). Mermaid **no** usa `securityLevel: "sandbox"`
-  (que necesita un iframe `data:`), sino SVG convertido a `<img>`.
+- Un solo iframe propio (Fase 8): el marco de Mermaid, `sandbox="allow-scripts"` sin
+  `allow-same-origin`, desde `/mermaid.html` (`frame-src 'self'`). Mermaid **no** usa su
+  `securityLevel: "sandbox"` (necesita un iframe `data:`). El SVG vuelve por
+  `postMessage` (solo se aceptan mensajes de ese iframe, con origen `null` y bien
+  formados) y se muestra como `<img>`.
 - Workers: el de pdf.js (`/pdfjs/pdf.worker.min.mjs`) y el del modo oscuro
   (`/assets/trabajador-*.js`, empaquetado por Vite), los dos servidos desde `'self'` y como
   módulos ES. Sin workers creados desde `blob:`. El del modo oscuro solo recibe píxeles
@@ -194,7 +230,11 @@ del documento.
 | Rutas de disco en el estado | El documento guarda un nombre sin ruta, nunca una ruta ni un `FileSystemHandle` (en web el navegador no las da; en Electron, el mapa `id → ruta` vive solo en el main) | `detect.test.ts` («quita cualquier ruta») |
 | Agotamiento de memoria | Límites por tipo con su justificación en `src/documents/limits.ts` (PDF 512 MiB, Markdown 20 MiB), comprobados **antes** de leer; un PDF solo se lee en sus primeros 1024 bytes; Markdown se queda solo con el texto | `read.test.ts` (justo en el límite y 1 byte por encima; «solo lee la cabecera»); prueba manual con un PDF disperso de 513 MiB (rechazo en ~60 ms sin leerlo) |
 | Contenido que se ejecute al abrir | Nada se interpreta: un Markdown con `<script>`, `<img onerror>`, `<iframe>` remoto y enlaces `javascript:` es solo texto en memoria (desde la Fase 7 se renderiza, con los controles de §3) | `read.test.ts`, `App.test.tsx`, `markdown.spec.ts` (`seguridad.md`: nada se ejecuta ni se pide a la red) |
-| Peticiones de red o URL que sobrevivan al documento | Lectura con `Blob.arrayBuffer()`; sin `fetch`, subida ni URL de objeto (`blob:`), así que no hay nada que revocar. Los visores futuros que las creen (imágenes de Markdown, Fase 7) las revocan al desmontarse, y se montan con `key={document.id}` | `tests/unit/platform/web.test.ts`, `tests/components/DocumentProvider.test.tsx` (ni `fetch` ni `createObjectURL`); `abrir.spec.ts` (ninguna petición fuera del origen) |
+| Peticiones de red o URL que sobrevivan al documento | Lectura con `Blob.arrayBuffer()`; sin `fetch` ni subida. Abrir no crea URL de objeto: las crea el visor de Markdown al pintar una imagen local y las revoca al desmontarse (se monta con `key={document.id}`; §3.1) | `tests/unit/platform/web.test.ts`, `tests/components/DocumentProvider.test.tsx` (ni `fetch` ni `createObjectURL`); `abrir.spec.ts` (ninguna petición fuera del origen) |
+| Acceso a ficheros no elegidos (Fase 7 bis) | Un Markdown solo usa lo que el usuario **entregó**: ficheros elegidos o soltados a la vez, o una carpeta elegida o soltada. `resolverRecurso` busca únicamente en ese mapa; ninguna operación toca otro fichero. Rutas relativas a la entrega, nunca de disco | `tests/unit/documents/recursos.test.ts`, `recursos.spec.ts` (`fuera-de-recursos.png` existe en disco al lado de la carpeta y no se ve) |
+| Selecciones que no son un documento (Fase 7 bis) | Varios ficheros: exactamente un `.md` y el resto imágenes (`no-markdown`, `several-markdown`, `incompatible`); carpeta con varios `.md`: el usuario elige; una carpeta junto con otras cosas: `mixed-drop`. Nunca dos documentos (D16) | `tests/unit/documents/seleccion.test.ts`, `App.test.tsx`, `recursos.spec.ts` |
+| Carpetas enormes o árboles cíclicos (Fase 7 bis) | Tope de 10 000 ficheros y de 32 niveles; no se entra en `.git` ni `node_modules`; solo se pide el `File` de Markdown e imágenes | `tests/unit/platform/web.test.ts` |
+| Nombres de fichero en rutas (Fase 7 bis) | Las rutas candidatas de una carpeta se sanean segmento a segmento como los nombres (sin controles ni marcas bidireccionales) y solo se pintan como texto | `seleccion.test.ts` |
 | Soltar un fichero fuera de la app lo abre el navegador en la pestaña | La zona de soltar cubre la ventana entera y cancela el comportamiento por defecto solo en arrastres de ficheros | `tests/components/DropZone.test.tsx` |
 | Resultado tardío de una apertura anterior | Solo aplica su resultado la última apertura (turnos); cerrar descarta la que esté en curso | `DocumentProvider.test.tsx` |
 
@@ -210,13 +250,13 @@ La CSP no cambia en esta fase: leer ficheros locales no necesita ninguna directi
 | `<script>`, `<iframe>`, `<img onerror>`, `<svg onload>`, `<style>`, `<form>`, cualquier HTML crudo | `react-markdown` **no interpreta HTML** (sin `rehype-raw`, D6): cada nodo HTML se pinta como su **texto literal**; los comentarios `<!-- -->` se quitan. Además, **lista blanca de elementos** (`ELEMENTOS_PERMITIDOS` en `pipeline.ts`): lo que no produce Markdown + GFM se descarta | ✅ 7 (corpus §3.3; `xss.test.tsx` también exige que no haya `rehypePlugins` y que `urlTransform` sea el propio) |
 | Atributos de evento, `style` inyectado | No hay HTML crudo; los componentes propios solo emiten atributos conocidos. El único `style` es la alineación de celdas de GFM, por CSSOM | ✅ 7 (el corpus lo comprueba atributo a atributo) |
 | `javascript:`, `vbscript:`, `data:`, `file:`, `blob:`, mayúsculas, entidades (`jav&#x61;script:`), tabuladores, saltos, controles, `//host`, rutas absolutas, credenciales | [`url-policy.ts`](../src/markdown/url-policy.ts) propio sobre la URL ya decodificada por el parser, tras quitar lo que el navegador ignora: solo `http:`, `https:` y `mailto:` absolutas (política común de `url-externa.ts`) y anclas `#…` llegan a un `href`; todo lo demás se pinta como texto. Dos capas: `urlTransform` en el pipeline y los componentes | ✅ 7 (`tests/unit/markdown/url-policy.test.ts`, corpus, E2E) |
-| Imágenes remotas (píxeles espía, fuga de IP) | Bloqueadas (D7): **no se crea ningún `<img>`**; marcador con el texto alternativo y un enlace para abrirla fuera si se quiere. La CSP (`img-src 'self'`) es la segunda red | ✅ 7 (E2E: el píxel nunca se pide) · 12 |
-| Imágenes locales | **Aplazadas**: la Fase 7 no carga ninguna (marcador). Cuando se carguen: rutas normalizadas contra el conjunto de ficheros entregado → `blob:` revocada al desmontar | 7 (aplazado, TAREAS) |
-| SVG con scripts | Solo como `<img>` cuando se carguen imágenes; hoy ninguno llega al DOM | 7 (aplazado) |
-| Rutas relativas con `..` | Hoy no se sigue ninguna ruta relativa (enlace inerte, imagen como marcador). Al cargar imágenes: normalización, nunca fuera del conjunto entregado (web) ni de la raíz del documento (Electron) | 7 (aplazado), 14 |
+| Imágenes remotas (píxeles espía, fuga de IP) | Bloqueadas (D7): **ningún `<img>` con URL remota**; marcador con el texto alternativo y un enlace para abrirla fuera si se quiere. La CSP (`img-src 'self' blob:`, sin `https:`) es la segunda red | ✅ 7 (E2E: el píxel nunca se pide) · 12 |
+| Imágenes locales | Solo las entregadas con el `.md` (ARCHITECTURE §4 sexies). `resolverRecurso` decodifica una vez, rechaza `\`, rutas absolutas y esquemas, normaliza segmento a segmento y busca exactamente en el mapa. Formato por extensión (PNG, JPEG, GIF, WebP, SVG) y tipo MIME fijado por BPDF; máximo 50 MiB. URL `blob:` solo para lo que se pinta, una por recurso, revocadas al desmontar | ✅ 7 bis (`recursos.test.ts`, `imagenes.test.ts`, `imagenes.test.tsx`, `recursos.spec.ts`) |
+| SVG con scripts o recursos externos | Solo como `<img>` (el navegador no ejecuta scripts ni carga recursos de un SVG en una imagen). Abierta como página, la URL `blob:` hereda la CSP de BPDF: medido en Chromium, ni el `<script>` ni el `onload` se ejecutan y sus imágenes externas las corta la CSP antes de la red | ✅ 7 bis (`malicioso.svg` en `recursos.spec.ts`, también abierto en otra pestaña) |
+| Rutas relativas con `..` (también codificadas: `%2e%2e`, `..%2f`, `%5c`) | Normalización tras decodificar una vez; un `..` que sale de la entrega es `fuera` y no se busca. Enlaces a otros ficheros: inertes. En Electron, nunca fuera de la raíz del documento | ✅ 7 bis (`recursos.test.ts`, 25 variantes), 14 |
 | DOM clobbering con ids | Prefijo `md-` en los encabezados y en las notas al pie (`clobberPrefix`); un ancla del documento solo busca ids con prefijo dentro del documento | ✅ 7 (`toc.test.ts`, corpus `encabezados-clobbering.md`) |
-| KaTeX: `\href`, `\url`, `\includegraphics`, `\htmlClass`/`\htmlData` | `trust: false` (por defecto), `strict: "warn"`, `maxSize` y `maxExpand` acotados (KaTeX ha tenido avisos de seguridad en 2024 por protocolos y expansiones sin límite). Versión exacta | 8 |
-| Mermaid: etiquetas HTML, `click` con `javascript:`, directivas `%%{init}%%` que cambian `securityLevel` | `securityLevel: "strict"`, `htmlLabels: false`, directivas de seguridad ignoradas (`secure`), y el SVG resultante **se muestra como `<img src="blob:…">`**: aunque Mermaid dejara pasar algo, en una imagen no se ejecuta | 8 |
+| KaTeX: `\href`, `\url`, `\includegraphics`, `\htmlClass`, `\htmlId`, `\htmlStyle`, `\htmlData`, macros, `\rule` gigante, colores inyectados | `trust: false` (se pintan como texto, sin enlace ni atributo), `maxExpand: 1000`, `maxSize: 20`, macros nuevas por fórmula (un `\gdef` no pasa a otra), `throwOnError` (lo inválido se ve como código). **Sin HTML**: nodos creados con el `toNode()` de KaTeX, nunca `innerHTML` ni `rehype-katex`; el atributo `style` que KaTeX pone por `setAttribute` se quita (la CSP lo bloquearía). Versión exacta | ✅ 8 (`matematicas.test.ts`, `formulas-diagramas.test.tsx`, E2E con `katex-hostil.md`) |
+| Mermaid: etiquetas HTML, `click`/`callback`/`link` con `javascript:`, `%%{init}%%` que relaja la seguridad o inyecta `themeCSS`, `<foreignObject>`, imágenes en nodos, ids hostiles, diagramas enormes | Corre **fuera de la app**, en el marco aislado (iframe `sandbox` sin `allow-same-origin`, CSP sin red). `securityLevel: "strict"`, `htmlLabels: false`, `secure` con todas las claves de seguridad y aspecto, `maxTextSize`/`maxEdges`, nodos con imagen rechazados antes de dibujar. SVG saneado en el marco (`sanearSvg`, lista blanca) y **verificado en la app** sin DOM (`verificarSvg`, rechaza lo que no cumpla); se muestra como `<img src="blob:…">` | ✅ 8 (`svg-seguro.test.ts`, `mermaid.test.ts`, E2E con `mermaid-hostil.md`, aislamiento del marco comprobado desde dentro) |
 | Resaltado de sintaxis | `lowlight` produce un árbol hast; `resaltado.ts` lo convierte a React con lista blanca (`span` con clases `hljs-*` y texto). Sin `innerHTML`, 9 gramáticas, sin detección automática | ✅ 7 (`resaltado.test.ts`) |
 | Portapapeles | Solo escritura (`writeText`) tras un clic, del texto del documento; sin pedir permisos ni leer | ✅ 7 |
 | Denegación de servicio (anidamiento extremo, tablas enormes, fórmulas recursivas) | Límite de tamaño de fichero (20 MiB); recorridos propios iterativos (sin recursión que dependa del contenido); `maxExpand` de KaTeX y `maxTextSize` de Mermaid (F8). **Conocido (Fase 7): muchas listas cortas son cuadráticas** en `mdast-util-from-markdown`: un documento hecho a propósito bajo el límite puede bloquear la pestaña mucho tiempo (solo esa pestaña; nada sale del equipo). Medido en [ARCHITECTURE.md](ARCHITECTURE.md) §4 quinquies; pendiente en TAREAS | 7 (medido), 8, 13 |
@@ -261,9 +301,17 @@ enlace bloqueado no hace nada. Casos:
 
 (Los ficheros del corpus usan la sintaxis literal; aquí se describe sin ella porque
 `npm run docs:enlaces` trataría cada ejemplo como un enlace roto.)
-- KaTeX (Fase 8): `\href{javascript:alert(1)}{x}`, `\url{javascript:…}`, macro recursiva.
-- Mermaid (Fase 8): `click A "javascript:alert(1)"`, etiqueta con `<img onerror>`,
-  `%%{init: {"securityLevel": "loose"}}%%`.
+- KaTeX (Fase 8, `tests/fixtures/markdown/katex-hostil.md` y `matematicas.test.ts`):
+  `\href` y `\url` con `javascript:` y externos, `\htmlClass`, `\htmlId`, `\htmlStyle`,
+  `\htmlData`, `\includegraphics`, HTML en `\text`, macros recursivas y exponenciales,
+  `\gdef` entre fórmulas, `\rule` gigante, colores inyectados.
+- Mermaid (Fase 8, `mermaid-hostil.md` y `svg-seguro.test.ts`): `click` con
+  `javascript:`, `href` y `callback`; HTML, `<script>` e `<iframe>` en etiquetas (también
+  Markdown en etiquetas); `%%{init}%%` con `securityLevel: "loose"`, `htmlLabels`,
+  `themeCSS` con `@import` y `dompurifyConfig`; nodos con imagen externa y `data:`; `link`
+  y `callback` en clases; ids `location`, `__proto__`, `constructor`. Y SVG hostiles
+  directos contra el saneador y el verificador (script, `foreignObject`, `image`,
+  `animate`, `on*`, entidades, CDATA, DOCTYPE…).
 - Encabezados: `# location`, `# __proto__`, `# contenido`, `# titulo-documento` (ids
   con prefijo; ninguno coincide con un id de la app).
 

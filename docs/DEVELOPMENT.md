@@ -68,7 +68,7 @@ protegido, sin texto y CJK).
 | `test` · `test:run` · `test:coverage` | Vitest (unitarios, componentes, a11y) |
 | `test:e2e` · `test:e2e:ui` | Playwright contra la build de producción (`vite preview`, puerto 3100) |
 | `bench:pdf` | Benchmark del visor PDF: render y modo oscuro por página con y sin worker, a DPR 1 y 2 y a varios zooms, y un documento de 300 páginas (apertura, recorrido, lienzos, memoria). Imprime tablas; no es un test y no corre en CI |
-| `bench:markdown` | Benchmark del visor Markdown: tiempo hasta ver documentos generados (1 KB, 100 KB, 1 MB, muchos encabezados, muchos bloques de código, muchas listas). Imprime una tabla; no es un test y no corre en CI |
+| `bench:markdown` | Benchmark del visor Markdown: tiempo hasta ver documentos generados (1 KB, 100 KB, 1 MB, muchos encabezados, muchos bloques de código, muchas listas) un Markdown con 50 imágenes de 6 Mpx (URL creadas, decodificación, heap) y fórmulas y diagramas (pocos, muchos, documento grande, hostiles: tiempos hasta texto, fórmulas y diagramas, descargas y heap). Imprime tablas; no es un test y no corre en CI |
 | `docs:validar` | Valida `public_docs/` contra el contrato y la identidad contra `project.ts` |
 | `docs:enlaces` | Enlaces rotos en `docs/`, `README.md` y `CLAUDE.md` |
 | `deps:overrides` | ¿Siguen haciendo falta los `overrides`? (hoy no hay ninguno) |
@@ -112,6 +112,15 @@ npm run test:e2e      # build de producción + Playwright (Chromium)
   pulsa `Ctrl/Cmd+O`. Un PDF se abre en el visor PDF y un Markdown en el lector de
   Markdown. Para probar el lector, los fixtures de `tests/fixtures/markdown/`
   (`basico.md`, `gfm.md`, `codigo.md`, `indice.md`, `seguridad.md` y el corpus `xss/`).
+  Para las imágenes locales, «Abrir carpeta» → `tests/fixtures/markdown/recursos/` (o
+  elegir `documento.md` junto con `imagen.png`); `recursos-varios/` tiene dos `.md`. Se
+  regeneran con `node tests/fixtures/markdown/recursos/generar.mjs`. Fórmulas y
+  diagramas: `matematicas.md`, `diagramas.md`, `katex-hostil.md` y `mermaid-hostil.md`.
+- **Mermaid solo se prueba de verdad en el navegador**: necesita medir texto en un
+  documento vivo. En jsdom, el marco se simula (`formulas-diagramas.test.tsx`) y se prueban
+  su protocolo y su ciclo de vida (`mermaid.test.ts`); el dibujo, el aislamiento y la CSP,
+  en `e2e/specs/formulas-diagramas.spec.ts`. En `npm run dev` no hay CSP: lo que dependa
+  de ella (marco, fuentes de KaTeX) se comprueba con `npm run preview`.
 - Hay guardarraíles que no prueban una función sino una regla: contraste de los tokens
   (`tokens.test.ts`), invariantes de la CSP y prohibición de `innerHTML`
   (`seguridad.test.ts`), y textos centralizados (`textos.test.ts`).

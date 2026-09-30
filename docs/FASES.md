@@ -355,64 +355,96 @@ listas cuadráticas, visto bueno de D6 como texto) está en
 
 ---
 
-## Fase 8 — Markdown: matemáticas y Mermaid
+## Fase 7 bis — Markdown: recursos locales ✅
 
-**Objetivo.** Fórmulas LaTeX y diagramas Mermaid, cargados solo si el documento los usa y
-aislados.
+Cerrada el 2026-09-30. Bitácora: iteración 9. El encargo la llamó «Fase 8»; en el plan
+va entre la 7 y la 8 (KaTeX y Mermaid), como tarea aplazada de la 7, sin renumerar.
+Diseño completo: [ARCHITECTURE.md](ARCHITECTURE.md) §4 sexies.
 
-**Dependencias.** F7.
+**Decisiones del encargo.** Imágenes locales antes de KaTeX/Mermaid; HTML crudo, como
+texto (D6, visto bueno dado); el parser lento y el objetivo de < 1 s, fuera; un documento
+a la vez (D16).
 
-**Alcance**
+**Hecho.** «Abrir archivo» con selección múltiple (un documento, o un `.md` con sus
+imágenes), «Abrir carpeta» (`webkitdirectory`) con elección del Markdown principal si hay
+varios, y soltar varios ficheros o una carpeta (`webkitGetAsEntry`). `OpenedMarkdown`
+gana `resources` (rutas relativas a la entrega → `Blob` sin leer). `resolverRecurso`,
+único punto de resolución, con traversal (también codificado) bloqueado. Imágenes PNG,
+JPEG, GIF, WebP y SVG (solo como `<img>`) con URL `blob:` creadas bajo demanda, una por
+recurso y revocadas al desmontar. CSP: `img-src 'self' blob:`. Errores nuevos:
+`no-markdown`, `several-markdown`, `incompatible`, `folder-no-markdown`,
+`folder-too-large` y `mixed-drop` (sustituyen a `multiple`); por imagen, marcadores
+`no-encontrado`, `fuera`, `no-soportado`, `demasiado-grande`, `ambiguo`, `invalido` y
+`rota`.
 
-- **Matemáticas:** `remark-math` + `rehype-katex` + `katex` (versión exacta) con carga
-  diferida (el pipeline detecta `$`/`$$`/bloques `math` antes de importarlos); opciones
-  `trust: false`, `strict: "warn"`, `maxSize`, `maxExpand: 1000`, `throwOnError: false`
-  (una fórmula inválida se muestra como código con aviso); CSS y fuentes de KaTeX servidas
-  desde el propio origen; salida MathML para accesibilidad.
-- **Mermaid:** `MermaidBlock` para bloques de código `mermaid`; `import("mermaid")` al
-  primer diagrama visible; `initialize({ startOnLoad: false, securityLevel: "strict",
-  htmlLabels: false, maxTextSize, theme: "base", themeVariables })` con colores de los
-  tokens; `mermaid.render()` → cadena SVG → `Blob` `image/svg+xml` → `<img>` con
-  `alt`/`aria-label`; error de sintaxis → código fuente con aviso. Render solo al entrar
-  en pantalla.
+**Desviaciones y decisiones propias:**
 
-**Lo que dejó la Fase 7 y cambia esta** (ARCHITECTURE §4 quinquies):
+- **Una sola vía de ficheros, no un botón aparte** para «Markdown con recursos»: el
+  selector de archivos admite varios. Un fichero suelto sigue igual; el texto del estado
+  vacío explica cómo ver las imágenes. «Abrir carpeta» sí es un botón aparte (el
+  navegador no permite elegir ficheros y carpetas en el mismo diálogo).
+- **Resolución exacta**: ni búsqueda por nombre cuando la ruta lleva subcarpetas y se
+  eligieron ficheros sueltos, ni mayúsculas indistintas. Adivinar sería resolver a un
+  fichero que el documento no nombra.
+- **SVG sin sanear ni rasterizar**: como `<img>` es inerte; abierto como página, la CSP
+  heredada lo frena (medido).
+- **Enlaces a otros ficheros**: siguen inertes aunque se hayan entregado.
 
-- El pipeline tiene **lista blanca de elementos** (`ELEMENTOS_PERMITIDOS`): KaTeX emite
-  `span`, `math`, `semantics`, `mrow`… y hay que añadir exactamente los que use, o se
-  descartarán en silencio. El corpus de XSS (`xss.test.tsx`) prohíbe hoy `math` y
-  `svg`: ajustarlo a lo que se permita, sin abrir más.
-- `Imagen` no crea ningún `<img>` todavía: el `<img src="blob:…">` de Mermaid sería el
-  primero, con `img-src blob:` en la CSP (SEGURIDAD §2.1) y revocación al desmontar.
-- Los bloques `math`/`mermaid` hoy pasan por `BloqueCodigo` (sin resaltar: no son
-  lenguajes registrados).
-- Rendimiento: el pipeline ya cuesta segundos por MB; KaTeX y Mermaid deben medirse con
-  `npm run bench:markdown`.
+**Tests.** Unitarios: `recursos` (resolución, traversal, estados, construcción),
+`seleccion` (apertura de ficheros y carpetas), `imagenes` (`AlmacenUrls`), plataforma
+web (selector de carpeta, carpeta soltada con entradas simuladas, topes). Componentes:
+imágenes locales en el visor (URL creadas, compartidas, revocadas; marcadores; axe), App
+(carpeta con varios `.md`, cancelar, varios `.md` a la vez). E2E (`recursos.spec.ts`,
+8): Markdown suelto, con imagen, carpeta completa (8 formatos y nombres), SVG hostil
+también abierto como página, varios Markdown, carpeta con elección, soltar, sustituir y
+revocar, PDF y vuelta. Fixtures generados (`tests/fixtures/markdown/recursos/generar.mjs`).
 
-**Fuera de alcance.** Otros diagramas (PlantUML, etc.), edición visual.
+**Pendiente de la fase**: nada bloqueante. Lo que sale está en
+[TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md).
 
-**Archivos esperados.** `src/markdown/pipeline.ts`,
-`src/markdown/components/MermaidBlock.tsx`, `src/markdown/mermaid-theme.ts`,
-`src/styles/markdown.css`, `package.json`, el script de copia de recursos si Vite no emite
-solo las fuentes de KaTeX, tests y E2E.
+---
 
-**Seguridad.** SEGURIDAD §3.1, filas de KaTeX y Mermaid; casos de §3.3 de KaTeX y Mermaid
-añadidos al corpus.
+## Fase 8 — Markdown: matemáticas y Mermaid ✅
 
-**Tests**
+Cerrada el 2026-09-30. Bitácora: iteración 10. Diseño completo: [ARCHITECTURE.md](ARCHITECTURE.md)
+§4 septies; seguridad: [SEGURIDAD.md](SEGURIDAD.md) §2.1 y §3.1.
 
-- Componentes: fórmula en línea y de bloque producen MathML; fórmula inválida no rompe;
-  corpus de XSS de KaTeX y Mermaid.
-- E2E: documento con 3 diagramas → 3 `<img>` con `src` `blob:`; ningún `<svg>` en línea
-  en la hoja; un documento sin matemáticas ni Mermaid **no descarga** sus chunks
-  (inspeccionar peticiones); cero violaciones de CSP.
+**Hecho.** Fórmulas `$…$`, `$$…$$` y ```` ```math ```` con KaTeX, a demanda; diagramas
+```` ```mermaid ```` con Mermaid en un **marco aislado** (iframe con `sandbox`, origen
+opaco, CSP propia sin red), dibujados al entrar en pantalla y mostrados como
+`<img src="blob:…">` con su código plegado. Fórmulas y diagramas inválidos, enormes o
+hostiles se ven como código con aviso; el documento nunca se rompe. Un Markdown sin
+fórmulas ni diagramas no descarga nada de esto.
 
-**Criterios de aceptación.** Definición de hecho común; el bundle inicial no crece
-(script de tamaño); corpus completo en verde.
+**Desviaciones respecto a la especificación anterior, y por qué:**
 
-**Documentación.** PLAN §7 y §11, SEGURIDAD §3, STACK, bitácora, TAREAS.
+- **Sin `rehype-katex`**: parsea el HTML de KaTeX con `innerHTML` en el navegador. BPDF
+  construye los nodos con el `toNode()` de KaTeX desde su árbol, y quita el `style` que
+  KaTeX pone por atributo en `\vec`, `\oiint` y `\pmb` (la CSP lo bloqueaba).
+- **`strict: "ignore"`** en vez de `"warn"`: `"warn"` escribe en consola por LaTeX no
+  estricto, y la consola limpia es un criterio de los E2E. `throwOnError: true` y el
+  código como reserva, en vez de `false`.
+- **Mermaid en un iframe aislado**, no en la página: con la CSP de la app, 250 violaciones
+  en cinco diagramas (Mermaid necesita estilos en línea). Decisión confirmada al empezar.
+  Añade `frame-src 'self'` a la app y una segunda página (`mermaid.html`) con su política.
+- **Mermaid 11.17.2**, no 12: la 12.0.0 era un major de tres semanas.
+- **Dos saneados del SVG**: en el marco con DOM, y en la app sin DOM (`DOMParser` hereda la
+  CSP de la app: cada `style` sería una violación, medido).
+- **Nodos con imagen** (`@{ img: … }`): no se dibujan (Mermaid intentaría cargar la imagen).
+- **Vite dejó de incrustar recursos como `data:`** (`assetsInlineLimit: 0`): las fuentes
+  pequeñas de KaTeX se incrustaban y la CSP las bloqueaba.
 
-**Resultado esperado.** Markdown técnico completo (código, fórmulas, diagramas).
+**Tests.** Unitarios: `svg-seguro` (saneador y verificador con SVG hostiles), `mermaid`
+(configuración, protocolo, marco: aislamiento, mensajes ajenos o mal formados, tiempo
+límite, destrucción), `matematicas` (opciones y entradas hostiles con KaTeX real),
+`seguridad` (CSP de la app y del marco, cabeceras por ruta). Componentes:
+`formulas-diagramas.test.tsx` (KaTeX real en jsdom, marco simulado, jest-axe). E2E
+(`formulas-diagramas.spec.ts`, 7): fórmulas, diagramas, aislamiento del marco desde
+dentro, KaTeX y Mermaid hostiles, documento sin fórmulas ni diagramas sin descargas,
+`mermaid.html` abierta directamente. Benchmark: `npm run bench:markdown`.
+
+**Pendiente de la fase**: nada bloqueante. Lo que sale está en
+[TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md).
 
 ---
 

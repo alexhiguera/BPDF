@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/Button";
+import { project } from "@/config/project";
 import type { DocumentError, DocumentErrorCode } from "@/documents/errors";
-import { MAX_BYTES } from "@/documents/limits";
+import { MAX_BYTES, MAX_FICHEROS_CARPETA } from "@/documents/limits";
 import { messages } from "@/i18n/messages";
 import { formatBytes } from "@/lib/format";
 
@@ -10,7 +11,12 @@ const t = messages.documentError;
 function reason(error: DocumentError): string {
   const texts: Record<DocumentErrorCode, string> = {
     unsupported: t.unsupported,
-    multiple: t.multiple,
+    "no-markdown": t.noMarkdown,
+    "several-markdown": t.severalMarkdown,
+    incompatible: t.incompatible,
+    "folder-no-markdown": t.folderNoMarkdown,
+    "folder-too-large": t.folderTooLarge(MAX_FICHEROS_CARPETA.toLocaleString(project.locale)),
+    "mixed-drop": t.mixedDrop,
     empty: t.empty,
     "too-large": t.tooLarge(formatBytes(MAX_BYTES[error.kind ?? "pdf"])),
     "not-pdf": t.notPdf,

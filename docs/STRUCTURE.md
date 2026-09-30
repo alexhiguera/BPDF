@@ -1,6 +1,6 @@
 # Estructura del repositorio
 
-Estado tras la Fase 7 (*2026-09-30*). Cada fase actualiza este árbol con lo que crea; lo
+Estado tras la Fase 8 (*2026-09-30*). Cada fase actualiza este árbol con lo que crea; lo
 que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas vacías).
 
 ```text
@@ -8,6 +8,7 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 ├── README.md                 qué es BPDF y cómo arrancarlo
 ├── LICENSE                   Apache-2.0
 ├── index.html                entrada de Vite; sin scripts en línea
+├── mermaid.html              segunda entrada: el marco aislado de Mermaid (F8), con su propia CSP
 ├── vite.config.ts            build estática, workers como módulos ES, cabeceras de `preview`, plugin de BPDF
 ├── playwright.bench.config.ts  benchmarks de los visores (`npm run bench:pdf` · `bench:markdown`, fuera de CI)
 ├── src/
@@ -16,7 +17,8 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   ├── App.tsx           proveedor del documento, enlace de salto, cabecera, <main>, Ctrl/Cmd+O;
 │   │   │                     monta el visor del documento abierto (PDF o Markdown, a demanda)
 │   │   ├── DropZone.tsx      zona de soltar a pantalla completa (envuelve la app)
-│   │   ├── EmptyState.tsx    vista sin documento: «Abrir archivo», atajo, privacidad
+│   │   ├── EmptyState.tsx    vista sin documento: «Abrir archivo», «Abrir carpeta», atajo, privacidad
+│   │   ├── ElegirMarkdown.tsx  carpeta con varios .md: el usuario elige el principal (F7 bis)
 │   │   ├── pdf/              interfaz del visor PDF (F5), cargada a demanda
 │   │   │   ├── VisorPdf.tsx  carga del PDF, estados cargando/error y ciclo de vida
 │   │   │   ├── Visor.tsx     área de lectura: disposición, desplazamiento, teclado, búsqueda
@@ -41,10 +43,12 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   ├── limits.ts         tamaños máximos, con su justificación
 │   │   ├── errors.ts         DocumentError y sus códigos
 │   │   ├── read.ts           readDocument(): valida y construye el documento
+│   │   ├── seleccion.ts      abrirSeleccion(): varios ficheros o carpeta → documento o elección (F7 bis)
+│   │   ├── recursos.ts       recursos de un Markdown: construcción y resolverRecurso() (F7 bis)
 │   │   └── DocumentProvider.tsx  estado (un documento, D16) y useDocument()
 │   ├── platform/             ÚNICA frontera web/Electron
-│   │   ├── types.ts          interfaz Platform (pickDocument, openDroppedFile, openExternal)
-│   │   ├── web.ts            implementación con APIs estándar del navegador
+│   │   ├── types.ts          interfaz Platform (pickDocument, pickFolder, openDropped, openExternal)
+│   │   ├── web.ts            implementación con APIs estándar (selector múltiple, carpetas, entradas)
 │   │   └── index.ts          createPlatform() (la rama de Electron llega en F14)
 │   ├── lib/                  utils.ts (cn()) · format.ts (tamaños legibles) · url-externa.ts (política de URLs)
 │   ├── vite-env.d.ts         tipos de Vite (imports de CSS)
@@ -62,8 +66,15 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   ├── url-policy.ts     clasificación de enlaces e imágenes (pura)
 │   │   ├── toc.ts            ids md-… de los encabezados y lectura del índice
 │   │   ├── resaltado.ts      lowlight con 9 gramáticas → React con lista blanca
-│   │   └── components/       Enlace · Imagen · BloqueCodigo · Indice · elementos (encabezados,
-│   │                         tabla, casilla) · acciones.ts (contexto visor ↔ elementos)
+│   │   ├── imagenes.ts       AlmacenUrls: URL blob: de las imágenes locales, con revocación (F7 bis)
+│   │   ├── matematicas.ts    KaTeX a demanda: opciones, nodos sin HTML ni estilos por atributo (F8)
+│   │   ├── mermaid.ts        MarcoMermaid: el iframe aislado visto desde la app (F8)
+│   │   ├── mermaid-config.ts configuración estricta, topes y protocolo de mensajes (F8)
+│   │   ├── marco-mermaid.ts  lo que corre DENTRO del marco (entrada de mermaid.html) (F8)
+│   │   ├── svg-seguro.ts     sanearSvg (marco, DOM) y verificarSvg (app, sin DOM) (F8)
+│   │   └── components/       Enlace · Imagen · BloqueCodigo · Preformateado (código, fórmula o
+│   │                         diagrama) · Formula · Diagrama · Indice · elementos (encabezados,
+│   │                         tabla, casilla) · acciones.ts (contextos visor ↔ elementos)
 │   ├── editor/               llega en F9
 │   └── preferences/          llega en F10
 ├── electron/                 llega en F14 (proceso main y preload; fuera de src/)
@@ -76,7 +87,8 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   └── public-docs.test.ts   el validador de public_docs
 ├── e2e/                      Playwright contra la build de producción
 │   ├── specs/                app.spec.ts (base) · abrir.spec.ts (apertura) · visor-pdf.spec.ts (visor PDF) ·
-│   │                         markdown.spec.ts (visor Markdown)
+│   │                         markdown.spec.ts (visor Markdown) · recursos.spec.ts (imágenes locales) ·
+│   │                         formulas-diagramas.spec.ts (KaTeX y Mermaid)
 │   ├── bench/                benchmarks de los visores (no son tests; `npm run bench:pdf` · `bench:markdown`)
 │   └── vigilancia.ts         consola, CSP y red vigiladas en cada carga
 ├── scripts/                  herramientas (.mjs, sin dependencias extra)

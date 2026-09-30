@@ -178,7 +178,11 @@ describe("App: abrir documentos", () => {
     const f = fichero("soltado.md", "texto s");
     await act(async () =>
       fireEvent.drop(screen.getByRole("banner"), {
-        dataTransfer: { types: ["Files"], files: [f] },
+        dataTransfer: {
+          types: ["Files"],
+          files: [f],
+          items: [{ kind: "file", webkitGetAsEntry: () => null }],
+        },
       }),
     );
     expect(
@@ -252,5 +256,68 @@ describe("ErrorBoundary", () => {
     fireEvent.click(screen.getByRole("button", { name: messages.error.retry }));
     expect(screen.getByText("recuperado")).toBeInTheDocument();
     consola.mockRestore();
+  });
+});
+
+describe("App: Markdown con recursos y carpetas (Fase 7 bis)", () => {
+  const carpeta = (entradas: Record<string, string>) =>
+    Object.entries(entradas).map(([ruta, contenido]) => ({
+      ruta,
+      file: fichero(ruta.slice(ruta.lastIndexOf("/") + 1), contenido),
+    }));
+
+  it("el estado vacío ofrece abrir archivo y abrir carpeta, y explica cómo ver las imágenes", () => {
+    montar();
+    expect(screen.getByRole("button", { name: messages.open.button })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: messages.open.folder })).toBeInTheDocument();
+    expect(screen.getByText(messages.emptyState.resources)).toBeInTheDocument();
+  });
+
+  it("una carpeta con varios Markdown pide elegir; elegir abre ese", async () => {
+    const plataforma = new PlataformaEnMemoria().elegiraCarpeta(
+      carpeta({ "README.md": "texto readme", "docs/guia.md": "texto guía", "i.png": "x" }),
+    );
+    const { container } = montar(plataforma);
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: messages.open.folder })),
+    );
+    const t = messages.chooseMarkdown;
+    const titulo = screen.getByRole("heading", { name: t.title });
+    expect(titulo).toHaveFocus();
+    expect(screen.queryByRole("button", { name: messages.open.button })).toBeNull();
+    const lista = screen.getByRole("list", { name: t.list });
+    expect(
+      within(lista)
+        .getAllByRole("button")
+        .map((b) => b.textContent),
+    ).toEqual(["README.md", "docs/guia.md"]);
+    expect(await axe(container)).toHaveNoViolations();
+    await act(async () =>
+      fireEvent.click(within(lista).getByRole("button", { name: "docs/guia.md" })),
+    );
+    expect(await screen.findByRole("heading", { level: 1, name: "guia.md" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: t.title })).toBeNull();
+  });
+
+  it("cancelar la elección deja el documento abierto como estaba", async () => {
+    const plataforma = new PlataformaEnMemoria()
+      .elegira(fichero("abierto.md", "texto"))
+      .elegiraCarpeta(carpeta({ "a.md": "a", "b.md": "b" }));
+    montar(plataforma);
+    await abrir();
+    await screen.findByRole("heading", { level: 1, name: "abierto.md" });
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: messages.open.folder })),
+    );
+    fireEvent.click(screen.getByRole("button", { name: messages.chooseMarkdown.cancel }));
+    expect(screen.queryByRole("heading", { name: messages.chooseMarkdown.title })).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 1 })[0]).toHaveTextContent("abierto.md");
+  });
+
+  it("elegir varios Markdown a la vez da un error claro y no abre ninguno", async () => {
+    montar(new PlataformaEnMemoria().elegira([fichero("a.md", "a"), fichero("b.md", "b")]));
+    await abrir();
+    expect(screen.getByRole("alert")).toHaveTextContent(messages.documentError.severalMarkdown);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(messages.emptyState.title);
   });
 });

@@ -1,8 +1,24 @@
 import { type DragEvent, type ReactNode, useState } from "react";
 import { messages } from "@/i18n/messages";
+import type { Soltado } from "@/platform";
 
 /** Solo interesan los arrastres de ficheros; texto o enlaces arrastrados se ignoran. */
 const carriesFiles = (e: DragEvent) => Array.from(e.dataTransfer.types).includes("Files");
+
+/**
+ * Copia lo soltado DENTRO del evento: al terminar el `drop`, el navegador
+ * vacía `dataTransfer` y las entradas de carpeta dejan de poder leerse.
+ * `webkitGetAsEntry` es la API estándar (File and Directory Entries) que dice
+ * si un elemento es una carpeta; si el navegador no la tiene, `null`.
+ */
+function capturar(dt: DataTransfer): Soltado {
+  return {
+    ficheros: Array.from(dt.files),
+    entradas: Array.from(dt.items)
+      .filter((i) => i.kind === "file")
+      .map((i) => i.webkitGetAsEntry?.() ?? null),
+  };
+}
 
 /**
  * Zona de soltar a pantalla completa (docs/PLAN.md §9.3). Envuelve toda la app
@@ -22,7 +38,7 @@ export function DropZone({
   onFiles,
   children,
 }: {
-  onFiles: (files: File[]) => void;
+  onFiles: (soltado: Soltado) => void;
   children: ReactNode;
 }) {
   const [depth, setDepth] = useState(0);
@@ -50,7 +66,7 @@ export function DropZone({
         if (!carriesFiles(e)) return;
         e.preventDefault();
         setDepth(0);
-        onFiles(Array.from(e.dataTransfer.files));
+        onFiles(capturar(e.dataTransfer));
       }}
     >
       {children}

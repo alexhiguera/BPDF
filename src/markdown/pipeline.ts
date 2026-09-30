@@ -1,6 +1,7 @@
 import type { Nodes, Parent, Root } from "mdast";
 import type { Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import { messages } from "@/i18n/messages";
 import { PREFIJO_ID, remarkIdsEncabezados } from "./toc";
 import { transformarUrl } from "./url-policy";
@@ -24,11 +25,17 @@ import { transformarUrl } from "./url-policy";
  *   plugin futuro (Fase 8) introduce otro elemento, tiene que añadirse aquí
  *   a propósito; si no, se descarta (conservando su contenido).
  *
- * La Fase 8 (KaTeX, Mermaid) amplía `pluginsRemark` y los componentes; el
- * resto no cambia.
+ * Fase 8: `remarkMath` añade la sintaxis de fórmulas, sin elementos nuevos
+ * (produce `<code>` y `<pre>`). Las fórmulas (KaTeX) y los diagramas
+ * (Mermaid) los pintan componentes propios FUERA de este árbol y de su lista
+ * blanca: `Formula` construye nodos con KaTeX y `Diagrama` una `<img>`.
  */
 export const pluginsRemark: NonNullable<Options["remarkPlugins"]> = [
   remarkGfm,
+  // Fase 8: `$…$` y `$$…$$` como nodos de fórmula (en hast, `<code>` con la
+  // clase `math-inline` o `language-math`). Solo la sintaxis: KaTeX se carga
+  // aparte y a demanda (`matematicas.ts`), y no se usa `rehype-katex`.
+  remarkMath,
   remarkQuitarComentarios,
   remarkIdsEncabezados,
 ];

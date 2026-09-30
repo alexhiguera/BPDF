@@ -12,7 +12,12 @@ const t = messages.documentError;
 // Cada código con el texto que debe verse: ninguno se queda sin mensaje.
 const CASOS: [DocumentErrorCode, string][] = [
   ["unsupported", t.unsupported],
-  ["multiple", t.multiple],
+  ["no-markdown", t.noMarkdown],
+  ["several-markdown", t.severalMarkdown],
+  ["incompatible", t.incompatible],
+  ["folder-no-markdown", t.folderNoMarkdown],
+  ["folder-too-large", t.folderTooLarge("10.000")],
+  ["mixed-drop", t.mixedDrop],
   ["empty", t.empty],
   ["not-pdf", t.notPdf],
   ["not-utf8", t.notUtf8],

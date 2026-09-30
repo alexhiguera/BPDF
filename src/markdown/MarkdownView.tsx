@@ -3,12 +3,20 @@ import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } fr
 import Markdown, { type Components } from "react-markdown";
 import type { OpenedMarkdown } from "@/documents/types";
 import { messages } from "@/i18n/messages";
-import { type AccionesDocumento, ContextoAcciones } from "./components/acciones";
-import { BloqueCodigo } from "./components/BloqueCodigo";
+import {
+  type AccionesDocumento,
+  ContextoAcciones,
+  ContextoDiagramas,
+  ContextoImagenes,
+  type ImagenesDocumento,
+} from "./components/acciones";
 import { Enlace } from "./components/Enlace";
 import { Casilla, encabezado, Tabla } from "./components/elementos";
 import { Imagen } from "./components/Imagen";
 import { Indice } from "./components/Indice";
+import { CodigoEnLinea, Preformateado } from "./components/Preformateado";
+import { AlmacenUrls } from "./imagenes";
+import { MarcoMermaid } from "./mermaid";
 import { opcionesPipeline } from "./pipeline";
 import { type EntradaIndice, idsCandidatos, leerIndice } from "./toc";
 import "@/styles/markdown.css";
@@ -19,7 +27,8 @@ const t = messages.markdown;
 const COMPONENTES: Components = {
   a: Enlace,
   img: Imagen,
-  pre: BloqueCodigo,
+  pre: Preformateado,
+  code: CodigoEnLinea,
   table: Tabla,
   input: Casilla,
   h1: encabezado(1),
@@ -59,9 +68,9 @@ const Contenido = memo(function Contenido({ texto }: { texto: string }) {
  *
  * Recibe el texto que ya leyó `DocumentProvider` (Fase 3): no vuelve a leer
  * el fichero. Se monta con `key={document.id}`: abrir otro documento lo
- * desmonta entero. No crea listeners globales, observers, workers ni URL de
- * objeto; lo único temporal son los avisos de «Copiado», que cada bloque de
- * código cancela al desmontarse.
+ * desmonta entero. No crea listeners globales, observers ni workers. Lo
+ * temporal: los avisos de «Copiado» (cada bloque los cancela al desmontarse) y
+ * las URL `blob:` de las imágenes locales (`AlmacenUrls`, revocadas aquí).
  *
  * El contenido vive en un `<article>` propio, que es el que se desplaza: la
  * búsqueda (Fase posterior) podrá recorrer su texto sin tocar el pipeline.
@@ -83,6 +92,33 @@ export default function MarkdownView({
   const [aviso, setAviso] = useState("");
   const [listo, setListo] = useState(() => documento.text.length <= UMBRAL_DIFERIDO);
   const abrirFuera = useRef(onOpenExternal);
+  // Las URL `blob:` de las imágenes de ESTE documento: se revocan todas al
+  // desmontar (cerrar o abrir otro, que monta otro visor con `key`).
+  const [almacen] = useState(() => new AlmacenUrls());
+  useEffect(() => () => almacen.revocarTodo(), [almacen]);
+  // El marco aislado de Mermaid: solo si el documento tiene diagramas (se crea al
+  // pedirlo) y se destruye, iframe incluido, al desmontar.
+  const marco = useRef<MarcoMermaid | null>(null);
+  useEffect(
+    () => () => {
+      marco.current?.destruir();
+      marco.current = null;
+    },
+    [],
+  );
+  const diagramas = useMemo(
+    () => ({
+      marco() {
+        marco.current ??= new MarcoMermaid();
+        return marco.current;
+      },
+    }),
+    [],
+  );
+  const imagenes = useMemo<ImagenesDocumento>(
+    () => ({ recursos: documento.resources, almacen }),
+    [documento.resources, almacen],
+  );
 
   useEffect(() => {
     abrirFuera.current = onOpenExternal;
@@ -183,7 +219,11 @@ export default function MarkdownView({
           <div className="md-contenido" aria-busy={!listo}>
             {listo ? (
               <ContextoAcciones value={acciones}>
-                <Contenido texto={documento.text} />
+                <ContextoImagenes value={imagenes}>
+                  <ContextoDiagramas value={diagramas}>
+                    <Contenido texto={documento.text} />
+                  </ContextoDiagramas>
+                </ContextoImagenes>
               </ContextoAcciones>
             ) : (
               <p role="status" className="text-fg-muted">

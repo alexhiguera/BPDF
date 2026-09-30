@@ -18,25 +18,46 @@ export const messages = {
   emptyState: {
     title: "Tu lector de PDF y Markdown",
     body: "Abre un PDF o un Markdown, o arrástralo a esta ventana.",
+    resources:
+      "¿Un Markdown con imágenes? Selecciona el .md junto con las imágenes que usa, o abre la carpeta que lo contiene.",
     privacy: "Tus documentos no salen de este dispositivo.",
   },
   open: {
     button: "Abrir archivo",
+    folder: "Abrir carpeta",
     shortcut: "Atajo: Ctrl+O (⌘O en Mac)",
   },
   dropZone: {
-    hint: "Suelta el archivo para abrirlo",
+    hint: "Suelta el archivo para abrirlo (o un Markdown con sus imágenes, o su carpeta)",
   },
   document: {
     /** Nombre que se muestra si el fichero no trae uno utilizable. */
     untitled: "Sin nombre",
+  },
+  /** Carpeta con varios Markdown (Fase 7 bis): el usuario elige el principal. */
+  chooseMarkdown: {
+    title: "¿Qué Markdown quieres abrir?",
+    body: (total: number) =>
+      `La carpeta tiene ${total} archivos Markdown. Elige el que quieres leer; sus imágenes se buscarán en la misma carpeta.`,
+    list: "Markdown de la carpeta",
+    cancel: "Cancelar",
   },
   documentError: {
     title: (fileName: string) => `No se ha podido abrir «${fileName}»`,
     titleNoFile: "No se ha podido abrir el archivo",
     dismiss: "Descartar aviso",
     unsupported: "BPDF abre archivos PDF (.pdf) y Markdown (.md, .markdown).",
-    multiple: "Suelta un solo archivo: BPDF abre un documento cada vez.",
+    noMarkdown:
+      "Entre los archivos elegidos no hay ningún Markdown (.md). Para ver un Markdown con sus imágenes, elige el .md junto con ellas.",
+    severalMarkdown:
+      "Has elegido varios Markdown. BPDF abre un documento cada vez: elige un solo .md junto con sus imágenes.",
+    incompatible:
+      "Ese archivo no puede acompañar a un Markdown. Un PDF se abre solo; un Markdown, solo o con sus imágenes (PNG, JPEG, GIF, WebP o SVG).",
+    folderNoMarkdown:
+      "La carpeta no contiene ningún Markdown (.md). Para abrir un PDF, usa «Abrir archivo».",
+    mixedDrop: "Suelta una sola carpeta, o archivos sueltos, pero no las dos cosas a la vez.",
+    folderTooLarge: (max: string) =>
+      `La carpeta tiene demasiados archivos (más de ${max}). Abre una carpeta más pequeña, o el Markdown junto con sus imágenes.`,
     empty: "El archivo está vacío.",
     tooLarge: (max: string) => `El archivo supera el tamaño máximo para este tipo (${max}).`,
     notPdf: "El archivo se llama .pdf, pero su contenido no es un PDF.",
@@ -144,14 +165,51 @@ export const messages = {
       remoteHint:
         "BPDF no descarga imágenes de internet: la petición revelaría a un tercero que estás leyendo este documento.",
       openRemote: "Abrir la imagen en el navegador",
-      local: "imagen local no disponible",
-      localHint:
-        "BPDF todavía no carga las imágenes que acompañan a un Markdown: solo recibe el archivo .md.",
       blocked: "imagen bloqueada por seguridad",
+      /** Imágenes locales (Fase 7 bis): por qué no se muestra una. */
+      local: {
+        "no-encontrado": "imagen local no incluida",
+        fuera: "imagen fuera de los archivos elegidos",
+        "no-soportado": "formato de imagen no admitido",
+        "demasiado-grande": "imagen demasiado grande",
+        ambiguo: "imagen ambigua",
+        invalido: "ruta de imagen no válida",
+        rota: "no se ha podido mostrar la imagen",
+      },
+      localHint: {
+        "no-encontrado":
+          "No está entre los archivos que elegiste. Para verla, abre el Markdown junto con sus imágenes, o abre su carpeta.",
+        fuera:
+          "La ruta sale de la carpeta o de los archivos elegidos. BPDF no busca archivos en tu equipo.",
+        "no-soportado": "BPDF muestra imágenes PNG, JPEG, GIF, WebP y SVG.",
+        "demasiado-grande": (max: string) => `La imagen supera el tamaño máximo (${max}).`,
+        ambiguo: "Hay más de un archivo elegido que corresponde a esta ruta.",
+        invalido: "La ruta de la imagen no se puede interpretar.",
+        rota: "El archivo está dañado o no es la imagen que dice ser.",
+      },
     },
     task: {
       done: "Tarea hecha",
       pending: "Tarea pendiente",
+    },
+    /** Fórmulas (Fase 8). */
+    math: {
+      invalid: "Fórmula no válida: se muestra su código",
+    },
+    /** Diagramas Mermaid (Fase 8). */
+    diagram: {
+      alt: (tipo: string) => (tipo ? `Diagrama Mermaid (${tipo})` : "Diagrama Mermaid"),
+      source: "Código del diagrama",
+      /** Título del iframe (oculto) donde se dibujan. */
+      frame: "Marco aislado para dibujar diagramas",
+      drawing: "Dibujando el diagrama…",
+      errors: {
+        invalid:
+          "No se ha podido dibujar este diagrama: su sintaxis no es válida. Se muestra su código.",
+        tooLarge: "Este diagrama es demasiado grande para dibujarlo. Se muestra su código.",
+        images:
+          "Este diagrama usa imágenes, que BPDF no carga (podrían pedirse a internet). Se muestra su código.",
+      },
     },
   },
   error: {

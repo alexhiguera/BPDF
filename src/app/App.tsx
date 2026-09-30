@@ -6,6 +6,7 @@ import { messages } from "@/i18n/messages";
 import type { Platform } from "@/platform";
 import { DocumentErrorAlert } from "./DocumentErrorAlert";
 import { DropZone } from "./DropZone";
+import { ElegirMarkdown } from "./ElegirMarkdown";
 import { EmptyState } from "./EmptyState";
 
 /**
@@ -33,7 +34,18 @@ export function App({ platform }: { platform: Platform }) {
  * router: el documento abierto decide qué se monta en `<main>`.
  */
 function Shell({ platform }: { platform: Platform }) {
-  const { document, error, openWithPicker, openDropped, close, dismissError } = useDocument();
+  const {
+    document,
+    error,
+    choice,
+    openWithPicker,
+    openFolder,
+    openDropped,
+    choose,
+    cancelChoice,
+    close,
+    dismissError,
+  } = useDocument();
   const main = useRef<HTMLElement>(null);
 
   useOpenShortcut(openWithPicker);
@@ -55,9 +67,14 @@ function Shell({ platform }: { platform: Platform }) {
         <span className="font-semibold">{project.name}</span>
         {/* Sin documento, la acción está en el centro del estado vacío. */}
         {document && (
-          <Button variant="secondary" onClick={openWithPicker}>
-            {messages.open.button}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={openFolder}>
+              {messages.open.folder}
+            </Button>
+            <Button variant="secondary" onClick={openWithPicker}>
+              {messages.open.button}
+            </Button>
+          </div>
         )}
       </header>
       <main
@@ -67,6 +84,7 @@ function Shell({ platform }: { platform: Platform }) {
         className="flex min-h-0 flex-1 flex-col overflow-auto bg-reading"
       >
         {error && <DocumentErrorAlert error={error} onDismiss={dismissError} />}
+        {choice && <ElegirMarkdown choice={choice} onChoose={choose} onCancel={cancelChoice} />}
         {document?.kind === "pdf" ? (
           <Suspense fallback={<p className="p-6 text-fg-muted">{messages.pdf.loading}</p>}>
             <VisorPdf
@@ -86,7 +104,7 @@ function Shell({ platform }: { platform: Platform }) {
             />
           </Suspense>
         ) : (
-          <EmptyState onOpen={openWithPicker} />
+          !choice && <EmptyState onOpen={openWithPicker} onOpenFolder={openFolder} />
         )}
       </main>
     </DropZone>

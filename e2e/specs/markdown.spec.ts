@@ -214,7 +214,9 @@ test("Markdown malicioso: nada se ejecuta, nada se pide a la red y ningún href 
 
   // Las imágenes no se cargan: marcadores, y el píxel espía nunca se pide.
   await expect(a.locator('[data-imagen="remota"]')).toContainText(t.image.remote);
-  await expect(a.locator('[data-imagen="local"]')).toContainText(t.image.local);
+  await expect(a.locator('[data-imagen="no-encontrado"]')).toContainText(
+    t.image.local["no-encontrado"],
+  );
   await expect(a.locator('[data-imagen="bloqueada"]')).toHaveCount(2);
 
   // Encabezados con prefijo: `location` sigue siendo la de la ventana.
@@ -225,18 +227,30 @@ test("Markdown malicioso: nada se ejecuta, nada se pide a la red y ningún href 
 
 test("pasar de Markdown a PDF y de PDF a Markdown sustituye el documento", async ({ page }) => {
   const v = await cargar(page, "indice.md");
-  await elegir(page, page.getByRole("banner").getByRole("button"), PDF);
+  await elegir(
+    page,
+    page.getByRole("banner").getByRole("button", { name: messages.open.button }),
+    PDF,
+  );
   await expect(titulo(page)).toHaveText("minimo.pdf");
   await expect(page.getByRole("article")).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: t.tocLabel })).toHaveCount(0);
   await expect(page.locator('[data-pagina="1"][data-estado="lista"]')).toBeVisible();
 
-  await elegir(page, page.getByRole("banner").getByRole("button"), md("basico.md"));
+  await elegir(
+    page,
+    page.getByRole("banner").getByRole("button", { name: messages.open.button }),
+    md("basico.md"),
+  );
   await expect(titulo(page)).toHaveText("basico.md");
   await expect(page.locator("[data-pagina]")).toHaveCount(0);
   await expect(articulo(page).getByRole("heading", { name: "Lista" })).toBeVisible();
 
-  await elegir(page, page.getByRole("banner").getByRole("button"), md("gfm.md"));
+  await elegir(
+    page,
+    page.getByRole("banner").getByRole("button", { name: messages.open.button }),
+    md("gfm.md"),
+  );
   await expect(titulo(page)).toHaveText("gfm.md");
   await expect(page.getByRole("heading", { name: "Documento de prueba de BPDF" })).toHaveCount(0);
 

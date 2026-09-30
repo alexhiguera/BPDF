@@ -78,7 +78,7 @@ export function BloqueCodigo({ node }: ExtraProps) {
  * pierde el salto de línea final que añade remark-rehype (no está en el
  * documento: se copiaría de más).
  */
-function codigoDe(pre: Element | undefined): { texto: string; clase: string } {
+export function codigoDe(pre: Element | undefined): { texto: string; clase: string } {
   const code = pre?.children.find(
     (h): h is Element => h.type === "element" && h.tagName === "code",
   );

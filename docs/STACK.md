@@ -1,6 +1,6 @@
 # Stack tecnológico
 
-Estado tras la Fase 7 (*2026-09-30*): la Fase 4 añadió `pdfjs-dist` (el motor de PDF) y la
+Estado tras la Fase 8 (*2026-09-30*; la Fase 8 añadió `remark-math`, `katex` y `mermaid`): la Fase 4 añadió `pdfjs-dist` (el motor de PDF) y la
 Fase 7 el pipeline de Markdown (`react-markdown`, `remark-gfm`) y el resaltado de código
 (`lowlight`, `highlight.js`). El stack **objetivo** (pipeline de Markdown, Electron) y el motivo
 de cada pieza están en [PLAN.md](PLAN.md); cada fase añade aquí lo que instala.
@@ -57,6 +57,9 @@ explica, para que el documento no se quede atrás.
 | `remark-gfm` | GitHub Flavored Markdown: tablas, listas de tareas, tachado, autoenlaces y notas al pie. **Versión exacta** (4.0.1) |
 | `lowlight` | Resaltado de sintaxis de los bloques de código: highlight.js con salida en árbol (hast) en lugar de una cadena HTML, que se convierte a React con lista blanca (`src/markdown/resaltado.ts`). **Versión exacta** (3.3.0). Se usa directamente, **sin `rehype-highlight`**: ese plugin importa el paquete `common` (~37 gramáticas) aunque se le pasen otras y dificulta copiar el texto original |
 | `highlight.js` | Las gramáticas de los lenguajes que se resaltan (9: JavaScript/JSX, TypeScript/TSX, JSON, HTML/XML, CSS, Bash, Python, Markdown, SQL), importadas una a una. **Versión exacta** (11.11.1, no la 11.12: `lowlight` 3.3.0 pide `~11.11.0` y así hay una sola copia). Dependencia directa porque se importan sus gramáticas |
+| `remark-math` | Fase 8: la sintaxis de fórmulas (`$…$`, `$$…$$`) en el árbol de Markdown. **Versión exacta** (6.0.0). Solo sintaxis: no pinta nada ni importa KaTeX en el navegador (su dependencia `micromark-extension-math` trae un `katex` 0.16 para su salida HTML, que BPDF no usa ni empaqueta). Sin `rehype-katex`: parsea el HTML de KaTeX con `innerHTML` en el navegador |
+| `katex` | Fase 8: pinta las fórmulas. **Versión exacta** (0.18.9; sin dependencias de runtime). Se carga a demanda con su hoja de estilos y sus fuentes, servidas desde el propio origen. BPDF pide su árbol (`__renderToDomTree`, API interna, estable dentro de la versión fijada) y crea los nodos con `toNode()`: nada de `innerHTML`. `trust: false`, `maxExpand`, `maxSize`, macros aisladas por fórmula ([ARCHITECTURE.md](ARCHITECTURE.md) §4 septies) |
+| `mermaid` | Fase 8: los diagramas. **Versión exacta** (11.17.2, la última de la rama 11; la 12.0.0 era un major de tres semanas). **Nunca corre en la app**: solo en el marco aislado `mermaid.html` (iframe con `sandbox`), con `securityLevel: "strict"` y su propia CSP. Arrastra `d3`, `dagre-d3-es`, `cytoscape`, `elkjs`, `dompurify`, `marked`, `katex` 0.16 y más (122 paquetes nuevos con los anteriores; `npm audit` limpio). Se descarga por trozos, solo el tipo de diagrama que se dibuja |
 | `pdfjs-dist` | El motor de PDF (pdf.js de Mozilla). **Versión exacta** (6.3.289): procesa contenido no confiable. Build **`legacy`** (D18). Se carga a demanda, con `useWasm: false` y sus recursos servidos desde el propio origen ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §3). El visor usa solo sus APIs núcleo y `TextLayer` (D17, [ARCHITECTURE.md](ARCHITECTURE.md) §4 quater) |
 
 ### `pdfjs-dist`: qué trae y qué implica
@@ -89,6 +92,22 @@ explica, para que el documento no se quede atrás.
   en JavaScript): los copia `scripts/copiar-pdfjs.mjs` a `public/pdfjs/` en `predev` y
   `prebuild`, sin los `.wasm`, el motor de JavaScript de PDF (`quickjs-eval`) ni el sandbox.
   `public/pdfjs/` no se versiona.
+
+### `katex` y `mermaid`: qué traen y qué implican (Fase 8)
+
+- **Vite y `data:`.** Vite incrusta como `data:` los recursos de menos de 4 KB; algunas
+  fuentes de KaTeX lo son y la CSP (`font-src 'self'`) las bloqueaba. `build.assetsInlineLimit: 0`
+  en `vite.config.ts`: nada se incrusta, todo es fichero del propio origen.
+- **Dos páginas en la build**: `index.html` y `mermaid.html` (el marco). Esta última lleva
+  su propia CSP (`CSP_MARCO_MERMAID`) y sus módulos se piden desde un origen opaco, en
+  modo CORS: `/assets/` se sirve con `Access-Control-Allow-Origin: *` (ficheros públicos
+  de la build, sin credenciales). El hosting actual (Vercel) ya lo manda.
+- **Estilos de KaTeX por atributo**: dos construcciones (`\vec`, `\oiint`, y `\pmb` en
+  MathML) ponen `style` con `setAttribute`, que la CSP bloquea; BPDF lo quita del árbol
+  antes de crear los nodos y lo suple con CSS.
+- **Versiones**: revisar avisos de seguridad de las dos (y de `dompurify`, que usa Mermaid)
+  como con pdf.js; una subida de Mermaid se prueba con `mermaid-hostil.md` y
+  `e2e/specs/formulas-diagramas.spec.ts` antes de aceptarla.
 
 ### `react-markdown` y su cadena: qué trae y qué implica
 
@@ -130,6 +149,38 @@ gzip, +0,9 KB de textos). Evaluadas y descartadas: `rehype-highlight` (arriba), 
 más peso), un resaltador propio (peor calidad y más código que mantener para procesar
 contenido hostil) y `github-slugger` (16 KB para 20 líneas: los ids de encabezado son
 propios, `src/markdown/toc.ts`).
+
+**Añadidas en la Fase 8** (runtime, versiones exactas): `remark-math` 6.0.0, `katex` 0.18.9 y
+`mermaid` 11.17.2. Sin scripts de instalación y con `npm audit` limpio. Todo a demanda: el
+arranque no cambia de forma apreciable (89,2 → 89,6 KB gzip: textos y el `preload-helper`
+que Vite separa ahora); el lector de Markdown crece 71 → 75 KB (`remark-math` y los
+componentes); KaTeX son 77 KB de JavaScript y 4 KB de CSS, y cada fórmula nueva pide solo las
+fuentes woff2 que usa; Mermaid, ~50 KB de entrada más ~870 KB en un centenar de trozos, de
+los que se piden solo los del tipo de diagrama. Un Markdown sin fórmulas ni diagramas no
+descarga nada de esto (E2E).
+
+Evaluadas y descartadas:
+
+- `rehype-katex`: convierte la cadena HTML de KaTeX en árbol con
+  `hast-util-from-html-isomorphic`, que en el navegador usa `innerHTML` (en un
+  `<template>`); además fija `katex ^0.16`.
+- KaTeX solo en MathML (`output: "mathml"`): menos superficie y sin fuentes, pero la
+  calidad depende de las fuentes matemáticas del sistema (en Linux, a menudo ninguna).
+- Mermaid en la página (`securityLevel: "strict"` sin iframe): dibuja con `<style>` y
+  atributos `style` en línea; con la CSP de BPDF, 250 violaciones en un documento de cinco
+  diagramas (medido). Relajar `style-src` en toda la app no se contempla.
+- `securityLevel: "sandbox"` de Mermaid: su iframe es `data:`, que la CSP no admite, y
+  además pinta cada diagrama en un iframe dentro del documento.
+- Un segundo KaTeX para deduplicar con el de Mermaid (0.16): el nuestro es más reciente y el
+  de Mermaid solo se cargaría, dentro del marco, si una etiqueta usa `$$…$$`.
+
+**Fase 7 bis: ninguna dependencia nueva.** Varios ficheros, carpetas y arrastre de
+carpetas usan solo APIs estándar del navegador: `<input multiple>`, `<input webkitdirectory>`
+y File and Directory Entries (`webkitGetAsEntry`, `FileSystemDirectoryReader`), presentes
+en Chrome, Edge, Firefox y Safari desde antes de los mínimos de `build.target`. Las
+imágenes, con `URL.createObjectURL`. Ninguna librería de exploración de ficheros ni de
+saneado de SVG. Los fixtures JPEG y WebP los codifica el Chromium de Playwright (ya en
+desarrollo).
 
 **Fase 5: ninguna dependencia nueva.** El visor (virtualización, zoom, búsqueda,
 miniaturas, enlaces, worker del modo oscuro) es código propio sobre pdf.js y React: sin

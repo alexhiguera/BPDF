@@ -14,12 +14,13 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   objetivo en [`docs/PLAN.md`](docs/PLAN.md).
 - **Principio rector:** los documentos del usuario **no salen del dispositivo**. Sin
   backend, API, base de datos, cuentas, sincronización ni telemetría.
-- **Estado:** Fases 0–5 y 7 cerradas. La app es una SPA estática de Vite + React (D1)
+- **Estado:** Fases 0–5, 7, 7 bis y 8 cerradas. La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
   oscuro selectivo en un worker ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §4 quater);
-  los Markdown, en un lector GFM que no interpreta HTML y aún no carga imágenes (§4
-  quinquies). Plan y estado:
+  los Markdown, en un lector GFM que no interpreta HTML y muestra las imágenes que el
+  usuario entrega con el `.md` (varios ficheros o una carpeta), fórmulas (KaTeX) y
+  diagramas (Mermaid, en un iframe aislado con su propia CSP) (§4 quinquies a septies). Plan y estado:
   [`docs/FASES.md`](docs/FASES.md) y [`docs/TAREAS_PENDIENTES.md`](docs/TAREAS_PENDIENTES.md).
 - **Estática, siempre:** la build (`dist/`) son ficheros. Nada de servidor, SSR, API ni
   funciones serverless, ni variables de entorno.

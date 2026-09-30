@@ -163,9 +163,11 @@ Cambios respecto al diseño de la Fase 0, y por qué:
 - **Markdown: solo el texto**; los bytes leídos se descartan tras decodificar.
 - **Id con un contador**, no `crypto.randomUUID()`: solo tiene que ser único y no
   derivar del nombre, y `randomUUID` no existe fuera de un contexto seguro.
-- **Sin `resources` ni `capabilities`**: las añaden las fases que los usan (imágenes de
-  Markdown, aplazadas en la Fase 7; guardar, Fase 9). El visor de Markdown (Fase 7) usa
-  solo `text`. No se diseñan campos sin uso.
+- **`resources` (Fase 7 bis)** en `OpenedMarkdown`: las imágenes entregadas con el `.md`
+  (ruta relativa normalizada → `Blob` sin leer), el directorio del `.md` y las rutas
+  ambiguas. Un `.md` suelto lleva `SIN_RECURSOS`. Nunca rutas de disco
+  ([ARCHITECTURE.md](ARCHITECTURE.md) §4 sexies). `capabilities` (guardar) llega con la
+  Fase 9. No se diseñan campos sin uso.
 
 Reglas:
 
@@ -224,15 +226,17 @@ electron/                    F14: main.ts · preload.ts · protocol.ts · ipc.ts
 
 | Vía | Web | Electron |
 |---|---|---|
-| Selector | ✅ F3: `<input type="file" accept=".pdf,.md,.markdown">` creado al vuelo (fuera del DOM) por el botón «Abrir archivo»; `Ctrl/Cmd+O` | Diálogo nativo en el proceso main (`dialog.showOpenDialog`) vía IPC |
-| Arrastrar y soltar | ✅ F3: zona a pantalla completa con manejadores de React sobre la raíz de la app (sin listeners en `window`); **un fichero** (D16). Varios ficheros (un `.md` con sus imágenes) llegan en la Fase 7 | Igual (DOM); `webUtils.getPathForFile` en el preload solo si hace falta guardar o resolver relativos |
+| Selector | ✅ F3: `<input type="file">` creado al vuelo (fuera del DOM) por el botón «Abrir archivo»; `Ctrl/Cmd+O`. ✅ F7 bis: **selección múltiple** (un documento suelto, o un `.md` con sus imágenes; el filtro admite también PNG, JPEG, GIF, WebP y SVG) | Diálogo nativo en el proceso main (`dialog.showOpenDialog`) vía IPC |
+| Carpeta | ✅ F7 bis: botón «Abrir carpeta», `<input type="file" webkitdirectory>`; con varios `.md`, el usuario elige | Diálogo nativo de carpeta en el main; el main entrega rutas relativas |
+| Arrastrar y soltar | ✅ F3: zona a pantalla completa con manejadores de React sobre la raíz de la app (sin listeners en `window`). ✅ F7 bis: varios ficheros (un `.md` con sus imágenes) o una carpeta (`webkitGetAsEntry`, capturado dentro del evento) | Igual (DOM); `webUtils.getPathForFile` en el preload solo si hace falta guardar o resolver relativos |
 | Argumentos / «Abrir con…» | No aplica | `process.argv` (Windows/Linux), `open-file` (macOS), `second-instance` con bloqueo de instancia única; el main lee y valida, y envía el contenido |
 | Guardar (Markdown) | `showSaveFilePicker` si existe (Chromium), si no descarga con `<a download>` y Blob | IPC `saveDocument(id, texto)`: el main solo escribe en ficheros que el usuario abrió o eligió con «Guardar como» |
 
 La interfaz `Platform` ([ELECTRON.md](ELECTRON.md) §3) existe desde la Fase 3 con la
-implementación web ([`src/platform/`](../src/platform/)) y dos métodos, los únicos que se
-usan hoy: `pickDocument()` y `openDroppedFile(file)`. Las dos implementaciones terminan en
-la misma validación (`readDocument`); la de Electron llega en la Fase 14 sin tocar el
+implementación web ([`src/platform/`](../src/platform/)). Hoy: `pickDocument()`,
+`pickFolder()`, `openDropped(soltado)` y `openExternal(url)`. Las implementaciones terminan
+en la misma validación (`abrirSeleccion` → `readDocument`, [ARCHITECTURE.md](ARCHITECTURE.md)
+§4 sexies); la de Electron llega en la Fase 14 sin tocar el
 resto de la app. Guardar, enlaces externos y «Abrir con…» se añaden en las fases que los
 usan. **Abrir desde una URL no se hará:** rompería el principio de privacidad.
 
@@ -332,8 +336,8 @@ Por defecto **no interpreta HTML crudo** y filtra URLs con `defaultUrlTransform`
 | Enlaces | No | Componente `Link` + `url-policy.ts` propios | Medio (protocolos) | — | 7 |
 | Índice / TOC | No | Ids propios al estilo de GitHub con prefijo `md-` (plugin de remark); el índice (h1–h6) se lee de los encabezados ya pintados | Bajo (DOM clobbering: prefijo) | — | ✅ 7 |
 | Imágenes locales | No | Componente `Imagen` que resolverá contra `resources` → `blob:`. **Aplazadas en la Fase 7** (§7.2): hoy, marcador | Medio (SVG, rutas) | — | pendiente |
-| Matemáticas | Sí | `remark-math` 6 + `rehype-katex` 7 + `katex` 0.18 (fuentes servidas en local) | Medio (histórico de CVE; `trust: false`) | grande: carga diferida | 8 |
-| Mermaid | Sí | `mermaid` 12, carga diferida, `securityLevel: "strict"`, salida como `<img src="blob:…svg">` | Alto (histórico de XSS) | muy grande: carga diferida | 8 |
+| Matemáticas | Sí | `remark-math` 6 (sintaxis) + `katex` 0.18.9 a demanda; **sin `rehype-katex`** (parsea HTML con `innerHTML`): nodos con el `toNode()` de KaTeX | Medio (histórico de CVE; `trust: false`) | 77 KB gzip + CSS y fuentes, a demanda | ✅ 8 |
+| Mermaid | Sí | `mermaid` 11.17.2 en un **iframe aislado** (`sandbox`, origen opaco, CSP propia sin red), `securityLevel: "strict"`, SVG saneado y verificado, salida como `<img src="blob:…">` | Alto (histórico de XSS) | ~0,9 MB gzip por trozos, a demanda | ✅ 8 |
 | HTML embebido | — | **No se interpreta** en v1 (D6): se muestra como texto; los comentarios se quitan | — | — | ✅ 7 |
 
 Descartados: `marked` + `DOMPurify` (genera HTML y obliga a `innerHTML`: más superficie),
@@ -344,11 +348,8 @@ Diseño implementado: [ARCHITECTURE.md](ARCHITECTURE.md) §4 quinquies.
 
 ### 7.2 Imágenes
 
-**Estado (Fase 7): no se carga ninguna imagen.** Cada una es un marcador con su texto
-alternativo; una remota añade un enlace para abrirla fuera de BPDF. Las locales se
-aplazaron: cargarlas exige abrir el `.md` junto con sus imágenes (lo de abajo), un cambio
-en la apertura, en la plataforma y en la CSP (`img-src blob:`) que la Fase 7 dejó fuera
-(TAREAS). El diseño sigue siendo este:
+**Estado: implementado en la Fase 7 bis** para web ([ARCHITECTURE.md](ARCHITECTURE.md)
+§4 sexies), salvo lo de Electron. Resumen:
 
 - **Locales en web:** un fichero suelto no da acceso a sus hermanos. Se resuelven si el
   usuario **suelta o elige varios ficheros** (el `.md` y sus imágenes) o una carpeta
@@ -571,7 +572,7 @@ terceros sin licencia clara.
 | **D16** | **Un documento abierto a la vez**: sin pestañas, varios documentos, historial, recientes ni gestor de documentos. La arquitectura no lo impide más adelante | Fase 3: `DocumentProvider` guarda uno; abrir otro lo sustituye ([§4.2](#42-modelo-de-documento)) |
 | **D17** | **Visor PDF propio** sobre la API núcleo de pdf.js, sin `PDFViewer` ni `pdfjs-dist/web/pdf_viewer` (confirmada al empezar la Fase 5) | Fase 5: `src/pdf/visor/`, `src/app/pdf/` ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quater) |
 | **D18** | Build **`legacy`** de pdf.js en web (confirmada al empezar la Fase 5) | Fase 5: `engine.ts` y el worker copiado; revisable si solo se publica Electron ([STACK.md](STACK.md)) |
-| **D6** | HTML embebido en Markdown **no se interpreta** en v1: se **muestra como texto** (los comentarios `<!-- -->` se quitan). Confirmada con el encargo de la Fase 7, que pedía «contenido seguro o tratado como texto»; «mostrarlo como texto» en vez de «ignorarlo» está pendiente de visto bueno (TAREAS) | Fase 7: `src/markdown/pipeline.ts` |
+| **D6** | HTML embebido en Markdown **no se interpreta** en v1: se **muestra como texto** (los comentarios `<!-- -->` se quitan). Confirmada con el encargo de la Fase 7, y la forma («mostrarlo como texto», no «ignorarlo») con el de la Fase 7 bis | Fase 7: `src/markdown/pipeline.ts` |
 | **D7** | Imágenes remotas en Markdown **bloqueadas** en v1: marcador y enlace para abrirla fuera (confirmada con el encargo de la Fase 7) | Fase 7: `components/Imagen.tsx`; CSP `img-src 'self'` |
 
 ### 14.1 Pendientes de confirmación (usuario)
@@ -593,7 +594,7 @@ terceros sin licencia clara.
 |---|---|---|
 | **T-1** | Estrategia de modo oscuro del PDF y, con ella, `PDFViewer` frente a visor propio. **Resuelta en la Fase 4:** recoloreado selectivo con las regiones de `recordImages`; exige visor propio sobre la API núcleo (D17, confirmada; [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §11–12) | Fase 4 ✅ |
 | **T-2** | `@vitejs/plugin-react` sí o no. **Resuelta en la Fase 2: no** (Vite transforma el JSX solo; se renuncia a Fast Refresh; [STACK.md](STACK.md)) | Fase 2 ✅ |
-| **T-3** | `style-src` sin `'unsafe-inline'`. **Desde la Fase 2 la CSP ya no lo lleva**; queda comprobar que pdf.js, KaTeX y Mermaid no lo exigen (cada fase al integrarlos; si alguno lo exigiera, se pide aprobación) | Fases 4–8; cierre en la 12 |
+| **T-3** | `style-src` sin `'unsafe-inline'`. **Desde la Fase 2 la CSP ya no lo lleva.** pdf.js y KaTeX no lo necesitan (KaTeX, quitando el `style` que pone por atributo). **Mermaid sí**: resuelto en la Fase 8 sin tocar la CSP de la app, con un marco aislado que tiene su propia política (confirmado al empezar la fase; [SEGURIDAD.md](SEGURIDAD.md) §2.1) | Fases 4–8 ✅; cierre en la 12 |
 | **T-4** | Trusted Types (`require-trusted-types-for 'script'`) viable con pdf.js y Mermaid | Fase 12 |
 | **T-5** | Electron Forge frente a electron-builder | Fase 15 |
 

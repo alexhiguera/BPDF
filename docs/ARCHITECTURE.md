@@ -5,10 +5,11 @@ escribir código) están en [`CLAUDE.md`](../CLAUDE.md). La arquitectura **objet
 motores, plataforma) está en [PLAN.md](PLAN.md) §4; este documento describe principios que
 ya rigen hoy y se amplía cuando cada fase los materializa.
 
-**Estado del código (2026-09-30, tras la Fase 7):** una SPA estática de Vite + React (D1)
-que abre un PDF o un Markdown local (selector, `Ctrl/Cmd+O` o arrastre). Los PDF se leen
-en el visor propio (§4 quater) y los Markdown en su lector (§4 quinquies), sin cargar
-imágenes todavía. Sin backend, datos ni variables de entorno. La CSP estricta, los tokens de diseño,
+**Estado del código (2026-09-30, tras la Fase 8):** una SPA estática de Vite + React
+(D1) que abre un PDF o un Markdown local (selector, `Ctrl/Cmd+O` o arrastre), y un
+Markdown junto con sus imágenes (varios ficheros o una carpeta). Los PDF se leen en el
+visor propio (§4 quater) y los Markdown en su lector (§4 quinquies), con sus imágenes
+locales (§4 sexies), fórmulas y diagramas (§4 septies). Sin backend, datos ni variables de entorno. La CSP estricta, los tokens de diseño,
 los textos centralizados y la frontera de plataforma ya rigen.
 
 Varios principios vienen de la plantilla SaaS de R3ZON, que a su vez los destiló de
@@ -285,7 +286,7 @@ cualquier etiqueta que no produzca Markdown + GFM.
 |---|---|
 | `http:`, `https:`, `mailto:` absolutas (política común de `src/lib/url-externa.ts`) | `<a target="_blank" rel="noopener noreferrer">`; el clic se intercepta y lo abre `Platform.openExternal` (web: pestaña nueva sin `opener` ni `Referer`; Electron, Fase 14: el navegador del sistema desde el main). El clic central se anula |
 | `#fragmento` | `href="#md-…"`; el clic desplaza dentro del documento y mueve el foco a la sección, sin cambiar la URL. Solo se buscan ids con prefijo y dentro del documento |
-| Ruta relativa (`otro.md`) | Texto con subrayado punteado y el motivo (información emergente y texto para lectores de pantalla). Abrir otro fichero enlazado espera a tener acceso a los hermanos (Electron, o varios ficheros en web) |
+| Ruta relativa (`otro.md`) | Texto con subrayado punteado y el motivo (información emergente y texto para lectores de pantalla). No se sigue aunque el fichero se haya entregado con el documento (§4 sexies) |
 | Todo lo demás (`javascript:`, `data:`, `file:`, `vbscript:`, `//host`, `/ruta`, `C:\…`, credenciales en la URL…) | Texto, igual que la anterior, con otro motivo |
 
 Antes de clasificar se quita lo que el navegador ignora al leer una URL (tabuladores y
@@ -295,12 +296,10 @@ bloquea; una entidad que sobrevive es texto literal y la URL queda como ruta rel
 `href`. Dos capas: `urlTransform` vacía lo bloqueado en el pipeline y `Enlace`/`Imagen`
 vuelven a clasificar.
 
-**Imágenes.** En esta fase **no se carga ninguna**: no hay `<img>` en el DOM. Una remota
-(D7) es un marcador con su texto alternativo y un enlace para abrirla fuera; una local
-(`./logo.png`), un marcador que explica que aún no se cargan; el resto, bloqueada. En web,
-un `File` suelto no da acceso a sus hermanos: cargar imágenes locales exige abrir el `.md`
-junto con ellas (varios ficheros o una carpeta), un cambio en la apertura que se aplazó
-(TAREAS). La regla CSS de `img` ya existe (ancho máximo, sin filtros).
+**Imágenes.** Una remota (D7) es un marcador con su texto alternativo y un enlace para
+abrirla fuera; una local se pinta si el usuario la entregó con el `.md` (§4 sexies) y si
+no, un marcador que dice por qué; el resto, bloqueada. Ninguna imagen del documento puede
+provocar una petición de red.
 
 **Índice.** Ids deterministas al estilo de GitHub (minúsculas, sin puntuación, espacios a
 guiones; repetidos con `-1`, `-2`…), siempre con prefijo `md-` (DOM clobbering: un
@@ -325,9 +324,9 @@ con su contraste en `tokens.test.ts`), sin `filter`. Tablas y bloques de código
 desplazan en horizontal dentro de su contenedor (enfocable), la hoja nunca.
 
 **Ciclo de vida.** Se monta con `key={document.id}`: otro documento lo desmonta entero.
-No crea listeners globales, observers, workers ni URL de objeto (un test lo comprueba).
-Lo único temporal: los avisos de «Copiado» y, en documentos grandes, el paso diferido de
-abajo; los dos se cancelan al desmontar.
+No crea listeners globales, observers ni workers (un test lo comprueba). Lo temporal: los
+avisos de «Copiado», en documentos grandes el paso diferido de abajo, y las URL `blob:`
+de las imágenes locales (§4 sexies); todo se cancela o revoca al desmontar.
 
 **Rendimiento (medido, `npm run bench:markdown`, Chromium de Playwright, Ryzen 7 5800X).**
 Tiempo desde elegir el fichero hasta ver su primer encabezado (incluye unos 0,3 s del
@@ -361,10 +360,257 @@ búsqueda podrá recorrer sus nodos de texto y resaltar sin tocar el pipeline.
 
 **Límites conocidos.**
 
-- Imágenes: ninguna se muestra (arriba).
+- Imágenes: solo las locales entregadas con el documento (§4 sexies).
 - Un enlace a otro fichero del documento no se abre.
-- Matemáticas y Mermaid se ven como bloques de código (Fase 8).
+- Fórmulas y diagramas: §4 septies.
 - Rendimiento con documentos grandes y con muchas listas (arriba).
+
+### 4 sexies. Recursos locales de un Markdown (Fase 7 bis)
+
+**Principio: BPDF nunca busca ficheros en el equipo.** Un Markdown solo puede usar las
+imágenes que el usuario entregó explícitamente junto con él. El navegador lo impone de
+todos modos (un `File` suelto no da acceso a sus hermanos), y el diseño no intenta
+esquivarlo: pide la entrega.
+
+**Cómo se entregan.**
+
+| Vía | API estándar | Qué recibe BPDF |
+|---|---|---|
+| «Abrir archivo» (ahora con selección múltiple) | `<input type="file" multiple>` | Ficheros sueltos, **solo sus nombres**: todos vienen de la misma carpeta. Uno solo se abre como siempre; varios deben ser un `.md` y sus imágenes |
+| «Abrir carpeta» | `<input type="file" webkitdirectory>` (Chrome, Edge, Firefox, Safari) | Todos los ficheros con `webkitRelativePath` (`carpeta/img/a.png`); BPDF quita el primer segmento (el nombre de la carpeta) |
+| Soltar ficheros | `DataTransfer.files` | Como «Abrir archivo» |
+| Soltar una carpeta | `DataTransferItem.webkitGetAsEntry()` + `FileSystemDirectoryReader` (File and Directory Entries, en los cuatro) | Recorrido propio, iterativo, por lotes de `readEntries` |
+
+Las entradas de lo soltado se capturan **dentro del evento `drop`** (`DropZone`): al
+terminar, el navegador invalida `DataTransfer`. Si no hay entradas, se usan los ficheros
+planos. Una carpeta soltada junto con otras cosas es un error (`mixed-drop`): no se sabría
+cuál es la raíz.
+
+**Qué se abre** (`abrirSeleccion`, [`src/documents/seleccion.ts`](../src/documents/seleccion.ts),
+común a web y Electron):
+
+- Ficheros: exactamente un `.md` y el resto imágenes admitidas. Ningún `.md`
+  (`no-markdown`), varios (`several-markdown`) o un fichero de otro tipo, PDF incluido
+  (`incompatible`, con su nombre), son errores claros: un documento cada vez (D16).
+- Carpeta: se ignora lo que no es Markdown ni imagen, y no se entra en `.git` ni
+  `node_modules`. Sin `.md`, `folder-no-markdown`; con uno, se abre; **con varios, el
+  usuario elige** (panel `ElegirMarkdown` con las rutas relativas, saneadas, y
+  «Cancelar»; primero los de la raíz). BPDF no adivina el principal.
+- Topes: 10 000 ficheros por carpeta (`folder-too-large`) y 32 niveles de profundidad al
+  recorrer lo soltado.
+- Solo se **lee** el `.md` elegido. Las imágenes no se leen al abrir.
+
+**Modelo** ([`src/documents/types.ts`](../src/documents/types.ts)): `OpenedMarkdown`
+gana `resources: RecursosDocumento`:
+
+```ts
+type RecursosDocumento = {
+  base: string;                              // directorio del .md en la entrega ("" o "docs")
+  ficheros: ReadonlyMap<string, RecursoLocal>; // ruta relativa normalizada → recurso
+  ambiguas: ReadonlySet<string>;             // rutas con más de un fichero (NFC/NFD)
+};
+type RecursoLocal = { ruta: string; tipo: "png" | "jpeg" | "gif" | "webp" | "svg"; size: number; blob: Blob };
+```
+
+Rutas **relativas a la entrega**, con `/`, normalizadas y en NFC: nunca una ruta de disco
+(el navegador no las da, y en Electron el main no las mandará). `blob` es
+`file.slice(0, size, mime)`: un trozo del propio `File`, con el tipo MIME de su extensión
+(nunca el `file.type` del navegador) y **sin copiar bytes**. Un `.md` suelto lleva
+`SIN_RECURSOS`. No es un sistema de ficheros: es un mapa de lo entregado.
+
+**Resolución** (`resolverRecurso`, [`src/documents/recursos.ts`](../src/documents/recursos.ts)):
+el único punto donde una referencia del documento se convierte en un fichero.
+
+1. Se quita `?consulta` y `#fragmento`.
+2. `\` se rechaza (en una URL no es separador; en Windows sí: dos lecturas posibles).
+3. Los escapes `%` se decodifican **una vez** (`foto%20grande.png`; `%2e%2e` → `..`);
+   un escape roto es inválido y `%252e` queda como el nombre literal `%2e`.
+4. Controles, rutas absolutas (`/x`) y esquemas (`file:`, `C:`, `data:`) se rechazan.
+5. Se une al directorio del `.md` y se normaliza **segmento a segmento**: un `..` que sube
+   por encima de la raíz de la entrega es `fuera`. Subir dentro de ella está permitido
+   (el usuario entregó la carpeta entera).
+6. Solo entonces se busca, **exactamente** (mayúsculas incluidas), en el mapa.
+
+Resultados: `ok`, `no-encontrado`, `fuera`, `no-soportado`, `demasiado-grande` (> 50 MiB),
+`ambiguo` e `invalido`, cada uno con su marcador y su explicación. Nada se busca fuera
+del mapa: no hay ninguna operación que pueda tocar un fichero no entregado.
+
+**Imágenes en pantalla** ([`components/Imagen.tsx`](../src/markdown/components/Imagen.tsx)):
+un `<img src="blob:…" loading="lazy" decoding="async">` con el texto alternativo del
+documento. Si el navegador no puede decodificarla, marcador «no se ha podido mostrar».
+Colores intactos (sin `filter`): una imagen con fondo transparente y trazo negro se verá
+poco sobre la hoja oscura.
+
+**URL de objeto** ([`src/markdown/imagenes.ts`](../src/markdown/imagenes.ts),
+`AlmacenUrls`, una por visor):
+
+- Se crean **solo para lo que se pinta**, cuando la imagen se monta: un recurso entregado
+  que el texto no usa no tiene URL (medido: 50 usadas de 100 entregadas, 50 URL).
+- **Una por recurso**, con recuento de usos: diez referencias a `logo.png` comparten URL.
+- Se revocan con el último uso y, al desmontar el visor (cerrar o abrir otro documento),
+  **todas** (`revocarTodo`). Un E2E comprueba que las del documento anterior ya no cargan.
+- `createObjectURL` no copia: apunta al `Blob`. Sin Base64 ni `data:`.
+
+**SVG.** Solo como `<img>`, nunca en línea: en una imagen el navegador no ejecuta sus
+scripts ni carga sus recursos. Queda un caso: alguien podría abrir la URL `blob:` como
+página (menú contextual). Ese documento **hereda la CSP de BPDF**: medido en Chromium, su
+`<script>` y su `onload` no se ejecutan y sus imágenes externas se intentan pero la CSP
+las corta antes de la red (`failure: csp`). No se sanea el SVG ni se rasteriza: la CSP y
+el contexto de imagen bastan, y rasterizar perdería la nitidez.
+
+**CSP.** `img-src 'self' blob:` (antes `'self'`): sin `blob:` no se puede pintar un
+`File` local. Solo el propio origen crea URL `blob:` y no salen a la red. Nada de
+`data:` ni `https:`: las imágenes remotas siguen bloqueadas (D7).
+
+**Enlaces a otros ficheros** (a `otro.md` o a una imagen): siguen siendo
+texto inerte, aunque el fichero esté entre lo entregado. Abrir otro documento desde un
+enlace cambiaría el documento abierto sin que el usuario lo elija; queda para Electron,
+dentro de la raíz del documento (SEGURIDAD §3.2).
+
+**Rendimiento (medido).** Resolver una ruta: ~1,5 µs (100 000 en 147 ms); construir el
+conjunto: ~3,4 µs por fichero (5000 en 17 ms). Con 50 imágenes de 3000×2000 elegidas junto
+con 50 que no se usan: texto visible en 0,64 s, primera imagen en 0,67 s, 50 URL, heap de
+JavaScript 14 MiB (los píxeles decodificados viven fuera). `npm run bench:markdown`.
+
+**Límites conocidos.**
+
+- «Abrir archivo» no ve subcarpetas: `images/foto.jpg` solo se resuelve abriendo la
+  carpeta (el marcador lo explica). No se busca por nombre en ningún otro sitio.
+- Mayúsculas exactas: `Logo.PNG` no es `logo.png`, como en la web.
+- Chrome pide confirmación al elegir una carpeta («¿subir N archivos?»): es su texto
+  genérico; BPDF no sube nada. Una carpeta vacía elegida se trata como cancelar (el
+  navegador no avisa).
+- Soltar una carpeta no se puede probar en Playwright (no simula entradas de carpeta): lo
+  cubren tests unitarios con entradas simuladas; elegir carpeta sí tiene E2E.
+
+### 4 septies. Fórmulas y diagramas (Fase 8)
+
+**Sintaxis admitida.**
+
+| Markdown | Qué es | Lo pinta |
+|---|---|---|
+| `$…$` | Fórmula en línea | KaTeX |
+| `$$…$$` (en su propio bloque) y ```` ```math ```` | Fórmula en bloque | KaTeX |
+| ```` ```mermaid ```` | Diagrama (flowchart, secuencia, clases, estados, Gantt… lo que dibuje Mermaid 11) | Mermaid, en el marco aislado |
+| `\$` | Un dólar literal (para precios: `\$5`) | — |
+
+`remark-math` añade la sintaxis al pipeline (con `$…$` como en GitHub: un texto con dos
+dólares sin escapar, como «$5 y $10», se lee como fórmula). No añade elementos: produce
+`<code>` y `<pre>` con clases propias, y `Preformateado` y `CodigoEnLinea`
+([`components/Preformateado.tsx`](../src/markdown/components/Preformateado.tsx)) deciden
+si un bloque es código, fórmula o diagrama.
+
+**KaTeX** ([`matematicas.ts`](../src/markdown/matematicas.ts),
+[`components/Formula.tsx`](../src/markdown/components/Formula.tsx)):
+
+- **A demanda**: KaTeX y su CSS se importan con la primera fórmula; las fuentes woff2 las
+  pide su CSS al propio origen, solo las que se usan.
+- **Sin HTML**: ni `renderToString` ni `rehype-katex`. BPDF pide a KaTeX su árbol
+  (`__renderToDomTree`) y lo convierte en nodos con el `toNode()` de KaTeX
+  (`createElement`, `setAttribute`, estilos por CSSOM). KaTeX pinta en un nodo que React no
+  gestiona; el texto de reserva es un hermano que sí gestiona.
+- **Opciones**: `trust: false` (`\href`, `\url`, `\includegraphics`, `\htmlClass`,
+  `\htmlId`, `\htmlStyle`, `\htmlData` se pintan como texto rojo, sin enlace ni atributo),
+  `maxExpand: 1000` (una macro recursiva o exponencial se corta), `maxSize: 20` em,
+  `macros` nuevo en cada fórmula (un `\gdef` no pasa a otra), `strict: "ignore"` (sin avisos
+  en consola), `throwOnError: true`, salida HTML + MathML (la MathML, oculta, para lectores
+  de pantalla), fórmulas de hasta 10 000 caracteres.
+- **Estilos por atributo**: la flecha de `\vec`, los óvalos de `\oiint`/`\oiiint` y `\pmb`
+  ponen `style` con `setAttribute`, que la CSP bloquea. Se quita del árbol antes de crear
+  los nodos; `markdown.css` suple el ancho.
+- **Si falla** (sintaxis, límites): se ve el código de la fórmula, subrayado, con el aviso
+  «Fórmula no válida» (información emergente y texto para lectores de pantalla). El resto
+  del documento sigue.
+
+**Mermaid: un marco aislado.** Mermaid dibuja con `<style>` y atributos `style` en línea (y
+mide el texto en un documento vivo): con la CSP de la app (`style-src 'self'`) eran 250
+violaciones en cinco diagramas. En vez de relajar la CSP de la app, Mermaid corre en otra
+página (decisión confirmada al empezar la fase):
+
+```text
+app ── postMessage(fuente, colores) ──► iframe sandbox="allow-scripts" (/mermaid.html)
+ ▲                                        origen opaco · su propia CSP · Mermaid strict
+ │                                        sanearSvg (DOM, lista blanca)
+ └──── postMessage(svg) ◄─────────────────┘
+verificarSvg (texto, lista blanca) → Blob image/svg+xml → <img src="blob:…">
+```
+
+- **El marco** ([`marco-mermaid.ts`](../src/markdown/marco-mermaid.ts), `mermaid.html`):
+  `sandbox="allow-scripts"` sin `allow-same-origin`, así que su origen es opaco: no puede
+  leer el DOM, el almacenamiento ni las cookies de BPDF (E2E). Su CSP
+  (`CSP_MARCO_MERMAID`) permite estilos en línea y **nada de red** (`connect-src`,
+  `img-src`, `font-src` a `'none'`). Si su origen no es opaco (abierta directamente o
+  enmarcada por otra web sin sandbox) no escucha nada. Solo atiende a su padre y solo
+  peticiones bien formadas; dibuja de una en una.
+- **La configuración**
+  ([`mermaid-config.ts`](../src/markdown/mermaid-config.ts)): `securityLevel: "strict"`
+  (HTML de las etiquetas escapado, `click` desactivado, DOMPurify), `htmlLabels: false`
+  (texto SVG, sin `<foreignObject>`), `maxTextSize` 50 000 y `maxEdges` 500,
+  `suppressErrorRendering`, ids deterministas, tema con los tokens de BPDF, y `secure` con
+  todo lo que un `%%{init}%%` podría usar para relajar algo (`securityLevel`, `htmlLabels`,
+  `flowchart`, `themeCSS`, `themeVariables`, `dompurifyConfig`, topes…).
+- **Nodos con imagen** (`A@{ img: "…" }`): Mermaid carga la imagen para medirla. La CSP del
+  marco lo impediría, pero BPDF no lo deja intentar: esos diagramas no se dibujan (aviso
+  «usa imágenes»).
+- **El SVG, dos veces**: en el marco, `sanearSvg` (DOM: solo elementos de dibujo de una
+  lista blanca; fuera `script`, `foreignObject`, `image`, `iframe`, `animate`, `set`;
+  enlaces desenvueltos; sin `on*`, `href` solo a `#id`, sin `javascript:`, `data:`,
+  `@import` ni `url()` externas; tamaño fijado desde el `viewBox`). En la app,
+  `verificarSvg` ([`svg-seguro.ts`](../src/markdown/svg-seguro.ts)), **sin DOM** (un
+  `DOMParser` en la app heredaría su CSP y cada `style` sería una violación): recorre el XML
+  y rechaza entero lo que se salga de la lista blanca, incluidos comentarios, CDATA y
+  DOCTYPE. La app no se fía del marco.
+- **La imagen**: `<img src="blob:…">` con texto alternativo («Diagrama Mermaid
+  (flowchart)») y el código en un desplegable. En una imagen el SVG no ejecuta nada ni pide
+  nada; abierta como página, la URL `blob:` hereda la CSP de la app.
+- **A demanda y en pantalla**: el marco (y con él Mermaid) se crea con el primer diagrama,
+  y cada diagrama se dibuja al acercarse a la vista (`IntersectionObserver` por bloque,
+  400 px de margen, desconectado al primer cruce). Un documento sin diagramas no crea
+  nada.
+- **Ciclo de vida**: un marco por visor; al cerrar u abrir otro documento se quita el
+  iframe y su listener y se rechaza lo pendiente. Cada imagen revoca su URL al desmontarse.
+  Un diagrama que tarde más de 20 s se da por fallido.
+- **Si falla**: se ve el código del diagrama con un aviso (sintaxis no válida, demasiado
+  grande, usa imágenes). Los `click`/`callback` y los `link` de clases hacen que Mermaid
+  rechace el diagrama en modo `strict`: se ve su código.
+
+**CSP.** La app gana solo `frame-src 'self'`. `mermaid.html` tiene su política
+(`style-src 'self' 'unsafe-inline'`, sin red, `frame-ancestors 'self'`) en cabecera y en
+`<meta>`. `vite preview` manda las cabeceras por ruta (`cabecerasPara`); `/assets/` lleva
+`Access-Control-Allow-Origin: *` porque el marco pide sus módulos desde un origen opaco.
+Nada de `unsafe-eval`, `data:` ni orígenes externos en ninguna de las dos.
+
+**Rendimiento (medido, `npm run bench:markdown`).**
+
+Chromium de Playwright, Ryzen 7 5800X. Tiempos desde elegir el fichero:
+
+| Documento | Texto | Fórmulas pintadas | Diagramas pintados | Trozos KaTeX/Mermaid pedidos |
+|---|---|---|---|---|
+| Normal, sin fórmulas ni diagramas (`basico.md`) | 0,38 s | — | — | 0 |
+| 10 × 3 fórmulas | 0,36 s | 0,42 s | — | 4 (KaTeX, su CSS, 2 fuentes) |
+| 500 × 3 fórmulas | 1,75 s | 2,39 s | — | 4 |
+| 3 diagramas | 0,82 s | — | 0,83 s | 15 (marco y Mermaid) |
+| 30 diagramas | 0,35 s | — | 2,19 s | 15 |
+| 1 MB mixto + 600 fórmulas + 10 diagramas | 3,83 s | 5,57 s | 25 s* | 19 |
+| `katex-hostil.md` | 0,83 s | 0,83 s | — | 4 |
+| `mermaid-hostil.md` | 0,34 s | — | 0,72 s | 17 |
+
+\* Los diagramas del documento grande están al final de más de un millón de píxeles: el
+benchmark salta a cada uno, y ese tiempo es sobre todo el recorrido. Dibujar cuesta
+~60 ms por diagrama (30 en 1,9 s) y no bloquea el texto: los diagramas se dibujan de uno
+en uno, al entrar en pantalla, en el marco. Un Markdown sin fórmulas ni diagramas tarda
+lo mismo que antes de la Fase 8 (0,36–0,38 s el pequeño; 3,75 s 1 MB, dentro del rango de
+3,3–7,3 s de la Fase 7). La memoria no se pudo medir con precisión: `performance.memory`
+de Chrome está cuantizado y da siempre ~10 MiB de heap de JavaScript.
+
+**Límites conocidos.**
+
+- `$…$` con dos dólares en un párrafo es una fórmula: los precios se escriben `\$5`.
+- Diagramas con nodos de imagen o con `click`/`link`: no se dibujan (se ve su código).
+- Mermaid dentro de un iframe fuera de la vista: el primer diagrama tarda lo que tarda en
+  cargarse el marco.
+- Un segundo KaTeX (0.16, el de Mermaid) está en la build; solo se cargaría, en el marco,
+  si una etiqueta de diagrama usa `$$…$$`.
 
 ### 5. La menor complejidad que cumpla los requisitos
 

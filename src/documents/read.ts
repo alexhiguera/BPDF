@@ -2,7 +2,7 @@ import { messages } from "@/i18n/messages";
 import { decodeMarkdown, displayName, hasPdfSignature, kindFromName } from "./detect";
 import { DocumentError } from "./errors";
 import { MAX_BYTES, PDF_SIGNATURE_WINDOW } from "./limits";
-import type { OpenedDocument } from "./types";
+import { type OpenedDocument, SIN_RECURSOS } from "./types";
 
 let lastId = 0;
 
@@ -50,7 +50,7 @@ export async function readDocument(
   }
 
   const text = decodeMarkdown(await readBytes(file, name), name);
-  return { id, kind, name, size: file.size, text };
+  return { id, kind, name, size: file.size, text, resources: SIN_RECURSOS };
 }
 
 /** Lee un `Blob` y convierte cualquier fallo de lectura en `unreadable`. */

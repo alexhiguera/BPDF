@@ -7,11 +7,21 @@ import { DropZone } from "@/app/DropZone";
 import { messages } from "@/i18n/messages";
 import { fichero } from "../helpers/documentos";
 
-/** `DataTransfer` mínimo: jsdom no lo implementa. */
-const conFicheros = (files: File[] = []) => ({
-  dataTransfer: { types: ["Files"], files, dropEffect: "none" },
+/**
+ * `DataTransfer` mínimo: jsdom no lo implementa. `entrada` hace de
+ * `webkitGetAsEntry()` (`null`: como un navegador que no la tiene).
+ */
+const conFicheros = (files: File[] = [], entrada: (f: File) => unknown = () => null) => ({
+  dataTransfer: {
+    types: ["Files"],
+    files,
+    items: files.map((f) => ({ kind: "file", webkitGetAsEntry: () => entrada(f) })),
+    dropEffect: "none",
+  },
 });
-const conTexto = { dataTransfer: { types: ["text/plain"], files: [], dropEffect: "none" } };
+const conTexto = {
+  dataTransfer: { types: ["text/plain"], files: [], items: [], dropEffect: "none" },
+};
 
 function montar() {
   const onFiles = vi.fn();
@@ -69,8 +79,19 @@ describe("DropZone", () => {
     const drop = createEvent.drop(zona, conFicheros([f]));
     fireEvent(zona, drop);
     expect(drop.defaultPrevented).toBe(true);
-    expect(onFiles).toHaveBeenCalledWith([f]);
+    expect(onFiles).toHaveBeenCalledWith({ ficheros: [f], entradas: [null] });
     expect(aviso()).toBeNull();
+  });
+
+  it("captura las entradas de carpeta dentro del propio evento", () => {
+    const { onFiles, zona } = montar();
+    const f = fichero("carpeta", "");
+    const entrada = { isDirectory: true, name: "carpeta" };
+    fireEvent.drop(
+      zona,
+      conFicheros([f], () => entrada),
+    );
+    expect(onFiles).toHaveBeenCalledWith({ ficheros: [f], entradas: [entrada] });
   });
 
   it("ignora arrastres que no llevan ficheros (texto, enlaces)", () => {

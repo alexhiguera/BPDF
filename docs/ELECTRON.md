@@ -108,8 +108,38 @@ También es la misma build. Sus enlaces externos ya pasan por `Platform.openExte
 (el `<a>` lleva `target="_blank"` y `rel="noopener noreferrer"` solo como red): en
 Electron llegarán al main sin cambiar el visor, y `setWindowOpenHandler` denegará
 cualquier otro intento de abrir ventana. Un enlace a otro fichero (`otro.md`) hoy no se
-sigue; abrirlo en BPDF, dentro de la raíz del documento, es posterior a v1. Las imágenes
-locales llegarán por `bpdf-res://` (§5); la Fase 7 aún no carga ninguna. El portapapeles
+sigue; abrirlo en BPDF, dentro de la raíz del documento, es posterior a v1.
+
+### 3.2 bis Fórmulas y diagramas en Electron (Fase 8)
+
+KaTeX no necesita nada. El marco de Mermaid es una segunda página (`mermaid.html`) que el
+protocolo `app://` debe servir con **su** CSP (`CSP_MARCO_MERMAID`, generada por
+`cabecerasPara`) y con `Access-Control-Allow-Origin` en `/assets/` (el iframe tiene origen
+opaco y pide sus módulos en modo CORS). La CSP de la ventana incluye `frame-src 'self'`.
+`will-navigate` y `setWindowOpenHandler` no le afectan: el marco no navega ni abre nada.
+
+### 3.3 Recursos locales en Electron (preparado en la Fase 7 bis)
+
+La web ya separa **qué** puede usar un Markdown (`RecursosDocumento`: rutas relativas a
+la entrega → recurso) de **cómo** llega cada fichero. Electron solo cambia lo segundo:
+
+```text
+abrir fichero o carpeta (diálogo del main)
+        ↓
+main: realpath, dentro de la raíz, solo .md e imágenes, topes
+        ↓
+conjunto validado: [{ ruta relativa, tipo, tamaño }] + el texto del .md
+        ↓
+renderer: RecursosDocumento (sin rutas de disco, sin fs, path ni process)
+```
+
+- El main aplica los mismos topes y la misma exclusión (`.git`, `node_modules`) y
+  normaliza igual (`normalizarRuta` es una función pura que puede compartir).
+- Cada recurso llegará como `Blob` (bytes por IPC) o, mejor para imágenes grandes, como
+  una URL de `bpdf-res://<id>/<ruta>` (§5): `RecursoLocal` tendrá entonces esa URL en vez
+  de `blob`, y `AlmacenUrls` la devolverá sin crear ni revocar nada.
+- `resolverRecurso` no cambia: sigue buscando solo en el conjunto entregado.
+- `img-src` de escritorio añadirá `bpdf-res:`; `blob:` puede quedarse para lo soltado. El portapapeles
 (copiar código) necesita el permiso de escritura que `setPermissionRequestHandler` ya
 prevé.
 

@@ -18,7 +18,9 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 | Capa de plataforma (web) | ✅ F3 (Electron en F14) | `src/platform/` |
 | Preferencias | ⬜ F10 | |
 | Visor PDF | ✅ F4–F5 (pantalla completa y búsqueda avanzada en F6) | `src/pdf/`, `src/app/pdf/` |
-| Lector de Markdown | ✅ F7 (imágenes locales aplazadas; KaTeX y Mermaid en F8) | `src/markdown/`, `src/styles/markdown.css` |
+| Lector de Markdown | ✅ F7 | `src/markdown/`, `src/styles/markdown.css` |
+| Fórmulas (KaTeX) y diagramas (Mermaid, en un marco aislado) | ✅ F8 | `src/markdown/matematicas.ts`, `mermaid*.ts`, `marco-mermaid.ts`, `svg-seguro.ts`, `mermaid.html` |
+| Recursos locales de Markdown (varios ficheros, carpeta, imágenes) | ✅ F7 bis | `src/documents/recursos.ts`, `src/documents/seleccion.ts`, `src/markdown/imagenes.ts`, `src/platform/web.ts` |
 | Editor de Markdown | ⬜ F9 | |
 | Escritorio (Electron) | ⬜ F14 | |
 

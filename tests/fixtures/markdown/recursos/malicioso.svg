@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="90" height="30" onload="window.__bpdfXss='svg-onload'">
+  <script>window.__bpdfXss = "svg-script"; fetch("https://tracker.example/svg");</script>
+  <image href="https://tracker.example/pixel-svg.png" width="10" height="10"/>
+  <foreignObject width="10" height="10"><div xmlns="http://www.w3.org/1999/xhtml"><img src="https://tracker.example/fo.png"/></div></foreignObject>
+  <rect width="90" height="30" fill="#b45309"/>
+</svg>

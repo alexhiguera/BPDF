@@ -16,7 +16,8 @@
       "!**/test-results",
       "!**/public_docs",
       "!**/package-lock.json",
-      "!**/*.css"
+      "!**/*.css",
+      "!tests/fixtures/**/*.svg"
     ]
   },
   "formatter": {

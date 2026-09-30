@@ -346,3 +346,71 @@
 .md-boton[aria-expanded="true"] {
   background-color: var(--color-elevated);
 }
+
+/* Fórmulas (Fase 8). La hoja de KaTeX se carga con KaTeX, a demanda. */
+.md-formula-bloque {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.25em;
+}
+.md-formula-bloque .katex-display {
+  margin: 0;
+}
+.md-formula .katex {
+  font-size: 1.1em;
+}
+/* KaTeX fija el ancho de sus SVG superpuestos (la flecha de \vec, los óvalos de
+ * \oiint) con un atributo `style` que la CSP bloquea: BPDF lo quita
+ * (`matematicas.ts`) y aquí se usa el ancho del atributo `width`. */
+.md-formula .katex .katex-overlay > svg {
+  width: auto;
+}
+.md-formula-error {
+  border-bottom: 1px dotted var(--color-danger);
+}
+
+/* Diagramas Mermaid (Fase 8): una imagen (SVG saneado) y su código plegado. */
+.md-diagrama {
+  margin-inline: 0;
+}
+.md-diagrama img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+.md-diagrama details {
+  margin-top: 0.5em;
+  font-size: 0.875em;
+  color: var(--color-fg-muted);
+}
+.md-diagrama summary {
+  cursor: pointer;
+}
+.md-diagrama pre {
+  margin-top: 0.5em;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background-color: var(--color-app);
+  font-size: 0.875rem;
+}
+.md-diagrama-aviso {
+  margin-bottom: 0.5em;
+  font-size: 0.875em;
+  color: var(--color-fg-muted);
+}
+
+/* El marco aislado de Mermaid (Fase 8): fuera de la vista pero con tamaño, porque
+ * Mermaid mide el texto al dibujar (con `display: none` no habría medidas). */
+.bpdf-marco-mermaid {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 1200px;
+  height: 900px;
+  border: 0;
+  visibility: hidden;
+  pointer-events: none;
+}

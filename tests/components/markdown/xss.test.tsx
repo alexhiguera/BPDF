@@ -4,7 +4,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { OpenedMarkdown } from "@/documents/types";
+import { type OpenedMarkdown, SIN_RECURSOS } from "@/documents/types";
 import MarkdownView from "@/markdown/MarkdownView";
 import { opcionesPipeline } from "@/markdown/pipeline";
 import { transformarUrl } from "@/markdown/url-policy";
@@ -39,6 +39,7 @@ function montar(texto: string) {
     size: texto.length,
     kind: "markdown",
     text: texto,
+    resources: SIN_RECURSOS,
   };
   const { container } = render(
     <MarkdownView documento={documento} onClose={() => {}} onOpenExternal={() => {}} />,

@@ -5,7 +5,7 @@ import path from "node:path";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { OpenedMarkdown } from "@/documents/types";
+import { type OpenedMarkdown, SIN_RECURSOS } from "@/documents/types";
 import { messages } from "@/i18n/messages";
 import { DURACION_AVISO_MS } from "@/markdown/components/BloqueCodigo";
 import MarkdownView, { UMBRAL_DIFERIDO } from "@/markdown/MarkdownView";
@@ -16,7 +16,14 @@ const fixture = (f: string) => readFileSync(path.join(DIR, f), "utf8");
 
 let siguienteId = 0;
 function documento(texto: string, name = "doc.md"): OpenedMarkdown {
-  return { id: String(++siguienteId), name, size: texto.length, kind: "markdown", text: texto };
+  return {
+    id: String(++siguienteId),
+    name,
+    size: texto.length,
+    kind: "markdown",
+    text: texto,
+    resources: SIN_RECURSOS,
+  };
 }
 
 function montar(texto: string, name?: string) {
@@ -189,7 +196,7 @@ describe("MarkdownView: enlaces", () => {
   });
 });
 
-describe("MarkdownView: imágenes (Fase 7: ninguna se carga)", () => {
+describe("MarkdownView: imágenes remotas y sin recursos", () => {
   it("remota: marcador con su texto alternativo y enlace para abrirla fuera", () => {
     const { articulo, en, onOpenExternal } = montar(
       "![logo del proyecto](https://example.com/logo.png)",
@@ -200,14 +207,15 @@ describe("MarkdownView: imágenes (Fase 7: ninguna se carga)", () => {
     expect(onOpenExternal).toHaveBeenCalledWith("https://example.com/logo.png");
   });
 
-  it("local: marcador que explica que aún no se cargan", () => {
+  it("local sin recursos entregados: marcador que explica cómo verla", () => {
     const { articulo } = montar("![Logo](./logo.png)\n\n![](images/example.jpg)");
     expect(articulo.querySelector("img")).toBeNull();
-    expect(articulo).toHaveTextContent(`Logo (${t.image.local})`);
-    expect(articulo).toHaveTextContent(`${t.image.noAlt} (${t.image.local})`);
-    expect(articulo.querySelector('[data-imagen="local"]')).toHaveAttribute(
+    const local = t.image.local["no-encontrado"];
+    expect(articulo).toHaveTextContent(`Logo (${local})`);
+    expect(articulo).toHaveTextContent(`${t.image.noAlt} (${local})`);
+    expect(articulo.querySelector('[data-imagen="no-encontrado"]')).toHaveAttribute(
       "title",
-      t.image.localHint,
+      t.image.localHint["no-encontrado"],
     );
   });
 });

@@ -1,7 +1,7 @@
 import type { Platform } from "./types";
 import { createWebPlatform } from "./web";
 
-export type { Platform } from "./types";
+export type { Platform, Soltado } from "./types";
 
 /**
  * La plataforma en la que corre la app. Hoy solo existe la web; la Fase 14
