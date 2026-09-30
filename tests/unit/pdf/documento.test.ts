@@ -1,10 +1,17 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
-import { buscarEnPagina, normalizarConsulta, tieneTexto } from "@/pdf/visor/busqueda";
+import {
+  buscarEnPagina,
+  normalizarConsulta,
+  type OpcionesBusqueda,
+  tieneTexto,
+} from "@/pdf/visor/busqueda";
 import { DocumentoDestruidoError, DocumentoVisor, trozosDeTexto } from "@/pdf/visor/documento";
 import { crearPdfGrande } from "../../fixtures/pdf/modo-oscuro/generar.mjs";
 import {
+  BUSQUEDA,
   CJK,
+  crearPdfBusqueda,
   crearPdfCjk,
   crearPdfProtegido,
   crearPdfSinTexto,
@@ -33,6 +40,7 @@ describe("fixtures del visor", () => {
     expect(Buffer.compare(readFileSync(`${dir}/protegido.pdf`), crearPdfProtegido())).toBe(0);
     expect(Buffer.compare(readFileSync(`${dir}/sin-texto.pdf`), crearPdfSinTexto())).toBe(0);
     expect(Buffer.compare(readFileSync(`${dir}/cjk.pdf`), crearPdfCjk())).toBe(0);
+    expect(Buffer.compare(readFileSync(`${dir}/busqueda.pdf`), crearPdfBusqueda())).toBe(0);
   });
 });
 
@@ -60,6 +68,23 @@ describe("DocumentoVisor", () => {
     expect(paginas).toEqual(VISOR.busqueda.paginas);
     const partida = buscarEnPagina(await d.indice(2), normalizarConsulta(VISOR.frasePartida), 2);
     expect(partida).toHaveLength(1);
+  });
+
+  it("con el texto real de pdf.js: mayúsculas, palabra completa y guion de fin de línea (Fase 6)", async () => {
+    const d = await abrir(crearPdfBusqueda());
+    const indice = await d.indice(1);
+    const cuantas = (consulta: string, o: Partial<OpcionesBusqueda> = {}) => {
+      const opciones = { mayusculas: false, palabraCompleta: false, ...o };
+      return buscarEnPagina(indice, normalizarConsulta(consulta, opciones), 1, opciones).length;
+    };
+    expect(cuantas("rosa")).toBe(BUSQUEDA.rosa.todas);
+    expect(cuantas("ROSA", { mayusculas: true })).toBe(BUSQUEDA.rosa.mayusculas);
+    expect(cuantas("rosa", { palabraCompleta: true })).toBe(BUSQUEDA.rosa.palabra);
+    expect(cuantas(BUSQUEDA.partida)).toBe(1);
+    expect(cuantas(BUSQUEDA.partida, { palabraCompleta: true })).toBe(1);
+    // Las dos mitades se resaltan cada una en su trozo de la capa de texto.
+    const [partida] = buscarEnPagina(indice, normalizarConsulta(BUSQUEDA.partida), 1);
+    expect(partida?.tramos).toHaveLength(2);
   });
 
   it("los trozos del índice son los mismos, en el mismo orden, que los de la capa de texto", async () => {

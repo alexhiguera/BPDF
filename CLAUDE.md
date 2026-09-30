@@ -14,19 +14,26 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   objetivo en [`docs/PLAN.md`](docs/PLAN.md).
 - **Principio rector:** los documentos del usuario **no salen del dispositivo**. Sin
   backend, API, base de datos, cuentas, sincronización ni telemetría.
-- **Estado:** Fases 0–5, 7, 7 bis y 8 cerradas. La app es una SPA estática de Vite + React (D1)
+- **Estado:** Fases 0–8 cerradas, 7 bis incluida (la 6 se hizo después de la 8 y conserva
+  su número). La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
-  oscuro selectivo en un worker ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §4 quater);
+  oscuro selectivo en un worker, búsqueda avanzada, pantalla completa, atajos de una tecla
+  desactivables y contraseña de apertura ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §4 quater);
   los Markdown, en un lector GFM que no interpreta HTML y muestra las imágenes que el
   usuario entrega con el `.md` (varios ficheros o una carpeta), fórmulas (KaTeX) y
-  diagramas (Mermaid, en un iframe aislado con su propia CSP) (§4 quinquies a septies). Plan y estado:
+  diagramas (Mermaid, en un iframe aislado con su propia CSP) (§4 quinquies a septies).
+  Siguiente en el plan: la Fase 9 (editor), que necesita D9. Plan y estado:
   [`docs/FASES.md`](docs/FASES.md) y [`docs/TAREAS_PENDIENTES.md`](docs/TAREAS_PENDIENTES.md).
 - **Estática, siempre:** la build (`dist/`) son ficheros. Nada de servidor, SSR, API ni
   funciones serverless, ni variables de entorno.
-- **Entornos:** solo local. La web estática (hosting pendiente de D5) y el escritorio
-  (Electron) llegan en las fases 15 y 14.
-- **Datos de producción:** ninguno. No hay producción ni usuarios.
+- **Entornos:** local y la **web publicada en Vercel** (`https://bpdf.r3zon.com`), que
+  despliega desde git lo que el usuario sube; sus cabeceras salen de `vercel.json`
+  (generado). D5 sigue abierta de forma oficial y el dominio de `project.ts` aún es el de
+  ejemplo ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). El escritorio (Electron) llega en
+  la Fase 14; la distribución formal, en la 15.
+- **Datos de producción:** ninguno. La web publicada es estática: no guarda ni recibe
+  datos de usuario (los documentos no salen del dispositivo) y no hay cuentas.
 - **Alcance:** web primero, después Electron. Fuera de alcance: usuarios, auth, backend,
   base de datos, almacenamiento remoto. Solo el usuario reabre lo que está fuera.
 - **Decisiones pendientes:** las D-n abiertas de [`docs/PLAN.md`](docs/PLAN.md) §14.

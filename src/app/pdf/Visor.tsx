@@ -10,7 +10,13 @@ import {
 } from "react";
 import { messages } from "@/i18n/messages";
 import { cn } from "@/lib/utils";
-import { type Coincidencia, primeraDesde, siguienteIndice } from "@/pdf/visor/busqueda";
+import {
+  type Coincidencia,
+  type OpcionesBusqueda,
+  primeraDesde,
+  SIN_OPCIONES,
+  siguienteIndice,
+} from "@/pdf/visor/busqueda";
 import type { ControladorVisor, EstadoBusqueda, Marco, Memoria } from "@/pdf/visor/controlador";
 import {
   bytesLienzo,
@@ -24,7 +30,14 @@ import {
   zoomEfectivo,
 } from "@/pdf/visor/disposicion";
 import type { DestinoEnlace } from "@/pdf/visor/enlaces";
-import { atajoDe } from "./atajos";
+import { AyudaAtajos } from "./AyudaAtajos";
+import {
+  atajoDe,
+  atajosDeUnaTecla,
+  type ContextoAtajos,
+  ID_CAMPO_BUSQUEDA,
+  ID_CAMPO_PAGINA,
+} from "./atajos";
 import { BarraBusqueda } from "./BarraBusqueda";
 import { BarraHerramientas } from "./BarraHerramientas";
 import { estadoInicial, reducir } from "./estado";
@@ -51,6 +64,9 @@ export type PropsVisor = {
  * marcos existen: en la vista continua, solo los de las páginas visibles ±1
  * (el resto del documento es altura vacía). El controlador pinta en esos
  * marcos. Ver docs/ARCHITECTURE.md → visor PDF.
+ *
+ * Fase 6: pantalla completa del área de lectura, ayuda de atajos (con el
+ * interruptor de los de una tecla), opciones de búsqueda y F3.
  */
 export function Visor({
   controlador,
@@ -248,10 +264,47 @@ export function Visor({
     return () => el.removeEventListener("wheel", alRodar);
   }, []);
 
-  // Teclado.
+  // --- Pantalla completa (Fase 6) ----------------------------------------
+  // Solo el área de lectura. Sin soporte en el navegador, no hay botón.
+  const soportaPantallaCompleta =
+    typeof document !== "undefined" && document.fullscreenEnabled === true;
+  const [pantallaCompleta, setPantallaCompleta] = useState(false);
+  useEffect(() => {
+    const alCambiar = () =>
+      setPantallaCompleta(lector.current !== null && document.fullscreenElement === lector.current);
+    document.addEventListener("fullscreenchange", alCambiar);
+    return () => document.removeEventListener("fullscreenchange", alCambiar);
+  }, []);
+  const alternarPantallaCompleta = useCallback(() => {
+    const el = lector.current;
+    if (!el || !document.fullscreenEnabled) return;
+    // Un rechazo (sin gesto del usuario, política del navegador) no rompe nada.
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    else void el.requestFullscreen().catch(() => {});
+  }, []);
+
+  // --- Atajos de una tecla y su ayuda (Fase 6) ----------------------------
+  const [unaTecla, setUnaTeclaEstado] = useState(atajosDeUnaTecla.activos);
+  const setUnaTecla = useCallback((activos: boolean) => {
+    atajosDeUnaTecla.fijar(activos);
+    setUnaTeclaEstado(activos);
+  }, []);
+  const [ayuda, setAyuda] = useState(false);
+
+  // Teclado. El contexto y las acciones se leen de referencias: el oyente se
+  // pone una vez y siempre ve el estado actual.
+  const contexto = useRef<Omit<ContextoAtajos, "modal">>({
+    unaTecla,
+    vista: estado.vista,
+    busquedaAbierta: estado.busqueda,
+  });
+  contexto.current = { unaTecla, vista: estado.vista, busquedaAbierta: estado.busqueda };
+  const acciones = useRef({ coincidencia: (_direccion: 1 | -1) => {} });
   useEffect(() => {
     const alTeclear = (e: KeyboardEvent) => {
-      const atajo = atajoDe(e);
+      // Un diálogo modal abierto (la ayuda, u otro de la app) se queda las teclas.
+      const modal = document.querySelector("dialog[open]") !== null;
+      const atajo = atajoDe(e, { ...contexto.current, modal });
       if (!atajo) return;
       const el = lector.current;
       e.preventDefault();
@@ -288,13 +341,38 @@ export function Visor({
         case "buscar":
           despachar({ tipo: "busqueda", abierta: true });
           // Si ya estaba abierta, el foco vuelve al campo.
-          document.getElementById("busqueda-pdf")?.focus();
+          document.getElementById(ID_CAMPO_BUSQUEDA)?.focus();
+          break;
+        case "ir-a-pagina": {
+          const campo = document.getElementById(ID_CAMPO_PAGINA);
+          if (campo instanceof HTMLInputElement) {
+            campo.focus();
+            campo.select();
+          }
+          break;
+        }
+        case "coincidencia-siguiente":
+        case "coincidencia-anterior":
+          acciones.current.coincidencia(atajo === "coincidencia-siguiente" ? 1 : -1);
+          break;
+        case "pantalla-completa":
+          alternarPantallaCompleta();
+          break;
+        case "miniaturas":
+          despachar({ tipo: "miniaturas" });
+          break;
+        case "girar-derecha":
+        case "girar-izquierda":
+          despachar({ tipo: "girar", sentido: atajo === "girar-derecha" ? 1 : -1 });
+          break;
+        case "ayuda":
+          setAyuda(true);
           break;
       }
     };
     window.addEventListener("keydown", alTeclear);
     return () => window.removeEventListener("keydown", alTeclear);
-  }, []);
+  }, [alternarPantallaCompleta]);
   const continuaRef = useRef(continua);
   continuaRef.current = continua;
 
@@ -309,9 +387,12 @@ export function Visor({
     anunciar(t.announce.view(continua ? t.viewContinuous : t.viewSingle)),
   );
   useAlCambiar(estado.salto, () => anunciar(t.page(estado.pagina, total)));
+  useAlCambiar(pantallaCompleta, () => anunciar(t.announce.fullscreen(pantallaCompleta)));
 
   // --- Búsqueda -----------------------------------------------------------
   const [consulta, setConsulta] = useState("");
+  // En memoria del visor, como la consulta (Fase 6; sin guardar: Fase 10).
+  const [opciones, setOpciones] = useState<OpcionesBusqueda>(SIN_OPCIONES);
   const [resultado, setResultado] = useState<EstadoBusqueda | null>(null);
   const [activa, setActiva] = useState(-1);
   const llevar = useRef(false);
@@ -324,14 +405,18 @@ export function Visor({
     controlador.cancelarBusqueda();
     if (!estado.busqueda || consulta.trim() === "") return;
     const espera = setTimeout(() => {
-      void controlador.buscar(consulta, (r) => {
-        setResultado(r);
-        if (r.terminada)
-          anunciar(r.sinTexto ? t.searchNoText : t.announce.results(r.coincidencias.length));
-      });
+      void controlador.buscar(
+        consulta,
+        (r) => {
+          setResultado(r);
+          if (r.terminada)
+            anunciar(r.sinTexto ? t.searchNoText : t.announce.results(r.coincidencias.length));
+        },
+        opciones,
+      );
     }, 250);
     return () => clearTimeout(espera);
-  }, [consulta, estado.busqueda, controlador, anunciar]);
+  }, [consulta, opciones, estado.busqueda, controlador, anunciar]);
 
   const coincidencias: readonly Coincidencia[] = resultado?.coincidencias ?? [];
   const irACoincidencia = useCallback(
@@ -344,6 +429,10 @@ export function Visor({
     },
     [coincidencias],
   );
+
+  // F3 / Mayús+F3 (Fase 6): lo mismo que Intro / Mayús+Intro en el campo.
+  acciones.current.coincidencia = (direccion) =>
+    irACoincidencia(siguienteIndice(activa, coincidencias.length, direccion));
 
   // La primera coincidencia, en cuanto la hay: la de la página que se lee o la siguiente.
   useEffect(() => {
@@ -382,6 +471,9 @@ export function Visor({
         porcentaje={porcentaje}
         despachar={despachar}
         onClose={onClose}
+        pantallaCompleta={soportaPantallaCompleta ? pantallaCompleta : null}
+        onPantallaCompleta={alternarPantallaCompleta}
+        onAyuda={() => setAyuda(true)}
       />
       {estado.busqueda && (
         <BarraBusqueda
@@ -389,7 +481,9 @@ export function Visor({
           onConsulta={setConsulta}
           resultado={resultado}
           activa={activa}
-          onSiguiente={(dir) => irACoincidencia(siguienteIndice(activa, coincidencias.length, dir))}
+          onSiguiente={(dir) => acciones.current.coincidencia(dir)}
+          opciones={opciones}
+          onOpciones={setOpciones}
           onCerrar={() => {
             setConsulta("");
             despachar({ tipo: "busqueda", abierta: false });
@@ -456,6 +550,13 @@ export function Visor({
       <p role="status" className="sr-only">
         {aviso}
       </p>
+      {ayuda && (
+        <AyudaAtajos
+          unaTecla={unaTecla}
+          onUnaTecla={setUnaTecla}
+          onCerrar={() => setAyuda(false)}
+        />
+      )}
     </section>
   );
 }

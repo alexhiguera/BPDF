@@ -42,7 +42,7 @@ F0 ─► F1 ─► F2 ─┬─► F3 ─┬─► F5 ─► F6 ─────
 | 3 | Apertura local de archivos | Igual |
 | 4 | **Spike: modo oscuro de PDF** | **Nueva.** Es el mayor riesgo técnico y decide la arquitectura del visor (T-1). Se hace antes de construir el visor, no después |
 | 5 | Visor PDF funcional | El visor propuesto se divide en dos sesiones (5 y 6) por tamaño. Al ejecutarla, la F5 absorbió miniaturas, búsqueda y atajos con modificador |
-| 6 | Visor PDF: pantalla completa, atajos de una tecla y búsqueda avanzada | Lo que queda del visor tras la F5 |
+| 6 | Visor PDF: pantalla completa, atajos de una tecla, búsqueda avanzada y contraseña | Lo que queda del visor tras la F5, más D13. Se ejecuta **después** de las 7, 7 bis y 8 (así lo pidió el usuario); conserva su número |
 | 7 | Markdown: lectura | Igual; incluye su parte de seguridad (sanitización, URLs) |
 | 8 | Markdown: matemáticas y Mermaid | **Separada** de la 7: son las dos dependencias más pesadas y con más historial de vulnerabilidades |
 | 9 | Editor Markdown + vista previa + dividido | Igual |
@@ -243,8 +243,9 @@ E2E) está borrado; el benchmark mide ahora el visor (`npm run bench:pdf`).
 - **Miniaturas, búsqueda y atajos se adelantaron** de la Fase 6 a esta (lo pidió el
   alcance de la fase). La búsqueda no tiene aún «distinguir mayúsculas» ni «palabra
   completa».
-- **Contraseña (D13) no implementada**: D13 sigue pendiente de confirmar. Un PDF cifrado
-  se detecta (`PasswordException`) y se dice que BPDF aún no lo abre.
+- **Contraseña (D13) no implementada**: D13 estaba pendiente de confirmar (se confirmó al
+  especificar la F6, que la implementa). Un PDF cifrado se detecta (`PasswordException`) y
+  se dice que BPDF aún no lo abre.
 - **Rotación en un solo sentido** (90° a la derecha, cuatro pulsaciones dan la vuelta).
 - **Firefox 114+** para el visor: pdf.js 6 carga su worker como módulo ES
   (ARCHITECTURE §4 quater, límites).
@@ -261,44 +262,217 @@ rotación a la izquierda, PDF de ofimática, Firefox) está en
 
 ---
 
-## Fase 6 — Visor PDF: pantalla completa, atajos de una tecla y búsqueda avanzada
+## Fase 6 — Visor PDF: pantalla completa, atajos de una tecla y búsqueda avanzada ✅
+
+Cerrada el 2026-09-30. Bitácora: iteración 13. Diseño: [ARCHITECTURE.md](ARCHITECTURE.md)
+§4 quater («Búsqueda», «Miniaturas», «Pantalla completa», «Contraseña», «Teclado»).
+
+**Hecho, tal como se especificó abajo.** Atajos `F`, `T`, `R`, `Mayús+R` y `?` (de una
+tecla, desactivables desde la ayuda, en memoria de la sesión), `Espacio`/`Mayús+Espacio`,
+`→`/`←` en «página a página», `Ctrl/⌘+G` y `F3`/`Mayús+F3`; ayuda `<dialog>` con la tabla
+y el interruptor, y botón en la barra; pantalla completa del área de lectura; girar a la
+izquierda; «Distinguir mayúsculas», «Palabra completa» y unión de palabras partidas con
+guion; `↑`/`↓` en las miniaturas; contraseña de apertura con diálogo modal, reintentos y
+cancelar. Sin dependencias nuevas y **sin cambios de cabeceras ni de CSP**.
+
+**Decisiones propias al implementar** (menores, anotadas aquí y en la bitácora):
+
+- El botón de cerrar la ayuda se llama «Cerrar la ayuda» (no «Cerrar»): con «Cerrar» a
+  secas, un lector de pantalla no lo distingue de «Cerrar documento».
+- Los atajos no actúan con **cualquier** `<dialog>` abierto (no solo la ayuda); `Ctrl/⌘+O`
+  (de la app) sí, y abrir otro documento durante la contraseña la cancela.
+- El guion que no parte una palabra conserva su carácter en el índice (`-` o U+2010).
+
+**Tests.** Unitarios: `atajos` (cada atajo, reglas de foco, modal, interruptor), `estado` (girar a la izquierda), `busqueda`
+(mayúsculas con Unicode difícil, palabra completa, guiones, rendimiento), `documento`
+(búsqueda con el texto real de pdf.js sobre `busqueda.pdf`), `engine` (contraseña que
+falta, incorrecta, correcta, solo de permisos, cancelación, el error no la lleva),
+`controlador` (opciones). Componentes con jest-axe: `Visor` (atajos, ayuda e interruptor,
+pantalla completa, F3, opciones de búsqueda, miniaturas con flechas) y `App` (flujo de
+contraseña). E2E (`visor-pdf.spec.ts`, 8 nuevos): contraseña (incorrecta, correcta, nada
+guardado; cancelar y Esc; Ctrl+O durante el diálogo), pantalla completa con las cabeceras
+reales, atajos de una tecla y su interruptor, navegación, búsqueda avanzada y miniaturas;
+todos con cero errores de consola, cero violaciones de CSP y ninguna petición externa.
+
+**Pendiente de la fase**: nada bloqueante. Lo que sale está en
+[TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md).
+
+La especificación aprobada, que sigue, se conserva como referencia.
 
 > **Replanteada al cerrar la Fase 5**, que ya hizo las miniaturas, la búsqueda básica y
-> los atajos con modificador. Lo que sigue es lo que queda del visor.
+> los atajos con modificador. Lo que sigue es lo que queda del visor. **Especificada de
+> nuevo el *2026-09-30*, después de las Fases 7, 7 bis y 8** (se hicieron antes por orden
+> del usuario; la numeración histórica se conserva). D13 confirmada: la contraseña entra.
 
 **Objetivo.** Completar el visor PDF.
 
-**Dependencias.** F5. **D13** (contraseña) si se incluye aquí.
+**Dependencias.** F5 ✅. **D13** ✅ (confirmada al especificar la fase). No depende de nada
+pendiente de las Fases 7 bis y 8 ni de la comprobación de cabeceras en producción: la fase
+**no cambia las cabeceras** (ver «Pantalla completa»).
+
+**Punto de partida (código de la F5).** `src/app/pdf/atajos.ts` resuelve las teclas
+(`atajoDe`, sin nada con el foco en `input`, `textarea`, `select` o `contenteditable`) y
+`Visor.tsx` las aplica desde un `keydown` en `window`; `estado.ts` es el reductor de la
+vista (`girar` solo a la derecha); `src/pdf/visor/busqueda.ts` indexa cada página como
+texto normalizado con dos tablas paralelas (`trozo`, `posicion`) para resaltar sobre la
+capa de texto; `PanelMiniaturas.tsx` es una lista de botones; `engine.ts` convierte la
+`PasswordException` de pdf.js en `PdfProtegidoError` y `VisorPdf.tsx` muestra un aviso.
 
 **Alcance**
 
-- **Pantalla completa:** `requestFullscreen` sobre el área de lectura; `F`; salir con
-  `Escape`.
-- **Atajos de una tecla** (`T` miniaturas, `R` rotar, `F` pantalla completa…, tabla de
-  PLAN §9.4) sobre `src/app/pdf/atajos.ts`: se ignoran con foco en campos de texto y se
-  pueden desactivar (en memoria hasta la Fase 10, que la persiste); ayuda `?` con la
-  lista (`<dialog>`).
-- **Búsqueda:** opciones «distinguir mayúsculas» y «palabra completa»; `F3`/`Shift+F3`;
-  unir palabras cortadas con guion al final de línea.
-- **Miniaturas:** navegación con flechas dentro del panel.
-- **Rotar a la izquierda.**
-- **Contraseña (D13)**, si se confirma: diálogo accesible (`<dialog>`), reintento,
-  cancelar cierra el documento; la contraseña no se guarda.
+- **Atajos.** Lista cerrada: la de PLAN §9.4, marcada «F6». No se añade ningún otro.
+  - *De una tecla* (WCAG 2.1.4): `F` pantalla completa · `T` mostrar u ocultar miniaturas ·
+    `R` girar a la derecha · `Shift+R` girar a la izquierda · `?` ayuda de atajos. Se
+    pueden **desactivar** con un interruptor **dentro del diálogo de ayuda**; el estado
+    vive **solo en memoria** (dura la sesión de la pestaña, también al abrir otro
+    documento; se pierde al recargar) hasta que la Fase 10 lo persista. Como `?` también
+    se desactiva, la ayuda tiene además un botón en la barra.
+  - *De navegación* (no son teclas de carácter; no se desactivan): `→` / `←` página
+    siguiente / anterior **solo en «página a página»** (en la continua siguen siendo el
+    desplazamiento horizontal del navegador) · `Espacio` / `Shift+Espacio` página
+    siguiente / anterior, en las dos vistas, como `AvPág`/`RePág` · `F3` / `Shift+F3`
+    coincidencia siguiente / anterior · `Ctrl/Cmd+G` lleva el foco al campo de página (y
+    selecciona su contenido).
+  - Reglas comunes: ningún atajo actúa con el foco en `input`, `textarea`, `select` o un
+    elemento editable (`contenteditable`), ni con un diálogo modal abierto, ni con `Alt`,
+    ni con `Ctrl`/`Cmd` salvo los que lo llevan. **Excepciones:** `F3`/`Shift+F3` también
+    actúan con el foco en el campo de búsqueda (no escriben nada; hacen lo mismo que
+    `Intro`/`Mayús+Intro` allí). `Espacio` tampoco actúa con el foco en un botón, enlace,
+    casilla u otro control que lo use para activarse. `F3` solo actúa con la barra de
+    búsqueda abierta; si está cerrada, no se intercepta.
+  - Se conservan sin cambios los de la F5 (`AvPág`/`RePág`, `Inicio`/`Fin`, `↓`/`↑`,
+    `Ctrl/Cmd +/−/0`, `Ctrl/Cmd`+rueda, `Ctrl/Cmd+F`, `Intro`/`Mayús+Intro`/`Esc` en la
+    búsqueda) y `Ctrl/Cmd+O` de la app.
+  - Ayuda `?`: `<dialog>` modal con la tabla de todos los atajos del visor y el
+    interruptor «Atajos de una tecla» (casilla con etiqueta); se cierra con `Esc` o su
+    botón y devuelve el foco a donde estaba.
+- **Pantalla completa.** Fullscreen API (`requestFullscreen`) sobre el **área de lectura**
+  (el contenedor desplazable de las páginas). `F` y un botón de la barra (con
+  `aria-pressed`) entran o salen según el estado actual (`document.fullscreenElement`);
+  `Escape` sigue siendo la salida nativa del navegador (BPDF no la intercepta). El estado
+  se lee del evento `fullscreenchange` (también cuando sale el navegador) y se anuncia.
+  Si `document.fullscreenEnabled` es falso, el botón no se muestra y `F` no hace nada.
+  Un `requestFullscreen` rechazado no rompe nada. Al cerrar el documento, el navegador
+  sale solo (el elemento desaparece). **Cabeceras: sin cambios.** El valor por defecto de
+  `fullscreen` en `Permissions-Policy` ya es el propio origen (`self`), así que la política
+  actual no lo necesita; un E2E lo comprueba con las cabeceras reales de `vite preview`
+  (SEGURIDAD §2.2). En Electron (F14), además `F11`.
+- **Rotar a la izquierda:** acción nueva del reductor (−90°) y botón en la barra junto al
+  de la derecha.
+- **Búsqueda** (se conserva todo lo de la F5: sin diacríticos, espacios colapsados, fin de
+  línea como espacio, resaltado, recuento, salto, «sin texto»):
+  - «Distinguir mayúsculas» y «Palabra completa»: dos botones conmutables
+    (`aria-pressed`) en la barra de búsqueda, desactivados por defecto, en memoria del
+    visor; cambiar uno relanza la búsqueda. **Distinguir mayúsculas no distingue
+    acentos** (los diacríticos se siguen ignorando, como en la F5).
+  - `F3` / `Shift+F3` (arriba).
+  - Unir palabras partidas con guion al final de línea.
+  - Estrategia de índice: [ARCHITECTURE.md](ARCHITECTURE.md) §4 quater se actualiza al
+    implementar; resumen en «Diseño de la búsqueda», abajo.
+- **Miniaturas:** navegación con `↑`/`↓` dentro del panel (índice de tabulación móvil:
+  solo la miniatura de la página actual está en el orden de tabulación; las flechas mueven
+  el foco a la anterior o la siguiente y la llevan a la vista; `Intro`/`Espacio` la
+  activan, como ya hace el botón). Las flechas del panel no desplazan el área de lectura.
+  Sin reescribir el panel: el pintado por `IntersectionObserver` sigue igual.
+- **Contraseña (D13):**
+  - Un PDF con contraseña de apertura (`PasswordException`, código `NEED_PASSWORD`) abre
+    un `<dialog>` modal accesible (título, campo `type="password"` con etiqueta,
+    «Abrir» y «Cancelar»; el foco va al campo) en lugar del aviso actual.
+  - «Abrir» vuelve a abrir el PDF con `getDocument({ …, password })`, con una copia nueva
+    de los bytes del `Blob` (la anterior se transfirió al worker de pdf.js y la tarea
+    fallida se destruye). Mientras, el botón dice que está comprobando y no se puede
+    pulsar dos veces.
+  - Contraseña incorrecta (`INCORRECT_PASSWORD`): el diálogo sigue abierto, dice que no es
+    correcta (`role="alert"`, asociado al campo), vacía el campo y le devuelve el foco. Se
+    puede reintentar sin límite (todo es local).
+  - «Cancelar» o `Esc` **cierran el documento** (vuelve el estado vacío).
+  - La contraseña **no se guarda**: vive solo en el estado del campo y en la llamada a
+    pdf.js; nada de `localStorage`, `sessionStorage`, registro ni mensajes; el campo no
+    se autocompleta (`autocomplete="off"`) y el formulario nunca se envía
+    (`preventDefault`; la CSP tiene `form-action 'none'`). Al abrir, se descarta.
+  - Un PDF con solo contraseña de permisos (propietario) abre como hasta ahora, sin
+    diálogo.
+  - `engine.ts`: `abrirPdf` acepta la contraseña opcional y `PdfProtegidoError` dice si
+    falta o es incorrecta. Se mantiene la cancelación (abrir otro documento durante el
+    diálogo o la comprobación lo cancela).
 
-**Fuera de alcance.** Esquema/marcadores del PDF (outline), candidato posterior;
-anotaciones.
+**Diseño de la búsqueda** (texto original, normalizado e índices):
+
+- El índice de cada página (`IndicePagina`) pasa a tener **dos textos de la misma
+  longitud** y las mismas tablas paralelas: `texto` (NFKD, sin marcas diacríticas, espacios
+  colapsados; **conserva mayúsculas**) y `minusculas` (lo mismo en minúsculas). Para cada
+  carácter original se calcula su forma normalizada y su minúscula; si pasar a minúsculas
+  cambiara la longitud (casos raros de Unicode), `minusculas` guarda la forma sin bajar,
+  para que las dos cadenas sigan alineadas unidad a unidad. `trozo[k]` y `posicion[k]`
+  (trozo de `getTextContent` y posición UTF-16 dentro de su `str`) valen para las dos.
+- La consulta se normaliza igual; sin «mayúsculas» se busca en `minusculas`, con ella en
+  `texto`. Las coincidencias salen como posiciones del texto normalizado y se traducen a
+  tramos del texto **mostrado** (la capa de texto, un elemento por trozo) con las mismas
+  tablas: el resaltado no cambia.
+- «Palabra completa»: una coincidencia vale si el carácter anterior y el siguiente (en el
+  texto normalizado) no son letra ni número (`\p{L}`, `\p{N}`), o son el principio o el
+  final de la página. Si un candidato no vale, se sigue buscando desde el carácter
+  siguiente (no se salta un candidato válido que se solape).
+- Guion de fin de línea: si un trozo termina (sin contar espacios) en guion (`-`, U+2010)
+  precedido de una letra, la línea acaba ahí (`hasEOL` del trozo o de los trozos vacíos
+  que le siguen) y lo siguiente es una letra, ni el guion ni el espacio del fin de línea
+  entran en el índice: «pala-⏎bra» se encuentra como «palabra», y su resaltado sale en
+  dos tramos (uno por trozo, como ya ocurre con una frase partida). El guion blando
+  (U+00AD) se ignora siempre. Límite que se documenta: un compuesto de verdad partido en
+  el fin de línea («franco-⏎alemán») se encuentra sin guion, no con él.
+- Coste: una cadena más por página indexada (el índice sigue siendo solo cadenas).
+
+**Fuera de alcance.** Atajo `I` (página oscura/original) y cualquier otro atajo no
+listado arriba; esquema/marcadores del PDF (outline), candidato posterior; anotaciones;
+persistir el interruptor de atajos o las opciones de búsqueda (Fase 10); índice de
+Markdown con `T`; tokens de color nuevos para la búsqueda (el resaltado de la F5 ya usa el
+acento: PLAN §9.2).
+
+**Archivos esperados.** `src/app/pdf/atajos.ts`, `estado.ts`, `Visor.tsx`,
+`BarraHerramientas.tsx`, `BarraBusqueda.tsx`, `PanelMiniaturas.tsx`, `VisorPdf.tsx`, un
+componente nuevo para la ayuda y otro para la contraseña en `src/app/pdf/`;
+`src/pdf/visor/busqueda.ts` y `controlador.ts`; `src/pdf/engine.ts`;
+`src/i18n/messages.ts`; un fixture de búsqueda (mayúsculas y guion de fin de línea)
+generado en `tests/fixtures/pdf/visor/generar.mjs`; tests y E2E. **No** cambian
+`security-headers.ts` ni `vercel.json`.
 
 **Tests**
 
-- Unitarios: resolución de atajos (una tecla, foco en input, desactivados).
-- Componentes + jest-axe: ayuda de atajos, opciones de búsqueda, diálogo de contraseña.
-- E2E: `T` abre/cierra miniaturas; `R` rota; `F` entra en pantalla completa
-  (`document.fullscreenElement`); con los atajos de una tecla desactivados, `R` no rota;
-  búsqueda con «palabra completa».
+- Unitarios:
+  - `atajos`: cada atajo de la lista; `?` con y sin `Shift` (depende de la distribución
+    del teclado); `R` frente a `Shift+R`; atajos de una tecla desactivados; foco en
+    `input`, `textarea`, `select` y `contenteditable`; `F3` en el campo de búsqueda;
+    `Espacio` sobre un botón; `→`/`←` solo en «página a página»; `Ctrl/Cmd+G`; con `Alt`
+    no hay atajo.
+  - `estado`: girar a la izquierda (0 → 270 → 180…).
+  - `busqueda`: los tests de la F5 sin cambios; mayúsculas (con `İ`, `ß`, ligaduras,
+    emoji: las dos cadenas del índice miden lo mismo); palabra completa (bordes, principio
+    y final de página, candidatos solapados, frase entre trozos); guion (en el mismo
+    trozo, con trozo vacío de fin de línea, guion blando, número con guion que no se une,
+    guion a mitad de línea que no se une).
+  - `engine`: `protegido.pdf` (contraseña «bpdf», fixture existente) sin contraseña
+    («falta»), con una incorrecta («incorrecta»), con la correcta (abre); cancelación
+    durante la comprobación.
+  - `controlador`: la búsqueda recibe y aplica las opciones.
+- Componentes + jest-axe: ayuda de atajos (tabla, interruptor, cierre y foco); barra de
+  búsqueda (opciones con `aria-pressed`, relanzar); diálogo de contraseña (etiqueta, error
+  asociado, campo vacío tras fallar, «Cancelar» cierra); miniaturas (flechas, un solo
+  elemento tabulable, las flechas no llegan al lector); barra (girar a la izquierda,
+  pantalla completa, ayuda).
+- E2E (con la vigilancia de siempre: cero errores de consola, cero violaciones de CSP,
+  ninguna petición externa): `T` abre y cierra miniaturas; `R` y `Shift+R` giran;
+  `F` entra y sale de pantalla completa (`document.fullscreenElement`) con las cabeceras
+  reales; `?` abre la ayuda, desactivar los atajos hace que `R` no gire y el botón de la
+  barra la vuelve a abrir; búsqueda con «palabra completa», «mayúsculas», `F3`/`Shift+F3`
+  y una palabra partida con guion; `→`/`←`, `Espacio` y `Ctrl/Cmd+G`; flechas en las
+  miniaturas; contraseña: incorrecta, correcta (la página se pinta), cancelar (vuelve el
+  estado vacío) y la contraseña no aparece en `localStorage` ni `sessionStorage`.
 
 **Criterios de aceptación.** Definición de hecho común.
 
-**Documentación.** PLAN §6.2 y §9.4, ARCHITECTURE §4 quater, bitácora, TAREAS.
+**Documentación.** PLAN §6.2, §9.3 y §9.4 (estado), ARCHITECTURE §4 quater (teclado,
+búsqueda, pantalla completa, contraseña y límites), SEGURIDAD §4 (PDF cifrados),
+bitácora, TAREAS.
 
 **Resultado esperado.** Visor PDF con todas las funciones pedidas.
 
@@ -525,8 +699,8 @@ retraso perceptible al teclear (medir en F13 si hay duda).
 
 **Fuera de alcance.** Tema claro (D10); sincronización (nunca).
 
-**Archivos esperados.** `src/preferences/*`, `src/pdf/PdfViewer.tsx`,
-`src/markdown/MarkdownView.tsx`, `src/app/App.tsx`, `package.json`, tests y E2E.
+**Archivos esperados.** `src/preferences/*`, `src/app/pdf/Visor.tsx` (el visor PDF; no
+existe `PdfViewer.tsx`, D17), `src/markdown/MarkdownView.tsx`, `src/app/App.tsx`, `package.json`, tests y E2E.
 
 **Seguridad y privacidad.** Nunca nombres de fichero ni contenido: un test abre un
 documento con nombre conocido, recorre `localStorage` y no lo encuentra.
@@ -587,11 +761,16 @@ quede y registrar una auditoría.
 
 **Alcance**
 
-- CSP obligatoria (no report-only) en `preview` y en la configuración del hosting (D5);
-  resolver **T-3** (`style-src` sin `'unsafe-inline'`) y **T-4** (Trusted Types): probar,
-  medir qué rompe, decidir y documentar.
-- Revisar si `data:` en `img-src` puede quitarse.
-- Test que compara las cabeceras servidas con la fuente única.
+- CSP obligatoria (no report-only) en `preview` y en la configuración del hosting (D5;
+  hoy `vercel.json`, generado desde la fuente única desde la iteración 11); cerrar **T-3**
+  (`style-src` de la app ya sin `'unsafe-inline'`; Mermaid lo tiene solo en su marco
+  aislado) y resolver **T-4** (Trusted Types): probar, medir qué rompe, decidir y
+  documentar.
+- ~~Revisar si `data:` en `img-src` puede quitarse~~: la CSP ya no lleva `data:` en
+  ninguna directiva (Fase 8, `assetsInlineLimit: 0`).
+- Cabeceras servidas frente a la fuente única: ya existen `tests/unit/vercel.test.ts` (el
+  fichero generado) y `npm run cabeceras:verificar` (un despliegue real); la fase los
+  revisa y los completa si falta algo.
 - Recorrer SEGURIDAD §2–§6 control a control: cada uno tiene test o queda como hallazgo.
 - `npm audit`, revisión de `allowScripts`, versiones exactas de los motores, avisos
   publicados de pdf.js/KaTeX/Mermaid/highlight.js desde la última actualización.
@@ -601,7 +780,8 @@ quede y registrar una auditoría.
 
 **Fuera de alcance.** Electron (su auditoría va en F14).
 
-**Archivos esperados.** `src/config/security-headers.mjs`, configuración del hosting,
+**Archivos esperados.** `src/config/security-headers.ts`, `vercel.json` (regenerado, nunca
+a mano),
 `tests/unit/security-headers.test.ts`, `e2e/specs/seguridad.spec.ts`, `docs/auditoria.md`,
 `docs/SEGURIDAD.md`.
 

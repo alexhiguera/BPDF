@@ -165,8 +165,13 @@ antiguos), `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy: same-ori
 `Cross-Origin-Resource-Policy: same-origin`, HSTS sin `preload` (decisión del dominio) y
 `Permissions-Policy` negando `camera`, `microphone`, `geolocation`, `payment`,
 `usb` y `display-capture`. Solo se listan características que Chrome reconoce: una
-desconocida produce un error en consola. `fullscreen` se declarará en la fase que lo use
-(6). **`clipboard-write` (Fase 7, copiar código) no necesitó cambio**: su valor por defecto
+desconocida produce un error en consola. **`fullscreen` (Fase 6) no necesita cambio**: su
+valor por defecto ya es el propio origen (`self`), así que la pantalla completa del área
+de lectura funciona con la política actual y ningún marco ajeno puede pedirla (el de
+Mermaid, con origen opaco, tampoco); un E2E lo comprueba con las cabeceras reales ✅
+(Fase 6). Se decidió no declararlo para no tocar las cabeceras (ni `vercel.json`) sin
+necesidad.
+**`clipboard-write` (Fase 7, copiar código) no necesitó cambio**: su valor por defecto
 ya es el propio origen, y la escritura solo ocurre tras un clic. No se niega
 `clipboard-read` (BPDF nunca lee el portapapeles) para no tocar las cabeceras sin
 necesidad; se revisa en la Fase 12.
@@ -331,7 +336,7 @@ enlace bloqueado no hace nada. Casos:
 | Ficheros adjuntos embebidos | No se exponen en v1 | ✅ 5 (no hay interfaz) |
 | Recursos remotos | Worker, `cmaps/`, `standard_fonts/` y los decodificadores en JavaScript se sirven **desde el propio origen** (`scripts/copiar-pdfjs.mjs`); `useWasm: false`. El documento se pasa como bytes (`data`), nunca como URL (test). E2E: ninguna petición fuera del propio origen en todos los recorridos del visor, también con PDF reales | ✅ 4 · ✅ 5 |
 | Agotamiento de memoria (páginas gigantes, zoom) | Tope de 16,7 Mpx por lienzo y DPR ≤ 2; virtualización (visibles ±1); presupuesto de 160 MiB para las vecinas; lienzos liberados a 0×0; `page.cleanup()` al salir; límite de tamaño de fichero (Fase 3). E2E y benchmark con 300 páginas ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quater) | ✅ 5 · 13 (medir con el corpus grande) |
-| PDFs cifrados | Se detectan (`PasswordException` → `PdfProtegidoError`) y se dice que BPDF aún no los abre. Pedir la contraseña espera a D13: solo en memoria, nunca persistida | ✅ 5 (detección) · D13 |
+| PDFs cifrados | Se detectan (`PasswordException` → `PdfProtegidoError`, que dice si falta o es incorrecta, **sin** llevar la contraseña ni el error de pdf.js como causa) y se pide la contraseña en un `<dialog>` modal (D13). Vive solo en el campo (se vacía al enviar) y en una referencia hasta que el intento termina o el visor se desmonta; va a pdf.js en esa llamada; nunca se persiste, registra ni autocompleta, y el formulario no se envía (`preventDefault`; `form-action 'none'`). Tests: unitarios (el error no la contiene), de componentes y E2E (no aparece en `localStorage`, `sessionStorage`, cookies ni el DOM) | ✅ 5 (detección) · ✅ 6 (diálogo) |
 | Texto del documento en la interfaz | Capa de texto de pdf.js y resaltado de la búsqueda solo con `textContent`/`createElement` (test con texto hostil en `tests/unit/pdf/capas.test.ts`); nada de HTML en crudo | ✅ 5 |
 | Post-proceso del modo oscuro | Trabaja sobre píxeles del lienzo propio (mismo origen, sin `crossOrigin`); no interpreta contenido. Por franjas, sin copiar la página entera. En un worker que solo recibe bytes RGBA | ✅ 4 · ✅ 5 |
 

@@ -2,7 +2,8 @@
 
 > **Estado:** escrito en la Fase 0 (*2026-09-29*); D1–D4 y D15 confirmadas y Fase 1
 > cerrada el mismo día. D16 confirmada y §4.2 y §5 implementados en la Fase 3
-> (*2026-09-29*). Este documento describe **cómo será** BPDF. Cómo es hoy:
+> (*2026-09-29*). Revisado el *2026-09-30* con las Fases 5, 7, 7 bis, 8 y 6 cerradas (D13
+> confirmada e implementada en la 6). Este documento describe **cómo será** BPDF. Cómo es hoy:
 > `ARCHITECTURE.md`, `STACK.md` y `STRUCTURE.md`.
 >
 > Documentos hermanos: [SEGURIDAD.md](SEGURIDAD.md) (modelo de amenazas y controles),
@@ -190,8 +191,10 @@ Reglas:
   las mediciones de la Fase 13. Medido en la Fase 3 (Chrome 153, macOS): abrir un
   Markdown de casi 20 MiB tarda ~170 ms (leer 48 ms, decodificar 19 ms).
 - **Errores tipados** ([`src/documents/errors.ts`](../src/documents/errors.ts)):
-  `unsupported`, `multiple`, `empty`, `too-large`, `not-pdf`, `not-utf8`, `unreadable`,
-  cada uno con su texto en `messages.ts` (§9.3).
+  `unsupported`, `empty`, `too-large`, `not-pdf`, `not-utf8`, `unreadable` y, desde la
+  Fase 7 bis (sustituyen al antiguo `multiple`), `no-markdown`, `several-markdown`,
+  `incompatible`, `folder-no-markdown`, `folder-too-large` y `mixed-drop`; cada uno con su
+  texto en `messages.ts` (§9.3).
 - **Un documento a la vez en v1** (D16, confirmada). Abrir otro lo sustituye; si la
   apertura falla, el documento abierto se conserva. La confirmación de cambios sin guardar
   llega con el editor (Fase 9), que es quien puede tenerlos. El estado vive en
@@ -200,23 +203,26 @@ Reglas:
 
 ### 4.3 Estructura objetivo de `src/`
 
-Lo marcado ✅ existe desde la Fase 2; el resto son rutas **propuestas** que la fase que
-las crea concreta en [STRUCTURE.md](STRUCTURE.md).
+Lo marcado ✅ existe (el detalle, fichero a fichero, en [STRUCTURE.md](STRUCTURE.md)); el
+resto son rutas **propuestas** que la fase que las crea concreta allí.
 
 ```text
 src/
 ├── main.tsx                 ✅ arranque: monta <App/> dentro del ErrorBoundary
-├── app/                     ✅ App.tsx (shell) · EmptyState.tsx · ErrorBoundary.tsx
+├── app/                     ✅ App.tsx (shell) · EmptyState.tsx · ErrorBoundary.tsx · DropZone.tsx ·
+│                            ElegirMarkdown.tsx · pdf/ (interfaz del visor PDF: VisorPdf.tsx, Visor.tsx,
+│                            barras, miniaturas, atajos.ts, estado.ts; F5, F6)
 ├── config/                  ✅ project.ts · security-headers.ts · public-site.ts
 ├── i18n/messages.ts         ✅ todos los textos visibles (D2)
-├── styles/globals.css       ✅ tokens de diseño + Tailwind
+├── styles/                  ✅ globals.css (tokens + Tailwind) · visor-pdf.css · markdown.css
 ├── components/ui/           ✅ primitivos accesibles (Button, Field, Input)
-├── documents/               ✅ F3: tipos, detección, límites, errores, lectura, estado del documento abierto
+├── documents/               ✅ F3, F7 bis: tipos, detección, límites, errores, lectura, recursos, estado
 ├── platform/                ✅ F3: types.ts · web.ts · index.ts (electron.ts en F14)
-├── pdf/                     F4–F6: engine.ts (carga diferida de pdf.js) · PdfViewer.tsx ·
-│                            dark/ (modo oscuro) · thumbnails · find · shortcuts
-├── markdown/                F7–F8: pipeline.ts · MarkdownView.tsx · url-policy.ts · toc.ts ·
-│                            components/ (CodeBlock, MathBlock, MermaidBlock, Image, Link)
+├── pdf/                     ✅ F4–F5, sin React: engine.ts · render.ts · dark/ (modo oscuro) ·
+│                            visor/ (disposición, búsqueda, enlaces, controladores)
+├── markdown/                ✅ F7–F8: pipeline.ts · MarkdownView.tsx · url-policy.ts · toc.ts ·
+│                            matematicas.ts · mermaid*.ts · svg-seguro.ts · imagenes.ts ·
+│                            components/ (BloqueCodigo, Enlace, Imagen, Formula, Diagrama, Indice…)
 ├── editor/                  F9: MarkdownEditor.tsx · SplitView.tsx
 └── preferences/             F10: esquema zod, almacén versionado, hook
 electron/                    F14: main.ts · preload.ts · protocol.ts · ipc.ts
@@ -335,7 +341,7 @@ Por defecto **no interpreta HTML crudo** y filtra URLs con `defaultUrlTransform`
 | Resaltado de sintaxis | Sí | `lowlight` 3 + `highlight.js` 11 con **9 gramáticas** registradas a mano, directamente en `BloqueCodigo` (sin `rehype-highlight`, que arrastra el subconjunto `common`) — produce hast, no HTML | Bajo | 70 KB gzip todo el visor, a demanda | ✅ 7 |
 | Enlaces | No | Componente `Link` + `url-policy.ts` propios | Medio (protocolos) | — | 7 |
 | Índice / TOC | No | Ids propios al estilo de GitHub con prefijo `md-` (plugin de remark); el índice (h1–h6) se lee de los encabezados ya pintados | Bajo (DOM clobbering: prefijo) | — | ✅ 7 |
-| Imágenes locales | No | Componente `Imagen` que resolverá contra `resources` → `blob:`. **Aplazadas en la Fase 7** (§7.2): hoy, marcador | Medio (SVG, rutas) | — | pendiente |
+| Imágenes locales | No | Componente `Imagen` que resuelve contra `resources` (`resolverRecurso`) → URL `blob:` (§7.2). Aplazadas en la Fase 7, **implementadas en la 7 bis** | Medio (SVG, rutas) | — | ✅ 7 bis |
 | Matemáticas | Sí | `remark-math` 6 (sintaxis) + `katex` 0.18.9 a demanda; **sin `rehype-katex`** (parsea HTML con `innerHTML`): nodos con el `toNode()` de KaTeX | Medio (histórico de CVE; `trust: false`) | 77 KB gzip + CSS y fuentes, a demanda | ✅ 8 |
 | Mermaid | Sí | `mermaid` 11.17.2 en un **iframe aislado** (`sandbox`, origen opaco, CSP propia sin red), `securityLevel: "strict"`, SVG saneado y verificado, salida como `<img src="blob:…">` | Alto (histórico de XSS) | ~0,9 MB gzip por trozos, a demanda | ✅ 8 |
 | HTML embebido | — | **No se interpreta** en v1 (D6): se muestra como texto; los comentarios se quitan | — | — | ✅ 7 |
@@ -424,8 +430,9 @@ Implementados en la Fase 2 en `src/styles/globals.css` (utilidades `bg-app`, `te
 | `--rgb-primary` / `--rgb-primary-fg` | `236 236 236` / `13 13 13` | Botón principal (claro con texto oscuro) |
 | `--rgb-danger` | `248 113 113` (`#f87171`) | Errores |
 | Selección | `--rgb-accent` al 35 % | `::selection` |
-| `--rgb-find` / `--rgb-find-current` | amarillo 35 % / acento 50 % | Coincidencias de búsqueda (**llega en la Fase 6**) |
-| `--code-*` | 8 colores de sintaxis | Cada uno ≥ 4,5:1 sobre el fondo de bloque de código (**llega en la Fase 7**) |
+| Coincidencias de búsqueda (PDF) | `--rgb-accent` al 30 % / al 65 % con contorno | Coincidencia / coincidencia activa, en [`visor-pdf.css`](../src/styles/visor-pdf.css) (Fase 5). **Sin tokens propios**: los `--rgb-find` / `--rgb-find-current` que preveía este plan no se crearon, y la Fase 6 no los necesita (sus opciones de búsqueda no cambian el resaltado) |
+| `--rgb-link` | `128 182 255` | Enlaces de un Markdown (Fase 7): 4,5:1 sobre `page` |
+| `--rgb-code-*` | 8 colores de sintaxis | Cada uno ≥ 4,5:1 sobre el fondo de bloque de código (Fase 7) |
 
 Contrastes calculados (WCAG): `fg` sobre `page` ≈ 12:1; `fg-muted` sobre `page` ≈ 6,8:1;
 `accent` sobre `reading` ≈ 5:1. **Un test unitario calcula el contraste de cada par
@@ -440,44 +447,55 @@ con un bloque `[data-theme="light"]`.
 
 - **Vacía** (✅ F3): zona de soltar a pantalla completa, botón «Abrir archivo», atajo
   visible y la frase de privacidad («Tus documentos no salen de este dispositivo»).
-- **Documento abierto, provisional** (F3, hasta que lleguen los visores de las Fases 5 y
-  7): nombre, tipo y tamaño, «Cerrar documento» y «Abrir archivo» en la cabecera.
-- **PDF:** barra (abrir, miniaturas, página n/N, zoom, ajustar, rotar, modo, página
-  oscura/original, buscar, pantalla completa); panel de miniaturas a la izquierda.
-- **Markdown:** barra (abrir, índice, lectura/edición/dividido, guardar, tamaño de letra);
-  índice a la izquierda; hoja centrada con ancho de lectura (~72 caracteres).
-- **Errores:** fichero no soportado, demasiado grande, PDF dañado, con contraseña (D13),
-  Markdown no UTF-8. Cada uno con texto claro y sin detalles técnicos crudos. Los de
-  apertura (✅ F3) se muestran como aviso (`role="alert"`) que se puede descartar, sin
-  cerrar el documento abierto; «PDF dañado» y «PDF protegido» los dice el visor (Fase 5; abrir
-  un PDF con contraseña espera a D13).
+- **PDF** (✅ F5): barra (miniaturas, página n/N, zoom, ajustar, girar, vista, página
+  oscura/original, buscar, cerrar); panel de miniaturas a la izquierda. ✅ F6: girar a la
+  izquierda, pantalla completa (del área de lectura), ayuda de atajos, opciones de búsqueda
+  (mayúsculas, palabra completa) y el diálogo de contraseña.
+- **Markdown** (✅ F7–F8): barra (índice, cerrar); índice a la izquierda; hoja centrada con
+  ancho de lectura (~72 caracteres). Lectura/edición/dividido y guardar llegan en la F9;
+  tamaño de letra, en la F10.
+- **Errores:** fichero no soportado, demasiado grande, PDF dañado, Markdown no UTF-8 y los
+  de la apertura de varios ficheros o carpetas (F7 bis). Cada uno con texto claro y sin
+  detalles técnicos crudos. Los de apertura (✅ F3) se muestran como aviso
+  (`role="alert"`) que se puede descartar, sin cerrar el documento abierto; «PDF dañado»
+  lo dice el visor (✅ F5). Un PDF con contraseña la pide en un diálogo (D13, ✅ F6).
+
+La vista provisional de la Fase 3 (nombre, tipo y tamaño) se retiró en la Fase 7, cuando
+los dos visores existían.
 
 ### 9.4 Atajos de teclado
 
-| Acción | Atajo |
-|---|---|
-| Abrir | `Ctrl/Cmd+O` |
-| Buscar / siguiente / anterior | `Ctrl/Cmd+F` · `Enter` / `F3` · `Shift+Enter` / `Shift+F3` |
-| Zoom + / − / 100 % | `Ctrl/Cmd +` · `Ctrl/Cmd −` · `Ctrl/Cmd 0`; `Ctrl/Cmd`+rueda |
-| Página siguiente / anterior | `PageDown`/`PageUp`, `→`/`←` en modo página, `Espacio`/`Shift+Espacio` |
-| Primera / última página | `Home` / `End` |
-| Ir a página | `Ctrl/Cmd+G` (enfoca el campo de página) |
-| Rotar | `R` / `Shift+R` * |
-| Miniaturas / índice | `T` * |
-| Pantalla completa | `F` * y `F11` (Electron) |
-| Página oscura / original | `I` * |
-| Guardar (Markdown) | `Ctrl/Cmd+S` |
-| Ayuda de atajos | `?` * |
+| Acción | Atajo | Fase |
+|---|---|---|
+| Abrir | `Ctrl/Cmd+O` | ✅ F3 |
+| Buscar / siguiente / anterior | `Ctrl/Cmd+F` · `Enter` / `Shift+Enter` en el campo | ✅ F5 |
+| Siguiente / anterior coincidencia | `F3` / `Shift+F3` (con la barra de búsqueda abierta) | ✅ F6 |
+| Zoom + / − / 100 % | `Ctrl/Cmd +` · `Ctrl/Cmd −` · `Ctrl/Cmd 0`; `Ctrl/Cmd`+rueda | ✅ F5 |
+| Página siguiente / anterior | `PageDown` / `PageUp` | ✅ F5 |
+| Página siguiente / anterior | `→` / `←` (solo en «página a página») · `Espacio` / `Shift+Espacio` | ✅ F6 |
+| Primera / última página | `Home` / `End` | ✅ F5 |
+| Desplazar (en «página a página», en el borde pasa de página) | `↓` / `↑` | ✅ F5 |
+| Ir a página | `Ctrl/Cmd+G` (enfoca el campo de página) | ✅ F6 |
+| Girar a la derecha / a la izquierda | `R` / `Shift+R` * | ✅ F6 |
+| Mostrar u ocultar miniaturas (PDF) | `T` * | ✅ F6 |
+| Pantalla completa (entrar o salir) | `F` * (salir también con `Esc`, del navegador) y `F11` (Electron) | ✅ F6 (`F11`: F14) |
+| Ayuda de atajos | `?` * | ✅ F6 |
+| Guardar (Markdown) | `Ctrl/Cmd+S` | F9 |
 
-\* Atajos de una tecla: solo actúan con el foco fuera de campos de texto y se pueden
-desactivar en preferencias (WCAG 2.1.4). En web, `Ctrl/Cmd +/−` sustituyen al zoom del
-navegador **solo dentro del visor**.
+\* Atajos de una tecla (WCAG 2.1.4): solo actúan con el foco fuera de campos de texto y
+elementos editables, y se pueden **desactivar** con un interruptor en la ayuda (`?`, que
+también se abre desde un botón de la barra); en memoria hasta la Fase 10, que los lleva a
+preferencias. En web, `Ctrl/Cmd +/−` sustituyen al zoom del navegador **solo dentro del
+visor**. Reglas completas y excepciones (`F3` en el campo de búsqueda, `Espacio` sobre un
+botón): [FASES.md](FASES.md), Fase 6.
 
-**Estado (Fase 5, 2026-09-30).** Implementados: `Ctrl/Cmd+O`; `Ctrl/Cmd+F` con `Enter` /
-`Shift+Enter` en el campo; zoom con `Ctrl/Cmd +/−/0` y `Ctrl/Cmd`+rueda; `PageDown`/`PageUp`;
-`Home`/`End`; y `↓`/`↑` para desplazar (en «página a página», al llegar al borde pasa de
-página). Tabla y motivo en [ARCHITECTURE.md](ARCHITECTURE.md) §4 quater. Quedan para la
-Fase 6: `F3`, `→`/`←`, `Espacio`, `Ctrl/Cmd+G` y los de una tecla con su ayuda.
+**Sin atajo por ahora** (se quitaron de esta tabla al especificar la Fase 6, que no los
+incluye): `I` para página oscura/original, y `T` para el índice de un Markdown. Volverán
+solo con una fase que los especifique.
+
+**Estado (*2026-09-30*).** Implementados los marcados ✅ (tabla y motivo en
+[ARCHITECTURE.md](ARCHITECTURE.md) §4 quater), los de la Fase 6 incluidos. Quedan `F11`
+(Electron, Fase 14) y `Ctrl/Cmd+S` (Fase 9).
 
 ## 10. Accesibilidad
 
@@ -505,8 +523,9 @@ reales):
   hacen falta. Bundle inicial objetivo: **≤ 150 KB gzip**, vigilado en CI por
   `npm run build:tamano` desde la Fase 2 (entonces: 80 KB, casi todo React).
 - Parseo de PDF en el **worker** de pdf.js.
-- Virtualización de páginas (la da `PDFViewer`) y tope `maxCanvasPixels` (p. ej. 16 Mpx)
-  para no agotar memoria con zoom alto.
+- Virtualización de páginas **propia** (D17: sin `PDFViewer`; visibles ±1 y presupuesto
+  de memoria) y tope de píxeles por lienzo (16,7 Mpx, DPR ≤ 2) para no agotar memoria con
+  zoom alto. ✅ F5 ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quater).
 - Miniaturas bajo demanda, solo las visibles, a escala baja, con un tope de caché.
 - `pdfDocument.destroy()` y `URL.revokeObjectURL` al cerrar un documento.
 - Mermaid y KaTeX: solo si el documento contiene bloques de ese tipo; Mermaid se
@@ -542,7 +561,8 @@ terceros sin licencia clara.
 
 - **Build web:** `vite build` → `dist/` estático + recursos de pdf.js copiados. Hosting
   estático con cabeceras (D5): la CSP y demás cabeceras se definen en un único fichero
-  fuente y se generan para el hosting y para Electron (Fase 12).
+  fuente (`src/config/security-headers.ts`) y se generan para el hosting (`vercel.json`,
+  `npm run cabeceras:vercel`, desde la iteración 11) y, en la Fase 14, para Electron.
 - **Escritorio:** [ELECTRON.md](ELECTRON.md) §8.
 - **Open source** (Fase 16): `LICENSE` (D3), `README.md` del producto, `CONTRIBUTING.md`,
   `SECURITY.md` (reporte privado por GitHub Security Advisories), `CODE_OF_CONDUCT.md`
@@ -560,7 +580,7 @@ terceros sin licencia clara.
 
 ## 14. Decisiones
 
-### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3; D17 y D18 al empezar la Fase 5; D6 y D7 con la Fase 7)
+### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3; D17 y D18 al empezar la Fase 5; D6 y D7 con la Fase 7; D13 al especificar la Fase 6)
 
 | ID | Decisión | Dónde se aplica |
 |---|---|---|
@@ -574,18 +594,18 @@ terceros sin licencia clara.
 | **D18** | Build **`legacy`** de pdf.js en web (confirmada al empezar la Fase 5) | Fase 5: `engine.ts` y el worker copiado; revisable si solo se publica Electron ([STACK.md](STACK.md)) |
 | **D6** | HTML embebido en Markdown **no se interpreta** en v1: se **muestra como texto** (los comentarios `<!-- -->` se quitan). Confirmada con el encargo de la Fase 7, y la forma («mostrarlo como texto», no «ignorarlo») con el de la Fase 7 bis | Fase 7: `src/markdown/pipeline.ts` |
 | **D7** | Imágenes remotas en Markdown **bloqueadas** en v1: marcador y enlace para abrirla fuera (confirmada con el encargo de la Fase 7) | Fase 7: `components/Imagen.tsx`; CSP `img-src 'self'` |
+| **D13** | PDFs con contraseña **soportados** con un diálogo accesible: reintento, cancelar cierra el documento, la contraseña no se guarda (confirmada al especificar la Fase 6, *2026-09-30*) | Fase 6: `engine.ts`, `VisorPdf.tsx` ([FASES.md](FASES.md)) |
 
 ### 14.1 Pendientes de confirmación (usuario)
 
 | ID | Decisión | Recomendación | Afecta a |
 |---|---|---|---|
-| **D5** | Hosting web y dominio | Hosting estático que permita cabeceras (Vercel o Cloudflare Pages). GitHub Pages **no** permite cabeceras (CSP solo por `<meta>`, sin `frame-ancestors`) | Fases 12 y 15 |
+| **D5** | Hosting web y dominio | Hosting estático que permita cabeceras (Vercel o Cloudflare Pages). GitHub Pages **no** permite cabeceras (CSP solo por `<meta>`, sin `frame-ancestors`). *De hecho, la web ya está publicada en Vercel (`bpdf.r3zon.com`) con `vercel.json` generado ([DEPLOYMENT.md](DEPLOYMENT.md)); falta formalizarla y cambiar el dominio de `project.ts`* | Fases 12 y 15 |
 | **D8** | Recordar página y zoom por documento | **Activado**, con huella (no nombre), máx. 50 y botón de olvidar | Fase 10 |
 | **D9** | Editor de Markdown | **CodeMirror 6** (frente a `<textarea>`) | Fase 9 |
 | **D10** | Tema claro de interfaz | **No en v1** (solo «página original» en PDF) | Fase 11 |
 | **D11** | Escritorio: plataformas, firma de código, auto-actualización | Windows, macOS y Linux; **sin auto-actualización en v1**; firma según presupuesto (sin firma, SmartScreen y Gatekeeper avisan) | Fase 15 |
 | **D12** | Móvil / tablet en web | Escritorio como objetivo; diseño adaptable básico sin optimizar gestos | Fase 11 |
-| **D13** | PDFs con contraseña | Soportados con un diálogo simple (pdf.js lo gestiona con `onPassword`). *Hoy (Fase 5) un PDF cifrado se detecta y se dice que aún no se abre* | Fase 6 |
 | **D14** | Formularios y anotaciones de PDF | Solo se muestran; no se rellenan ni se editan. *Aplicado así en la Fase 5 (apariencias pintadas en el lienzo, sin interacción), que excluía formularios: falta confirmarlo* | Fase 5 |
 
 ### 14.2 Técnicas, resueltas por una fase

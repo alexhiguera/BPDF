@@ -66,14 +66,12 @@ export const messages = {
     unreadable:
       "No se ha podido leer el archivo. Comprueba que sigue existiendo y que tienes permiso para abrirlo.",
   },
-  /** Visor PDF (Fase 5). Los atajos están en docs/ARCHITECTURE.md → visor PDF. */
+  /** Visor PDF (Fases 5 y 6). Los atajos están en docs/ARCHITECTURE.md → visor PDF. */
   pdf: {
     loading: "Abriendo el PDF…",
     rendering: "Pintando páginas…",
     errors: {
       unreadable: "BPDF no ha podido leer este PDF: está dañado o no es un PDF válido.",
-      protected:
-        "Este PDF está protegido con contraseña. BPDF todavía no abre documentos cifrados.",
       page: "No se ha podido mostrar esta página.",
     },
     toolbar: "Herramientas del documento",
@@ -92,6 +90,9 @@ export const messages = {
     fitWidth: "Ajustar al ancho",
     fitPage: "Ajustar a la página",
     rotate: "Girar 90° a la derecha",
+    rotateLeft: "Girar 90° a la izquierda",
+    fullscreen: "Pantalla completa",
+    shortcuts: "Atajos de teclado",
     view: "Vista",
     viewContinuous: "Continua",
     viewSingle: "Página a página",
@@ -103,6 +104,8 @@ export const messages = {
     searchNext: "Coincidencia siguiente",
     searchPrevious: "Coincidencia anterior",
     searchClose: "Cerrar la búsqueda",
+    searchMatchCase: "Distinguir mayúsculas",
+    searchWholeWord: "Palabra completa",
     searchCount: (actual: number, total: number) => `${actual} de ${total}`,
     searchNone: "Sin resultados",
     searching: (revisadas: number, total: number) => `Buscando… ${revisadas} de ${total} páginas`,
@@ -124,6 +127,62 @@ export const messages = {
       view: (vista: string) => `Vista: ${vista}`,
       results: (total: number) => (total === 1 ? "1 coincidencia" : `${total} coincidencias`),
       externalLink: (url: string) => `Abriendo ${url} fuera de BPDF`,
+      fullscreen: (activa: boolean) =>
+        activa ? "Pantalla completa. Esc para salir" : "Fuera de pantalla completa",
+    },
+    /** Diálogo de ayuda de atajos (Fase 6). */
+    help: {
+      title: "Atajos de teclado",
+      close: "Cerrar la ayuda",
+      table: "Atajos del visor PDF",
+      keys: "Teclas",
+      action: "Acción",
+      singleKey: "Atajos de una tecla (F, T, R, Mayús+R y ?)",
+      singleKeyHint:
+        "Desactívalos si chocan con tu lector de pantalla o con tu forma de usar el teclado. Mientras estén desactivados, esta ayuda se abre con el botón de la barra.",
+      singleKeyMark: "una tecla",
+      rows: [
+        {
+          keys: ["F"],
+          action: "Entrar o salir de pantalla completa (Esc también sale)",
+          single: true,
+        },
+        { keys: ["T"], action: "Mostrar u ocultar las miniaturas", single: true },
+        { keys: ["R"], action: "Girar 90° a la derecha", single: true },
+        { keys: ["Mayús", "R"], action: "Girar 90° a la izquierda", single: true },
+        { keys: ["?"], action: "Abrir esta ayuda", single: true },
+        { keys: ["AvPág"], action: "Página siguiente" },
+        { keys: ["RePág"], action: "Página anterior" },
+        { keys: ["Espacio"], action: "Página siguiente" },
+        { keys: ["Mayús", "Espacio"], action: "Página anterior" },
+        { keys: ["→"], action: "Página siguiente (en «Página a página»)" },
+        { keys: ["←"], action: "Página anterior (en «Página a página»)" },
+        { keys: ["Inicio"], action: "Primera página" },
+        { keys: ["Fin"], action: "Última página" },
+        { keys: ["↓"], action: "Bajar (en «Página a página», al final pasa de página)" },
+        { keys: ["↑"], action: "Subir (en «Página a página», al principio vuelve de página)" },
+        { keys: ["Ctrl/⌘", "G"], action: "Ir al número de página" },
+        { keys: ["Ctrl/⌘", "+"], action: "Acercar" },
+        { keys: ["Ctrl/⌘", "−"], action: "Alejar" },
+        { keys: ["Ctrl/⌘", "0"], action: "Zoom al 100 %" },
+        { keys: ["Ctrl/⌘", "F"], action: "Buscar en el documento" },
+        { keys: ["Intro"], action: "En la búsqueda: coincidencia siguiente" },
+        { keys: ["Mayús", "Intro"], action: "En la búsqueda: coincidencia anterior" },
+        { keys: ["F3"], action: "Con la búsqueda abierta: coincidencia siguiente" },
+        { keys: ["Mayús", "F3"], action: "Con la búsqueda abierta: coincidencia anterior" },
+        { keys: ["Esc"], action: "Cerrar la búsqueda, esta ayuda o la pantalla completa" },
+        { keys: ["Ctrl/⌘", "O"], action: "Abrir otro archivo" },
+      ],
+    },
+    /** Diálogo de contraseña (Fase 6, D13). La contraseña no se guarda. */
+    password: {
+      title: "PDF protegido con contraseña",
+      body: "Escribe la contraseña para abrirlo. BPDF no la guarda.",
+      label: "Contraseña",
+      open: "Abrir",
+      checking: "Comprobando…",
+      cancel: "Cancelar",
+      wrong: "La contraseña no es correcta. Inténtalo de nuevo.",
     },
     link: {
       internal: (numero: number) => `Ir a la página ${numero}`,

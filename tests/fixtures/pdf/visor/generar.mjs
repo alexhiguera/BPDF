@@ -3,7 +3,8 @@
  * dependencias, para que su contenido sea evidente y reproducible. Todo es obra
  * de BPDF (Apache-2.0).
  *
- *   node tests/fixtures/pdf/visor/generar.mjs → visor.pdf, protegido.pdf, sin-texto.pdf
+ *   node tests/fixtures/pdf/visor/generar.mjs → visor.pdf, protegido.pdf, sin-texto.pdf,
+ *                                              cjk.pdf, busqueda.pdf
  *
  * - `visor.pdf` (5 páginas): enlaces internos (destino explícito, destino con
  *   nombre y acción «página siguiente»), un enlace externo `https:`, enlaces
@@ -11,11 +12,16 @@
  *   JavaScript), texto con acentos para la búsqueda, una página apaisada y una
  *   con `/Rotate 90`. `VISOR` dice dónde está cada cosa.
  * - `protegido.pdf`: cifrado (RC4 de 40 bits, revisión 2) con contraseña de
- *   apertura; pdf.js pide contraseña y BPDF debe decir que no puede abrirlo.
+ *   apertura «bpdf»; pdf.js pide contraseña y BPDF la pide al usuario (Fase 6).
+ *   `crearPdfProtegido("")` da la variante con solo contraseña de permisos
+ *   (propietario), que se abre sin pedir nada; los tests la generan en memoria.
  * - `sin-texto.pdf`: dos páginas de solo dibujo, como un escaneo sin OCR.
  * - `cjk.pdf`: texto japonés con una fuente CID NO incrustada (Adobe-Japan1). pdf.js
  *   necesita pedir al propio origen sus cmaps (`/pdfjs/cmaps/`) para leerlo: con la CSP
  *   de producción eso exige `connect-src 'self'` (docs/SEGURIDAD.md §2.1).
+ * - `busqueda.pdf` (Fase 6): mayúsculas y minúsculas de la misma palabra, una
+ *   palabra dentro de otra y una palabra partida con guion al final de línea.
+ *   `BUSQUEDA` dice cuántas veces aparece cada cosa.
  */
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
@@ -143,6 +149,28 @@ export function crearPdfVisor() {
   return escribirPdf(objetos);
 }
 
+/** Búsqueda avanzada (Fase 6): una página, cada caso en su línea. */
+export const BUSQUEDA = {
+  lineas: [
+    "Rosa, rosa y ROSA en el Rosal.",
+    "Una pala-",
+    "bra partida por guion al final de linea.",
+  ],
+  /** «rosa» sin opciones: Rosa, rosa, ROSA y la de «Rosal». */
+  rosa: { todas: 4, mayusculas: 1, palabra: 3 },
+  partida: "palabra",
+};
+export function crearPdfBusqueda() {
+  const contenido = BUSQUEDA.lineas.map((l, i) => texto(72, 760 - i * 24, 14, l)).join("\n");
+  return escribirPdf([
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+    flujo(contenido),
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+  ]);
+}
+
 /** Dos páginas de solo dibujo (sin texto): lo que ve BPDF de un escaneo sin OCR. */
 export function crearPdfSinTexto() {
   const dibujo = "0.8 0.8 0.8 rg 72 600 450 150 re f 0.2 0.2 0.2 rg 72 400 300 20 re f";
@@ -198,9 +226,13 @@ function rc4(clave, datos) {
   return salida;
 }
 
-/** Un PDF de una página cifrado con contraseña de usuario «bpdf». */
-export function crearPdfProtegido() {
-  const [usuario, propietario, permisos] = ["bpdf", "propietario-bpdf", -44];
+/**
+ * Un PDF de una página cifrado con contraseña de usuario «bpdf». Con
+ * `usuario = ""`, solo tiene contraseña de propietario (permisos): se abre
+ * sin pedir nada.
+ */
+export function crearPdfProtegido(usuario = "bpdf") {
+  const [propietario, permisos] = ["propietario-bpdf", -44];
   const id = md5(Buffer.from("bpdf-protegido"));
   const o = rc4(md5(rellenar(propietario)).subarray(0, 5), rellenar(usuario));
   const p = Buffer.alloc(4);
@@ -224,6 +256,7 @@ if (process.argv[1]?.endsWith(path.join("visor", "generar.mjs"))) {
     ["protegido.pdf", crearPdfProtegido()],
     ["sin-texto.pdf", crearPdfSinTexto()],
     ["cjk.pdf", crearPdfCjk()],
+    ["busqueda.pdf", crearPdfBusqueda()],
   ]) {
     writeFileSync(path.join(dir, nombre), pdf);
     console.log(`${nombre}: ${pdf.length} bytes`);

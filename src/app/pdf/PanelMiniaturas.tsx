@@ -12,6 +12,12 @@ const t = messages.pdf;
  * están a la vista en el panel (±200 px) tienen lienzo, pintado aparte y a baja
  * resolución (nunca se reutiliza el lienzo de la página grande). Al cerrar el
  * panel se liberan todas.
+ *
+ * Teclado (Fase 6): índice de tabulación móvil. Solo una miniatura está en el
+ * orden de tabulación (la de la página actual, o la última a la que se llegó con
+ * las flechas); ↑ / ↓ mueven el foco a la anterior o la siguiente, e Intro o
+ * Espacio la activan (es un botón). Las flechas del panel no llegan al visor:
+ * no desplazan el área de lectura.
  */
 export function PanelMiniaturas({
   controlador,
@@ -29,7 +35,10 @@ export function PanelMiniaturas({
 }) {
   const panel = useRef<HTMLElement>(null);
   const marcos = useRef(new Map<number, HTMLElement>());
+  const botones = useRef(new Map<number, HTMLButtonElement>());
   const [visibles, setVisibles] = useState<number[]>([]);
+  const [enfocable, setEnfocable] = useState(pagina);
+  useEffect(() => setEnfocable(pagina), [pagina]);
 
   // Qué miniaturas se ven en el panel.
   useEffect(() => {
@@ -83,14 +92,36 @@ export function PanelMiniaturas({
       className="w-44 shrink-0 overflow-y-auto border-r border-border bg-app p-2"
       data-testid="miniaturas"
     >
-      <ol className="flex flex-col items-center gap-3">
+      <ol
+        className="flex flex-col items-center gap-3"
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+          if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const actual = Number((e.target as HTMLElement).closest("button")?.dataset.numero);
+          const desde = Number.isFinite(actual) && actual > 0 ? actual : enfocable;
+          const destino = Math.min(
+            Math.max(1, desde + (e.key === "ArrowDown" ? 1 : -1)),
+            tamanos.length,
+          );
+          setEnfocable(destino);
+          botones.current.get(destino)?.focus();
+        }}
+      >
         {tamanos.map((tamano, i) => {
           const numero = i + 1;
           const actual = numero === pagina;
           return (
             <li key={numero}>
               <button
+                ref={(el) => {
+                  if (el) botones.current.set(numero, el);
+                  else botones.current.delete(numero);
+                }}
                 type="button"
+                data-numero={numero}
+                tabIndex={numero === enfocable ? 0 : -1}
                 aria-label={t.thumbnail(numero)}
                 aria-current={actual ? "page" : undefined}
                 onClick={() => onIr(numero)}

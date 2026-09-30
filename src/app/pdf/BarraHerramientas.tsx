@@ -1,9 +1,12 @@
 import {
   ChevronDown,
   ChevronUp,
+  Fullscreen,
+  Keyboard,
   Maximize,
   MoveHorizontal,
   PanelLeft,
+  RotateCcw,
   RotateCw,
   Search,
   X,
@@ -22,6 +25,7 @@ import {
 import { messages } from "@/i18n/messages";
 import { cn } from "@/lib/utils";
 import { leerPagina, ZOOM_MAXIMO, ZOOM_MINIMO } from "@/pdf/visor/disposicion";
+import { ID_CAMPO_PAGINA } from "./atajos";
 import type { Accion, EstadoVisor } from "./estado";
 
 const t = messages.pdf;
@@ -64,12 +68,20 @@ export function BarraHerramientas({
   porcentaje,
   despachar,
   onClose,
+  pantallaCompleta,
+  onPantallaCompleta,
+  onAyuda,
 }: {
   nombre: string;
   estado: EstadoVisor;
   porcentaje: number;
   despachar: Dispatch<Accion>;
   onClose: () => void;
+  /** `null`: el navegador no permite pantalla completa (el botón no aparece). */
+  pantallaCompleta: boolean | null;
+  onPantallaCompleta: () => void;
+  /** Abre la ayuda de atajos (también con los de una tecla desactivados). */
+  onAyuda: () => void;
 }) {
   const oscuro = estado.modo === "oscuro";
   // Al terminar de cargar, el foco pasa del título provisional a este.
@@ -159,6 +171,9 @@ export function BarraHerramientas({
         >
           <Maximize aria-hidden="true" className={icono} />
         </Boton>
+        <Boton etiqueta={t.rotateLeft} onClick={() => despachar({ tipo: "girar", sentido: -1 })}>
+          <RotateCcw aria-hidden="true" className={icono} />
+        </Boton>
         <Boton etiqueta={t.rotate} onClick={() => despachar({ tipo: "girar" })}>
           <RotateCw aria-hidden="true" className={icono} />
         </Boton>
@@ -206,6 +221,18 @@ export function BarraHerramientas({
         >
           <Search aria-hidden="true" className={icono} />
         </Boton>
+        {pantallaCompleta !== null && (
+          <Boton
+            etiqueta={t.fullscreen}
+            aria-pressed={pantallaCompleta}
+            onClick={onPantallaCompleta}
+          >
+            <Fullscreen aria-hidden="true" className={icono} />
+          </Boton>
+        )}
+        <Boton etiqueta={t.shortcuts} aria-haspopup="dialog" onClick={onAyuda}>
+          <Keyboard aria-hidden="true" className={icono} />
+        </Boton>
       </div>
     </div>
   );
@@ -241,6 +268,7 @@ function CampoPagina({ estado, despachar }: { estado: EstadoVisor; despachar: Di
   return (
     <span className="relative flex items-center gap-1 text-sm">
       <input
+        id={ID_CAMPO_PAGINA}
         type="text"
         inputMode="numeric"
         autoComplete="off"

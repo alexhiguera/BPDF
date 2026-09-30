@@ -1,14 +1,22 @@
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { CaseSensitive, ChevronDown, ChevronUp, WholeWord, X } from "lucide-react";
 import { messages } from "@/i18n/messages";
+import { cn } from "@/lib/utils";
+import type { OpcionesBusqueda } from "@/pdf/visor/busqueda";
 import type { EstadoBusqueda } from "@/pdf/visor/controlador";
+import { ID_CAMPO_BUSQUEDA } from "./atajos";
 
 const t = messages.pdf;
 const boton =
   "inline-flex size-8 items-center justify-center rounded-md text-fg hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-50";
+/** Una opción activada se ve como los modos de la barra (no solo por el color). */
+const opcion =
+  "aria-pressed:bg-elevated aria-pressed:outline aria-pressed:outline-1 aria-pressed:outline-accent";
 
 /**
- * Barra de búsqueda: el campo, el recuento («3 de 12») y anterior/siguiente.
- * Intro = siguiente, Mayús+Intro = anterior, Esc = cerrar.
+ * Barra de búsqueda: el campo, las opciones (distinguir mayúsculas, palabra
+ * completa; Fase 6), el recuento («3 de 12») y anterior/siguiente.
+ * Intro = siguiente, Mayús+Intro = anterior, Esc = cerrar. F3 / Mayús+F3 los
+ * resuelve el visor (también desde aquí).
  */
 export function BarraBusqueda({
   consulta,
@@ -17,6 +25,8 @@ export function BarraBusqueda({
   activa,
   onSiguiente,
   onCerrar,
+  opciones,
+  onOpciones,
 }: {
   consulta: string;
   onConsulta: (texto: string) => void;
@@ -24,6 +34,8 @@ export function BarraBusqueda({
   activa: number;
   onSiguiente: (direccion: 1 | -1) => void;
   onCerrar: () => void;
+  opciones: OpcionesBusqueda;
+  onOpciones: (opciones: OpcionesBusqueda) => void;
 }) {
   const total = resultado?.coincidencias.length ?? 0;
   let estado = "";
@@ -41,7 +53,7 @@ export function BarraBusqueda({
       className="flex flex-wrap items-center gap-2 border-b border-border bg-app px-3 py-1"
     >
       <input
-        id="busqueda-pdf"
+        id={ID_CAMPO_BUSQUEDA}
         type="search"
         // biome-ignore lint/a11y/noAutofocus: la barra se abre para escribir en ella
         autoFocus
@@ -61,6 +73,26 @@ export function BarraBusqueda({
         }}
         className="h-8 w-64 max-w-full rounded-md border border-border bg-elevated px-2 text-sm text-fg"
       />
+      <button
+        type="button"
+        className={cn(boton, opcion)}
+        aria-label={t.searchMatchCase}
+        title={t.searchMatchCase}
+        aria-pressed={opciones.mayusculas}
+        onClick={() => onOpciones({ ...opciones, mayusculas: !opciones.mayusculas })}
+      >
+        <CaseSensitive aria-hidden="true" className="size-4" />
+      </button>
+      <button
+        type="button"
+        className={cn(boton, opcion)}
+        aria-label={t.searchWholeWord}
+        title={t.searchWholeWord}
+        aria-pressed={opciones.palabraCompleta}
+        onClick={() => onOpciones({ ...opciones, palabraCompleta: !opciones.palabraCompleta })}
+      >
+        <WholeWord aria-hidden="true" className="size-4" />
+      </button>
       <button
         type="button"
         className={boton}

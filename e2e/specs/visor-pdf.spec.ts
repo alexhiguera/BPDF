@@ -8,7 +8,7 @@ import {
   crearPdfGrande,
   GEOMETRIA,
 } from "../../tests/fixtures/pdf/modo-oscuro/generar.mjs";
-import { CJK, VISOR } from "../../tests/fixtures/pdf/visor/generar.mjs";
+import { BUSQUEDA, CJK, VISOR } from "../../tests/fixtures/pdf/visor/generar.mjs";
 import { abrir, type Vigilancia } from "../vigilancia";
 
 /**
@@ -537,7 +537,7 @@ test("cambiar de PDF muy deprisa acaba mostrando el último", async ({ page }) =
 
 // ── 20. PDF dañado o protegido ─────────────────────────────────────────────────
 
-test("un PDF dañado y uno protegido muestran su aviso y se pueden cerrar", async ({ page }) => {
+test("un PDF dañado muestra su aviso y se puede cerrar", async ({ page }) => {
   const v = await abrir(page);
   await abrirPdf(page, {
     name: "danado.pdf",
@@ -545,10 +545,249 @@ test("un PDF dañado y uno protegido muestran su aviso y se pueden cerrar", asyn
     buffer: readFileSync(OSCURO).subarray(0, 400),
   });
   await expect(page.getByRole("alert")).toHaveText(t.errors.unreadable);
-  await abrirPdf(page, `${FIXTURES}/visor/protegido.pdf`);
-  await expect(page.getByRole("alert")).toHaveText(t.errors.protected);
   await page.getByRole("button", { name: t.close }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(messages.emptyState.title);
+  limpia(v);
+});
+
+const PROTEGIDO = `${FIXTURES}/visor/protegido.pdf`;
+const pw = t.password;
+
+test("contraseña (F6, D13): incorrecta, reintento y correcta; no queda guardada en ningún sitio", async ({
+  page,
+}) => {
+  const v = await abrir(page);
+  await abrirPdf(page, PROTEGIDO);
+  const dialogo = page.getByRole("dialog", { name: pw.title });
+  await expect(dialogo).toBeVisible();
+  const campo = dialogo.getByLabel(pw.label, { exact: true });
+  await expect(campo).toBeFocused();
+  await expect(campo).toHaveAttribute("type", "password");
+  // Modal de verdad: el resto de la página es inerte.
+  expect(await page.evaluate(() => document.querySelector("dialog")?.matches(":modal"))).toBe(true);
+  await campo.fill("mala-e2e-1");
+  await campo.press("Enter");
+  await expect(dialogo.getByRole("alert")).toHaveText(pw.wrong);
+  await expect(campo).toHaveValue("");
+  await expect(campo).toBeFocused();
+  await expect(campo).toHaveAttribute("aria-invalid", "true");
+  await campo.fill("mala-e2e-2");
+  await dialogo.getByRole("button", { name: pw.open }).click();
+  await expect(dialogo.getByRole("alert")).toHaveText(pw.wrong);
+  await campo.fill("bpdf");
+  await campo.press("Enter");
+  await expect(dialogo).toHaveCount(0);
+  await expect(page.getByTestId("visor-pdf")).toHaveAttribute("data-paginas", "1");
+  await listo(page, 1);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("protegido.pdf");
+  const guardado = await page.evaluate(() =>
+    JSON.stringify([{ ...localStorage }, { ...sessionStorage }, document.cookie]),
+  );
+  for (const c of ["bpdf", "mala-e2e"]) expect(guardado).not.toContain(c);
+  expect(await page.content()).not.toContain("mala-e2e");
+  limpia(v);
+});
+
+test("contraseña: Cancelar y Esc cierran el documento", async ({ page }) => {
+  const v = await abrir(page);
+  await abrirPdf(page, PROTEGIDO);
+  await page
+    .getByRole("dialog", { name: pw.title })
+    .getByRole("button", { name: pw.cancel })
+    .click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(messages.emptyState.title);
+  await abrirPdf(page, PROTEGIDO);
+  await expect(page.getByRole("dialog", { name: pw.title })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(messages.emptyState.title);
+  limpia(v);
+});
+
+test("contraseña: abrir otro documento (Ctrl+O) con el diálogo abierto lo sustituye", async ({
+  page,
+}) => {
+  const v = await abrir(page);
+  await abrirPdf(page, PROTEGIDO);
+  const campo = page.getByRole("dialog", { name: pw.title }).getByLabel(pw.label, { exact: true });
+  await campo.fill("mala-e2e-3");
+  // Con el diálogo modal, la cabecera es inerte; Ctrl+O (de la app) sigue abriendo.
+  const [selector] = await Promise.all([
+    page.waitForEvent("filechooser"),
+    page.keyboard.press("Control+o"),
+  ]);
+  await selector.setFiles(VISOR_PDF);
+  await listo(page, 1);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("visor.pdf");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(await page.content()).not.toContain("mala-e2e");
+  limpia(v);
+});
+
+// ── 20 bis. Fase 6: pantalla completa, atajos, búsqueda avanzada, miniaturas ──
+
+test("pantalla completa: F y el botón entran y salen, solo con el área de lectura", async ({
+  page,
+}) => {
+  const v = await cargar(page, VISOR_PDF);
+  const enCompleta = () =>
+    page.evaluate(() => document.fullscreenElement?.getAttribute("data-testid") ?? null);
+  await enfocarLector(page);
+  await page.keyboard.press("f");
+  await expect.poll(enCompleta).toBe("lector-pdf");
+  await expect(boton(page, t.fullscreen)).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("f");
+  await expect.poll(enCompleta).toBeNull();
+  await expect(boton(page, t.fullscreen)).toHaveAttribute("aria-pressed", "false");
+  await boton(page, t.fullscreen).click();
+  await expect.poll(enCompleta).toBe("lector-pdf");
+  await listo(page, 1);
+  await page.evaluate(() => document.exitFullscreen());
+  await expect.poll(enCompleta).toBeNull();
+  await expect(boton(page, t.fullscreen)).toHaveAttribute("aria-pressed", "false");
+  // Con las cabeceras reales (Permissions-Policy sin `fullscreen`): permitida.
+  expect(await page.evaluate(() => document.fullscreenEnabled)).toBe(true);
+  limpia(v);
+});
+
+test("atajos de una tecla: T, R, Mayús+R y ?; desactivados desde la ayuda, no actúan", async ({
+  page,
+}) => {
+  const v = await cargar(page, VISOR_PDF);
+  await enfocarLector(page);
+  await page.keyboard.press("t");
+  await expect(page.getByRole("navigation", { name: t.thumbnails })).toBeVisible();
+  await page.keyboard.press("t");
+  await expect(page.getByRole("navigation", { name: t.thumbnails })).toHaveCount(0);
+  await page.keyboard.press("r");
+  await expect(page.getByText(t.status.rotation(90))).toBeVisible();
+  await page.keyboard.press("Shift+R");
+  await page.keyboard.press("Shift+R");
+  await expect(page.getByText(t.status.rotation(270))).toBeVisible();
+  await page.keyboard.press("r");
+  await expect(page.getByText(/Girado/)).toHaveCount(0);
+  // En un campo de texto no actúan.
+  await page.getByRole("textbox", { name: t.pageInput }).focus();
+  await page.keyboard.press("r");
+  await expect(page.getByText(/Girado/)).toHaveCount(0);
+  // La ayuda: modal, con la tabla; mientras está abierta, nada se intercepta.
+  await enfocarLector(page);
+  await page.keyboard.press("?");
+  const ayuda = page.getByRole("dialog", { name: t.help.title });
+  await expect(ayuda).toBeVisible();
+  await expect(ayuda.getByRole("table", { name: t.help.table })).toBeVisible();
+  await ayuda.getByRole("checkbox", { name: t.help.singleKey }).uncheck();
+  await page.keyboard.press("Escape");
+  await expect(ayuda).toHaveCount(0);
+  await enfocarLector(page);
+  for (const k of ["r", "t", "f", "?"]) await page.keyboard.press(k);
+  await expect(page.getByText(/Girado/)).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: t.thumbnails })).toHaveCount(0);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(await page.evaluate(() => document.fullscreenElement)).toBeNull();
+  // Siguen desactivados al abrir otro documento; el botón de la barra reabre la ayuda.
+  await abrirPdf(page, OSCURO);
+  await listo(page, 1);
+  await enfocarLector(page);
+  await page.keyboard.press("r");
+  await expect(page.getByText(/Girado/)).toHaveCount(0);
+  await boton(page, t.shortcuts).click();
+  const otraVez = page.getByRole("dialog", { name: t.help.title });
+  await otraVez.getByRole("checkbox", { name: t.help.singleKey }).check();
+  await otraVez.getByRole("button", { name: t.help.close, exact: true }).click();
+  await enfocarLector(page);
+  await page.keyboard.press("r");
+  await expect(page.getByText(t.status.rotation(90))).toBeVisible();
+  limpia(v);
+});
+
+test("navegación: Espacio, Mayús+Espacio, → / ← en página a página y Ctrl+G", async ({ page }) => {
+  const v = await cargar(page);
+  await enfocarLector(page);
+  await page.keyboard.press(" ");
+  await expect(estado(page)).toHaveText(t.status.page(2, 8));
+  await page.keyboard.press(" ");
+  await page.keyboard.press("Shift+ ");
+  await expect(estado(page)).toHaveText(t.status.page(2, 8));
+  // En la vista continua, → no pasa de página.
+  await page.keyboard.press("ArrowRight");
+  await expect(estado(page)).toHaveText(t.status.page(2, 8));
+  await boton(page, t.viewSingle).click();
+  await enfocarLector(page);
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowLeft");
+  await expect(estado(page)).toHaveText(t.status.page(3, 8));
+  await page.keyboard.press("Control+g");
+  const campo = page.getByRole("textbox", { name: t.pageInput });
+  await expect(campo).toBeFocused();
+  await page.keyboard.type("6");
+  await page.keyboard.press("Enter");
+  await expect(estado(page)).toHaveText(t.status.page(6, 8));
+  // Espacio sobre un botón lo activa, no pasa de página.
+  await boton(page, t.viewContinuous).focus();
+  await page.keyboard.press(" ");
+  await expect(boton(page, t.viewContinuous)).toHaveAttribute("aria-pressed", "true");
+  await expect(estado(page)).toHaveText(t.status.page(6, 8));
+  limpia(v);
+});
+
+test("búsqueda avanzada: mayúsculas, palabra completa, F3 y palabra partida con guion", async ({
+  page,
+}) => {
+  const v = await cargar(page, `${FIXTURES}/visor/busqueda.pdf`);
+  const cuenta = page.getByTestId("estado-busqueda");
+  await enfocarLector(page);
+  await page.keyboard.press("Control+f");
+  const caja = page.getByRole("searchbox", { name: t.searchLabel });
+  await caja.fill("rosa");
+  await expect(cuenta).toHaveText(t.searchCount(1, BUSQUEDA.rosa.todas));
+  await boton(page, t.searchWholeWord).click();
+  await expect(cuenta).toHaveText(t.searchCount(1, BUSQUEDA.rosa.palabra));
+  // F3 / Mayús+F3 desde el campo y desde fuera.
+  await caja.press("F3");
+  await expect(cuenta).toHaveText(t.searchCount(2, BUSQUEDA.rosa.palabra));
+  await enfocarLector(page);
+  await page.keyboard.press("F3");
+  await expect(cuenta).toHaveText(t.searchCount(3, BUSQUEDA.rosa.palabra));
+  await page.keyboard.press("Shift+F3");
+  await expect(cuenta).toHaveText(t.searchCount(2, BUSQUEDA.rosa.palabra));
+  await boton(page, t.searchWholeWord).click();
+  await boton(page, t.searchMatchCase).click();
+  await caja.fill("ROSA");
+  await expect(cuenta).toHaveText(t.searchCount(1, BUSQUEDA.rosa.mayusculas));
+  await expect(marco(page, 1).locator("mark.activa")).toHaveText("ROSA");
+  await boton(page, t.searchMatchCase).click();
+  await caja.fill(BUSQUEDA.partida);
+  await expect(cuenta).toHaveText(t.searchCount(1, 1));
+  // Las dos mitades de «pala-⏎bra», resaltadas cada una en su línea.
+  await expect(marco(page, 1).locator("mark.activa")).toHaveCount(2);
+  await expect(marco(page, 1).locator("mark.activa").first()).toHaveText("pala");
+  await expect(marco(page, 1).locator("mark.activa").last()).toHaveText("bra");
+  // Con la búsqueda cerrada, F3 no es de BPDF.
+  await caja.press("Escape");
+  await enfocarLector(page);
+  await page.keyboard.press("F3");
+  await expect(page.getByRole("searchbox")).toHaveCount(0);
+  limpia(v);
+});
+
+test("miniaturas: ↑ / ↓ mueven el foco en el panel sin mover el documento", async ({ page }) => {
+  const v = await cargar(page);
+  await boton(page, t.showThumbnails).click();
+  const panel = page.getByRole("navigation", { name: t.thumbnails });
+  const mini = (n: number) => panel.getByRole("button", { name: t.thumbnail(n), exact: true });
+  await mini(1).focus();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await expect(mini(3)).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await expect(mini(2)).toBeFocused();
+  await expect(estado(page)).toHaveText(t.status.page(1, 8));
+  await page.keyboard.press("Enter");
+  await expect(estado(page)).toHaveText(t.status.page(2, 8));
+  // Tab sale del panel: solo una miniatura está en el orden de tabulación.
+  await expect(panel.locator('button[tabindex="0"]')).toHaveCount(1);
   limpia(v);
 });
 

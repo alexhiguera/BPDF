@@ -3,6 +3,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import {
   AperturaCanceladaError,
   abrirPdf,
+  CONTRASENA_INCORRECTA,
   opcionesDocumento,
   PdfNoLegibleError,
   PdfProtegidoError,
@@ -80,6 +81,55 @@ describe("abrirPdf: protegido y cancelación", () => {
     ).rejects.toBeInstanceOf(PdfProtegidoError);
   });
 
+  it("sin contraseña dice que la necesita; con una incorrecta, que no es; con la buena, abre (Fase 6)", async () => {
+    const pdfjs = await cargarPdfjs();
+    const blob = new Blob([new Uint8Array(crearPdfProtegido())]);
+    const motivo = (contrasena?: string) =>
+      abrirPdf(blob, pdfjs, RUTAS, undefined, contrasena).then(
+        () => "abierto",
+        (e: unknown) => (e instanceof PdfProtegidoError ? e.motivo : String(e)),
+      );
+    expect(await motivo()).toBe("necesita");
+    expect(await motivo("mala")).toBe("incorrecta");
+    expect(await motivo("")).toBe("necesita");
+    // Reintentos con el mismo Blob: cada uno hace su propia copia de los bytes.
+    const doc = await abrirPdf(blob, pdfjs, RUTAS, undefined, "bpdf");
+    expect(doc.numPages).toBe(1);
+    await doc.loadingTask.destroy();
+  });
+
+  it("el error de contraseña no lleva la contraseña ni el error de pdf.js", async () => {
+    const pdfjs = await cargarPdfjs();
+    const blob = new Blob([new Uint8Array(crearPdfProtegido())]);
+    const error = await abrirPdf(blob, pdfjs, RUTAS, undefined, "secreta-123").catch((e) => e);
+    expect(error).toBeInstanceOf(PdfProtegidoError);
+    expect(error.cause).toBeUndefined();
+    expect(JSON.stringify({ ...error, m: error.message, s: String(error.stack) })).not.toContain(
+      "secreta-123",
+    );
+  });
+
+  it("un PDF con solo contraseña de permisos (propietario) abre sin pedir nada", async () => {
+    const pdfjs = await cargarPdfjs();
+    const doc = await abrirPdf(new Blob([new Uint8Array(crearPdfProtegido(""))]), pdfjs, RUTAS);
+    expect(doc.numPages).toBe(1);
+    await doc.loadingTask.destroy();
+  });
+
+  it("abortar mientras se comprueba una contraseña cancela la apertura", async () => {
+    const pdfjs = await cargarPdfjs();
+    const c = new AbortController();
+    const abriendo = abrirPdf(
+      new Blob([new Uint8Array(crearPdfProtegido())]),
+      pdfjs,
+      RUTAS,
+      c.signal,
+      "bpdf",
+    );
+    queueMicrotask(() => c.abort());
+    await expect(abriendo).rejects.toBeInstanceOf(AperturaCanceladaError);
+  });
+
   it("con la señal ya abortada no llega a pedir nada a pdf.js", async () => {
     const pdfjs = await cargarPdfjs();
     const c = new AbortController();
@@ -115,6 +165,16 @@ describe("configuración segura (docs/SEGURIDAD.md §4)", () => {
   const op = opcionesDocumento(new Uint8Array(), {
     worker: "/pdfjs/pdf.worker.min.mjs",
     recursos: "/pdfjs/",
+  });
+
+  it("la contraseña solo aparece en las opciones si se da una (Fase 6)", () => {
+    expect(op).not.toHaveProperty("password");
+    expect(opcionesDocumento(new Uint8Array(), undefined, "x")).toHaveProperty("password", "x");
+  });
+
+  it("CONTRASENA_INCORRECTA es el código de pdf.js", async () => {
+    const pdfjs = await cargarPdfjs();
+    expect(pdfjs.PasswordResponses.INCORRECT_PASSWORD).toBe(CONTRASENA_INCORRECTA);
   });
 
   it("sin WebAssembly: la CSP no necesita 'wasm-unsafe-eval'", () => {

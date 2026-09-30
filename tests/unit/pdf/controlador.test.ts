@@ -184,6 +184,18 @@ describe("ControladorVisor: búsqueda", () => {
     expect(nuevos.at(-1)?.terminada).toBe(true);
   });
 
+  it("aplica las opciones: mayúsculas y palabra completa (Fase 6)", async () => {
+    const { c } = montar(3, { 1: "Hola mundo", 2: "hola holanda", 3: "HOLA" });
+    const paginas = async (opciones: { mayusculas: boolean; palabraCompleta: boolean }) => {
+      const avisos: EstadoBusqueda[] = [];
+      await c.buscar("Hola", (e) => avisos.push(e), opciones);
+      return avisos.at(-1)?.coincidencias.map((x) => x.pagina);
+    };
+    expect(await paginas({ mayusculas: false, palabraCompleta: false })).toEqual([1, 2, 2, 3]);
+    expect(await paginas({ mayusculas: true, palabraCompleta: false })).toEqual([1]);
+    expect(await paginas({ mayusculas: false, palabraCompleta: true })).toEqual([1, 2, 3]);
+  });
+
   it("una consulta vacía no busca", async () => {
     const { c, doc } = montar(3, { 1: "x" });
     await c.buscar("   ", () => {});

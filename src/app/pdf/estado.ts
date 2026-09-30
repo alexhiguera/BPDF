@@ -53,7 +53,8 @@ export type Accion =
   | { tipo: "zoom"; zoom: Zoom }
   /** Acercar o alejar desde el zoom que se ve ahora (aunque sea un ajuste). */
   | { tipo: "paso-zoom"; actual: number; direccion: 1 | -1 }
-  | { tipo: "girar" }
+  /** 90° a la derecha (por defecto) o a la izquierda (`sentido: -1`, Fase 6). */
+  | { tipo: "girar"; sentido?: 1 | -1 }
   | { tipo: "vista"; vista: Vista }
   | { tipo: "modo"; modo: ModoColor }
   | { tipo: "miniaturas"; abiertas?: boolean }
@@ -96,7 +97,10 @@ export function reducir(estado: EstadoVisor, accion: Accion): EstadoVisor {
         zoom: { tipo: "fijo", valor: pasoZoom(accion.actual, accion.direccion) },
       };
     case "girar":
-      return { ...estado, rotacion: ((estado.rotacion + 90) % 360) as Rotacion };
+      return {
+        ...estado,
+        rotacion: ((estado.rotacion + 90 * (accion.sentido ?? 1) + 360) % 360) as Rotacion,
+      };
     case "vista":
       // Cambiar de vista conserva la página y la lleva a la vista.
       return accion.vista === estado.vista

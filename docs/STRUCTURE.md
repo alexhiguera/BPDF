@@ -20,12 +20,15 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   ├── DropZone.tsx      zona de soltar a pantalla completa (envuelve la app)
 │   │   ├── EmptyState.tsx    vista sin documento: «Abrir archivo», «Abrir carpeta», atajo, privacidad
 │   │   ├── ElegirMarkdown.tsx  carpeta con varios .md: el usuario elige el principal (F7 bis)
-│   │   ├── pdf/              interfaz del visor PDF (F5), cargada a demanda
-│   │   │   ├── VisorPdf.tsx  carga del PDF, estados cargando/error y ciclo de vida
-│   │   │   ├── Visor.tsx     área de lectura: disposición, desplazamiento, teclado, búsqueda
+│   │   ├── pdf/              interfaz del visor PDF (F5, F6), cargada a demanda
+│   │   │   ├── VisorPdf.tsx  carga del PDF, estados cargando/contraseña/error y ciclo de vida
+│   │   │   ├── Visor.tsx     área de lectura: disposición, desplazamiento, teclado, búsqueda,
+│   │   │   │                 pantalla completa
 │   │   │   ├── BarraHerramientas.tsx · BarraBusqueda.tsx · PanelMiniaturas.tsx
+│   │   │   ├── AyudaAtajos.tsx       ayuda `?` con el interruptor de los atajos de una tecla (F6)
+│   │   │   ├── DialogoContrasena.tsx contraseña de apertura, <dialog> modal (F6, D13)
 │   │   │   ├── estado.ts     estado de la vista (reductor puro)
-│   │   │   ├── atajos.ts     tabla de atajos de teclado (pura)
+│   │   │   ├── atajos.ts     resolución de atajos de teclado (pura) y su interruptor en memoria
 │   │   │   └── colores.ts    colores del modo oscuro leídos de los tokens
 │   │   ├── DocumentErrorAlert.tsx  aviso de fichero no válido (role="alert")
 │   │   └── ErrorBoundary.tsx red ante errores de render (sin telemetría)

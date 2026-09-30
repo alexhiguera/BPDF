@@ -116,8 +116,8 @@ desmonta. Al desmontar se aborta la apertura si no había terminado (`AbortSigna
 se destruye el documento de pdf.js. Nada del documento anterior puede aparecer después:
 sus marcos se van con él, cada `pintar()` abre una **generación** que descarta lo que
 llegue de las anteriores, y el controlador destruido ignora cualquier petición. Un PDF
-protegido con contraseña (`PasswordException`) o ilegible se dice con un aviso y se
-libera.
+ilegible se dice con un aviso y se libera; uno protegido con contraseña
+(`PasswordException`) la pide (Fase 6, «Contraseña», abajo).
 
 **Modelo de página.** Cada página tiene un marco (un `<div>` vacío del tamaño CSS de la
 página, que pone React) y, si está viva, una `SuperficiePagina`: número, viewport
@@ -204,28 +204,83 @@ anotaciones y formularios se pintan en el lienzo (`AnnotationMode.ENABLE`), sin
 interacción.
 
 **Búsqueda.** Sobre el texto que trae el PDF (sin OCR). El índice de cada página
-normaliza con NFKD, sin diacríticos y en minúsculas, colapsa los espacios y trata el fin
-de línea como un espacio; cada carácter recuerda de qué trozo de `getTextContent` sale y,
-como la capa de texto crea un elemento por trozo en ese orden, una coincidencia se resalta
-envolviendo sus caracteres en `<mark>`. Recorre el documento cediendo el hilo, una
-búsqueda nueva anula la anterior y, si ninguna página tiene texto, lo dice (probablemente
-un escaneo).
+normaliza con NFKD, sin diacríticos, colapsa los espacios y trata el fin de línea como un
+espacio; cada carácter recuerda de qué trozo de `getTextContent` sale y, como la capa de
+texto crea un elemento por trozo en ese orden, una coincidencia se resalta envolviendo sus
+caracteres en `<mark>`. Recorre el documento cediendo el hilo, una búsqueda nueva anula la
+anterior y, si ninguna página tiene texto, lo dice (probablemente un escaneo).
+
+*Fase 6.* El índice (`IndicePagina`) guarda **dos textos de la misma longitud**: `texto`
+(normalizado, conservando mayúsculas) y `minusculas`; las tablas `trozo` y `posicion`
+valen para los dos, así que cualquier coincidencia se traduce igual a tramos del texto
+mostrado y el resaltado no cambia. Si pasar un carácter a minúsculas cambiara su longitud
+(casos raros de Unicode), `minusculas` lo guarda sin bajar: las cadenas nunca se
+desalinean. Opciones de la barra, en memoria del visor:
+
+- **Distinguir mayúsculas**: se busca en `texto` en vez de en `minusculas`. Los acentos se
+  siguen ignorando.
+- **Palabra completa**: una coincidencia vale si antes y después no hay letra ni número
+  (`\p{L}`, `\p{N}`, también fuera del plano básico); un candidato que no vale no salta a
+  los que se solapan con él.
+- **Guion de fin de línea**: un guion (`-`, U+2010) al final de un trozo, precedido de
+  letra, con la línea acabada ahí (`hasEOL` del trozo o de los vacíos que le siguen) y una
+  letra después, no entra en el índice, ni el fin de línea: «pala-⏎bra» es «palabra» y se
+  resalta en dos tramos. El guion blando (U+00AD) se ignora siempre. Comprobado también con
+  un PDF generado por Chromium, que pone el guion en un trozo propio.
+
+Coste medido (1000 páginas de ~3000 caracteres, Node, Ryzen 7 5800X): indexar ~0,52 ms
+por página frente a ~0,40 de la F5, e índice ~18 % mayor; buscar, igual (decenas de ms
+para las 1000 páginas).
 
 **Miniaturas.** Panel lateral con un botón por página (la actual, con
 `aria-current="page"`); `IntersectionObserver` decide cuáles se pintan. Se pintan aparte,
-en su propio lienzo pequeño: nunca reutilizan el de la página grande.
+en su propio lienzo pequeño: nunca reutilizan el de la página grande. *Fase 6:* índice de
+tabulación móvil (una sola miniatura tabulable) y `↑`/`↓` para mover el foco; el panel se
+queda esas flechas (no llegan al visor ni desplazan el área de lectura).
 
-**Teclado** (no se intercepta nada mientras se escribe en un campo):
+**Pantalla completa (Fase 6).** Fullscreen API sobre el **área de lectura** (el contenedor
+desplazable), con `F` o el botón de la barra; `Esc` es la salida nativa del navegador. El
+estado se lee de `fullscreenchange` (también cuando sale el navegador) y se anuncia. En
+pantalla completa no se ven las barras: se maneja con el teclado y se sale con `F` o `Esc`.
+Sin `document.fullscreenEnabled`, no hay botón y `F` no hace nada. Las cabeceras no
+cambiaron: el valor por defecto de `fullscreen` en `Permissions-Policy` ya es `self`
+(SEGURIDAD §2.2; un E2E lo comprueba con las cabeceras reales).
+
+**Contraseña (Fase 6, D13).** Si pdf.js lanza `PasswordException`, `VisorPdf` muestra un
+`<dialog>` modal (`DialogoContrasena`). Cada «Abrir» es un intento nuevo: vuelve a abrir el
+PDF con `getDocument({ password })` y una copia nueva de los bytes (la anterior se
+transfirió al worker con la tarea fallida, que se destruye). La contraseña vive en el campo
+hasta el envío, que lo vacía, y en una referencia hasta que el intento termina (también se
+borra al desmontar); `PdfProtegidoError` dice si faltaba o era incorrecta, sin llevarla ni
+llevar el error de pdf.js. Reintentos sin límite; «Cancelar» o `Esc` cierran el documento;
+abrir otro lo cancela (el visor se desmonta y la señal aborta). Se descartó `onPassword`:
+deja la tarea de carga viva mientras el usuario escribe y complica la cancelación.
+
+**Teclado** (no se intercepta nada mientras se escribe en un campo, salvo `F3` en el de
+búsqueda; nada con un diálogo modal abierto ni con `Alt`). Resolución pura en
+[`atajos.ts`](../src/app/pdf/atajos.ts) (`atajoDe(tecla, contexto)`); un solo oyente en
+`window` que lee el contexto (vista, búsqueda abierta, atajos de una tecla) de referencias:
 
 | Tecla | Acción |
 |---|---|
 | Ctrl/⌘ + O | Abrir archivo (la app) |
-| AvPág / RePág | Página siguiente / anterior |
+| AvPág / RePág · Espacio / Mayús+Espacio | Página siguiente / anterior (Espacio: no sobre un botón, enlace o casilla) |
+| → / ← | Página siguiente / anterior, solo en «página a página» |
 | Inicio / Fin | Primera / última página |
 | ↓ / ↑ | Desplazar; en «página a página», en el borde pasa de página |
 | Ctrl/⌘ + «+» o «=» · Ctrl/⌘ + «−» · Ctrl/⌘ + 0 | Acercar · alejar · 100 % |
 | Ctrl/⌘ + rueda | Acercar / alejar (no el zoom del navegador) |
 | Ctrl/⌘ + F | Buscar en el documento (Intro / Mayús+Intro: siguiente / anterior; Esc: cerrar) |
+| F3 / Mayús+F3 | Coincidencia siguiente / anterior, con la búsqueda abierta (cerrada: es del navegador) |
+| Ctrl/⌘ + G | Al campo de página, con su contenido seleccionado |
+| F · T · R · Mayús+R · ? | **Una tecla** (WCAG 2.1.4): pantalla completa · miniaturas · girar a la derecha · a la izquierda · ayuda |
+
+Los de una tecla se desactivan con el interruptor de la ayuda (`?`, o el botón de la barra,
+que sigue funcionando con ellos desactivados). El estado vive en memoria del módulo
+(`atajosDeUnaTecla`): dura la sesión de la pestaña, también al abrir otro documento, y se
+pierde al recargar; la Fase 10 lo llevará a preferencias. `Mayús+R` se distingue por
+`shiftKey` (con Bloq Mayús, `R` sigue girando a la derecha) y `?` por el carácter, no por
+la tecla física (sale con Mayús en casi todas las distribuciones).
 
 **Accesibilidad.** Cada botón tiene nombre accesible (el icono nunca va solo), los modos
 dicen su estado con `aria-pressed` y texto visible, la barra de estado es texto («Página
@@ -243,8 +298,14 @@ lienzo es `aria-hidden` y el texto accesible es el de la capa de texto.
   pasteles (mapas de calor claros) pierde diferencia.
 - Un escaneo se oscurece con la heurística (≥ 90 % de la página es imagen): conserva el
   tono del papel y el ruido JPEG.
-- La búsqueda no une palabras partidas con guion al final de línea, y en un PDF sin texto
-  no encuentra nada (sin OCR).
+- En un PDF sin texto la búsqueda no encuentra nada (sin OCR). Un compuesto de verdad
+  partido en el fin de línea («franco-⏎alemán») se encuentra sin guion («francoaleman»),
+  no con él; «Distinguir mayúsculas» no distingue acentos.
+- Con la contraseña, el gestor de contraseñas del navegador podría ofrecer guardarla (el
+  campo es `type="password"`, con `autocomplete="off"` y sin envío de formulario, pero la
+  decisión final es del navegador). BPDF no la guarda en ningún sitio.
+- Pantalla completa, atajos y contraseña probados en Chromium (Playwright); Firefox y Safari
+  sin probar.
 - En la vista continua, el ajuste al ancho o a la página usa el tamaño **típico** del
   documento (la mediana), no el de la página actual: una página apaisada no cambia el zoom
   de todas.

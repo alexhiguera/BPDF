@@ -18,7 +18,8 @@ import { BYTES_PNG, fichero, PDF_VALIDO, PlataformaEnMemoria } from "../helpers/
  */
 const motor = vi.hoisted(() => ({
   abrirPdf: vi.fn(
-    (_b: Blob, _p: unknown, _r: unknown, _s?: AbortSignal) => new Promise<never>(() => {}),
+    (_b: Blob, _p: unknown, _r: unknown, _s?: AbortSignal, _c?: string) =>
+      new Promise<never>(() => {}),
   ),
 }));
 vi.mock("@/pdf/engine", async (original) => ({
@@ -78,14 +79,11 @@ describe("App: abrir documentos", () => {
     expect(senal?.aborted).toBe(false);
   });
 
-  it.each([
-    [new PdfNoLegibleError(), messages.pdf.errors.unreadable],
-    [new PdfProtegidoError(), messages.pdf.errors.protected],
-  ])("si pdf.js no puede abrirlo (%s) lo dice y se puede cerrar", async (error, aviso) => {
-    motor.abrirPdf.mockRejectedValueOnce(error);
+  it("si pdf.js no puede abrirlo lo dice y se puede cerrar", async () => {
+    motor.abrirPdf.mockRejectedValueOnce(new PdfNoLegibleError());
     montar(new PlataformaEnMemoria().elegira(fichero("roto.pdf", PDF_VALIDO)));
     await abrir();
-    expect(await screen.findByRole("alert")).toHaveTextContent(aviso);
+    expect(await screen.findByRole("alert")).toHaveTextContent(messages.pdf.errors.unreadable);
     fireEvent.click(screen.getByRole("button", { name: messages.pdf.close }));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(messages.emptyState.title);
   });
@@ -232,6 +230,110 @@ describe("App: accesibilidad con documento y con error", () => {
     );
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+describe("App: PDF con contraseña (Fase 6, D13)", () => {
+  const p = messages.pdf.password;
+
+  /** Abre un PDF cuya primera apertura pide contraseña; las siguientes no terminan. */
+  async function abrirProtegido() {
+    motor.abrirPdf.mockRejectedValueOnce(new PdfProtegidoError("necesita"));
+    const utils = montar(new PlataformaEnMemoria().elegira(fichero("secreto.pdf", PDF_VALIDO)));
+    await abrir();
+    const dialogo = await screen.findByRole("dialog", { name: p.title });
+    const campo = within(dialogo).getByLabelText(p.label);
+    return { ...utils, dialogo, campo };
+  }
+
+  const enviar = async (campo: HTMLElement, valor: string) => {
+    fireEvent.change(campo, { target: { value: valor } });
+    await act(async () => fireEvent.submit(campo.closest("form") as HTMLFormElement));
+  };
+
+  it("pide la contraseña en un diálogo accesible, con el foco en el campo", async () => {
+    const { container, dialogo, campo } = await abrirProtegido();
+    expect(dialogo).toHaveAttribute("open");
+    expect(campo).toHaveAttribute("type", "password");
+    expect(campo).toHaveAttribute("autocomplete", "off");
+    expect(campo).toHaveFocus();
+    expect(within(dialogo).getByRole("button", { name: p.open })).toBeDisabled();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("con la contraseña, vuelve a abrir el PDF con ella y vacía el campo", async () => {
+    const { campo } = await abrirProtegido();
+    await enviar(campo, "bpdf");
+    const [blob, , , senal, contrasena] = motor.abrirPdf.mock.lastCall ?? [];
+    expect(blob).toBeInstanceOf(Blob);
+    expect(senal?.aborted).toBe(false);
+    expect(contrasena).toBe("bpdf");
+    expect(campo).toHaveValue("");
+    expect(screen.getByRole("button", { name: p.checking })).toBeDisabled();
+  });
+
+  it("incorrecta: aviso asociado al campo, campo vacío con el foco, y se puede reintentar", async () => {
+    const { container, campo } = await abrirProtegido();
+    motor.abrirPdf.mockRejectedValueOnce(new PdfProtegidoError("incorrecta"));
+    await enviar(campo, "mala");
+    const aviso = await screen.findByRole("alert");
+    expect(aviso).toHaveTextContent(p.wrong);
+    expect(campo).toHaveAttribute("aria-invalid", "true");
+    expect(campo.getAttribute("aria-describedby")).toBe(aviso.id);
+    expect(campo).toHaveValue("");
+    expect(campo).toHaveFocus();
+    expect(await axe(container)).toHaveNoViolations();
+    // Otra incorrecta (sin límite de intentos) y después la buena.
+    motor.abrirPdf.mockRejectedValueOnce(new PdfProtegidoError("necesita"));
+    await enviar(campo, "otra");
+    expect(await screen.findByRole("alert")).toHaveTextContent(p.wrong);
+    await enviar(campo, "bpdf");
+    expect(motor.abrirPdf.mock.lastCall?.[4]).toBe("bpdf");
+  });
+
+  it("Cancelar cierra el documento", async () => {
+    const { dialogo } = await abrirProtegido();
+    fireEvent.click(within(dialogo).getByRole("button", { name: p.cancel }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(messages.emptyState.title);
+  });
+
+  it("Esc (evento cancel del diálogo) también cierra el documento", async () => {
+    const { dialogo } = await abrirProtegido();
+    await act(async () => fireEvent(dialogo, new Event("cancel", { cancelable: true })));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(messages.emptyState.title);
+  });
+
+  it("abrir otro documento mientras se comprueba la contraseña lo cancela", async () => {
+    motor.abrirPdf.mockRejectedValueOnce(new PdfProtegidoError("necesita"));
+    montar(
+      new PlataformaEnMemoria()
+        .elegira(fichero("secreto.pdf", PDF_VALIDO))
+        .elegira(fichero("otro.md", "texto")),
+    );
+    await abrir();
+    const campo = within(await screen.findByRole("dialog")).getByLabelText(p.label);
+    await enviar(campo, "bpdf");
+    const senal = motor.abrirPdf.mock.lastCall?.[3];
+    await act(async () =>
+      fireEvent.click(
+        within(screen.getByRole("banner")).getByRole("button", { name: messages.open.button }),
+      ),
+    );
+    expect(await screen.findByRole("heading", { level: 1, name: "otro.md" })).toBeInTheDocument();
+    expect(senal?.aborted).toBe(true);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("la contraseña no se guarda: ni en el almacenamiento ni en el DOM", async () => {
+    const { container, campo } = await abrirProtegido();
+    motor.abrirPdf.mockRejectedValueOnce(new PdfProtegidoError("incorrecta"));
+    await enviar(campo, "muy-secreta-42");
+    await screen.findByRole("alert");
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.length).toBe(0);
+    expect(new XMLSerializer().serializeToString(container)).not.toContain("muy-secreta-42");
   });
 });
 

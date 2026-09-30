@@ -7,7 +7,14 @@ import {
 import { transformadorEnWorker } from "../dark/transformador-worker";
 import type { Pdfjs } from "../engine";
 import { PT_A_CSS } from "../render";
-import { buscarEnPagina, type Coincidencia, normalizarConsulta, tieneTexto } from "./busqueda";
+import {
+  buscarEnPagina,
+  type Coincidencia,
+  normalizarConsulta,
+  type OpcionesBusqueda,
+  SIN_OPCIONES,
+  tieneTexto,
+} from "./busqueda";
 import type { Resaltado } from "./capas";
 import type { DocumentoVisor } from "./documento";
 import type { DestinoEnlace } from "./enlaces";
@@ -220,10 +227,15 @@ export class ControladorVisor {
    * Busca `consulta` en todo el documento, página a página, y avisa del
    * progreso. Una búsqueda nueva (o `cancelarBusqueda`) deja sin efecto la
    * anterior. Cede el hilo entre páginas para no bloquear la interfaz.
+   * `opciones`: distinguir mayúsculas y palabra completa (Fase 6).
    */
-  async buscar(consulta: string, alProgreso: (e: EstadoBusqueda) => void): Promise<void> {
+  async buscar(
+    consulta: string,
+    alProgreso: (e: EstadoBusqueda) => void,
+    opciones: OpcionesBusqueda = SIN_OPCIONES,
+  ): Promise<void> {
     const turno = ++this.#busqueda;
-    const normalizada = normalizarConsulta(consulta);
+    const normalizada = normalizarConsulta(consulta, opciones);
     const total = this.total;
     const coincidencias: Coincidencia[] = [];
     let conTexto = false;
@@ -248,7 +260,7 @@ export class ControladorVisor {
       if (turno !== this.#busqueda || this.#destruido) return;
       if (indice) {
         conTexto ||= tieneTexto(indice);
-        coincidencias.push(...buscarEnPagina(indice, normalizada, n));
+        coincidencias.push(...buscarEnPagina(indice, normalizada, n, opciones));
       }
       if (n === total || performance.now() - ultimoAviso > 100) {
         informar(n);

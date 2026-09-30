@@ -58,6 +58,15 @@ describe("estado del visor", () => {
     expect(giros).toEqual([90, 180, 270, 0]);
   });
 
+  it("girar a la izquierda resta 90 y también da la vuelta (Fase 6)", () => {
+    const izquierda = { tipo: "girar", sentido: -1 } as const;
+    const giros = [1, 2, 3, 4].map(
+      (n) => aplicar(Array.from({ length: n }, () => izquierda)).rotacion,
+    );
+    expect(giros).toEqual([270, 180, 90, 0]);
+    expect(aplicar([{ tipo: "girar" }, izquierda]).rotacion).toBe(0);
+  });
+
   it("cambiar de vista conserva página, zoom, giro y modo, y lleva a la página", () => {
     const antes = aplicar([
       { tipo: "ir", pagina: 40 },

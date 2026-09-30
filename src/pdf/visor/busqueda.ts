@@ -6,26 +6,43 @@
  * Normalización, igual en el texto y en la consulta:
  * - NFKD y sin marcas diacríticas: «canción» encuentra «cancion», y las
  *   ligaduras tipográficas («ﬁ») se buscan como sus letras («fi»);
- * - minúsculas;
+ * - minúsculas, salvo con «distinguir mayúsculas» (los acentos se ignoran igual);
  * - cualquier secuencia de espacios cuenta como UN espacio, y un fin de línea
  *   del PDF también es un espacio (una frase partida entre dos líneas se
- *   encuentra). Un guion de corte al final de línea NO se une: límite conocido.
+ *   encuentra);
+ * - una palabra partida con guion al final de línea se une («pala-⏎bra» →
+ *   «palabra»), y el guion blando (U+00AD) se ignora siempre.
  *
- * Cada carácter normalizado recuerda de qué trozo del PDF (`item`, en el orden
- * de `getTextContent`) y de qué posición sale, para resaltar la coincidencia en
- * la capa de texto, que tiene un elemento por trozo en ese mismo orden.
+ * El índice de cada página guarda DOS textos de la misma longitud, con y sin
+ * mayúsculas, y dos tablas paralelas que dicen, para cada unidad UTF-16 de esos
+ * textos, de qué trozo del PDF (`item`, en el orden de `getTextContent`) y de
+ * qué posición sale: con ellas se resalta la coincidencia en la capa de texto,
+ * que tiene un elemento por trozo en ese mismo orden.
  */
 
 /** Lo que la búsqueda usa de cada trozo de `getTextContent()` (los de texto). */
 export type TrozoTexto = { str: string; hasEOL?: boolean };
 
 export type IndicePagina = {
+  /** Texto normalizado CONSERVANDO mayúsculas (para «distinguir mayúsculas»). */
   texto: string;
-  /** Para cada carácter de `texto`: el trozo del que sale… */
+  /** El mismo texto en minúsculas: misma longitud, unidad a unidad. */
+  minusculas: string;
+  /** Para cada unidad de `texto` (y de `minusculas`): el trozo del que sale… */
   trozo: Int32Array;
   /** …y su posición (UTF-16) dentro del `str` de ese trozo. */
   posicion: Int32Array;
 };
+
+/** Opciones de la búsqueda (Fase 6). Sin ninguna, se busca como en la Fase 5. */
+export type OpcionesBusqueda = {
+  /** Distinguir mayúsculas de minúsculas (no los acentos: esos se ignoran siempre). */
+  mayusculas: boolean;
+  /** Solo coincidencias que no tengan letras ni números pegados a los lados. */
+  palabraCompleta: boolean;
+};
+
+export const SIN_OPCIONES: OpcionesBusqueda = { mayusculas: false, palabraCompleta: false };
 
 /** Un tramo resaltable: `[desde, hasta)` dentro del `str` del trozo `trozo`. */
 export type Tramo = { trozo: number; desde: number; hasta: number };
@@ -33,18 +50,37 @@ export type Coincidencia = { pagina: number; tramos: Tramo[] };
 
 const ESPACIO = /\s/u;
 const MARCAS = /\p{M}/gu;
+const LETRA = /\p{L}/u;
+const DE_PALABRA = /[\p{L}\p{N}]/u;
+const GUION_BLANDO = "­";
+/** Guiones que parten una palabra al final de línea: el ASCII y U+2010. */
+const GUIONES = new Set(["-", "‐"]);
 
-const normalizarCaracter = (c: string): string =>
-  c.normalize("NFKD").replace(MARCAS, "").toLowerCase();
+/** Un carácter sin marcas diacríticas y en NFKD (puede quedar vacío o crecer). */
+const sinMarcas = (c: string): string => c.normalize("NFKD").replace(MARCAS, "");
+
+/**
+ * La minúscula de una forma ya normalizada, de la MISMA longitud. Si pasar a
+ * minúsculas cambiara la longitud (casos raros de Unicode), se deja como está:
+ * así `texto` y `minusculas` siguen alineadas con `trozo` y `posicion`.
+ */
+function bajar(normalizado: string): string {
+  const minuscula = normalizado.toLowerCase();
+  return minuscula.length === normalizado.length ? minuscula : normalizado;
+}
 
 /** La consulta normalizada como el texto; `""` si no queda nada que buscar. */
-export function normalizarConsulta(consulta: string): string {
+export function normalizarConsulta(
+  consulta: string,
+  opciones: OpcionesBusqueda = SIN_OPCIONES,
+): string {
   let salida = "";
   for (const c of consulta) {
     if (ESPACIO.test(c)) {
       if (salida !== "" && !salida.endsWith(" ")) salida += " ";
-    } else {
-      salida += normalizarCaracter(c);
+    } else if (c !== GUION_BLANDO) {
+      const normalizado = sinMarcas(c);
+      salida += opciones.mayusculas ? normalizado : bajar(normalizado);
     }
   }
   return salida.trimEnd();
@@ -52,38 +88,92 @@ export function normalizarConsulta(consulta: string): string {
 
 export function indexarPagina(trozos: readonly TrozoTexto[]): IndicePagina {
   const texto: string[] = [];
+  const minusculas: string[] = [];
   const trozo: number[] = [];
   const posicion: number[] = [];
   let ultimoEspacio = true; // no empieza con espacio
-  const espacio = (t: number, p: number) => {
-    if (ultimoEspacio) return;
-    texto.push(" ");
+
+  const emitir = (normal: string, minuscula: string, t: number, p: number) => {
+    texto.push(normal);
+    minusculas.push(minuscula);
     trozo.push(t);
     posicion.push(p);
+  };
+  const espacio = (t: number, p: number) => {
+    if (ultimoEspacio) return;
+    emitir(" ", " ", t, p);
     ultimoEspacio = true;
   };
+
+  /**
+   * Un guion al final de un trozo, precedido de letra, que aún no se sabe si
+   * parte una palabra: depende de que la línea acabe ahí y de que lo siguiente
+   * sea una letra. Mientras tanto, ni él ni el espacio que le sigue se emiten.
+   */
+  let guion: {
+    c: string;
+    t: number;
+    p: number;
+    espacio: { t: number; p: number } | null;
+    eol: boolean;
+  } | null = null;
+  const soltarGuion = () => {
+    if (!guion) return;
+    const { c, t, p, espacio: sp } = guion;
+    guion = null;
+    emitir(c, c, t, p);
+    ultimoEspacio = false;
+    if (sp) espacio(sp.t, sp.p);
+  };
+
   trozos.forEach(({ str, hasEOL }, t) => {
+    // Fin del texto del trozo sin los espacios del final: un guion justo ahí
+    // puede ser de corte de palabra.
+    const fin = str.trimEnd().length;
     let p = 0;
     for (const c of str) {
       if (ESPACIO.test(c)) {
-        espacio(t, p);
-      } else {
-        // Unidad UTF-16 a unidad UTF-16: `texto`, `trozo` y `posicion` deben tener
-        // la misma longitud (un emoji son dos unidades).
-        const normalizado = normalizarCaracter(c);
-        for (let k = 0; k < normalizado.length; k++) {
-          texto.push(normalizado.charAt(k));
-          trozo.push(t);
-          posicion.push(p);
+        if (guion) guion.espacio ??= { t, p };
+        else espacio(t, p);
+      } else if (c !== GUION_BLANDO) {
+        const normalizado = sinMarcas(c);
+        if (guion) {
+          // Se une si la línea acabó tras el guion y sigue una letra.
+          if (guion.eol && LETRA.test(normalizado)) guion = null;
+          else soltarGuion();
         }
-        if (normalizado !== "") ultimoEspacio = false;
+        const esCorte =
+          GUIONES.has(c) &&
+          p + c.length === fin &&
+          !ultimoEspacio &&
+          LETRA.test(texto.at(-1) ?? "");
+        if (esCorte) {
+          guion = { c: normalizado, t, p, espacio: null, eol: false };
+        } else {
+          // Unidad UTF-16 a unidad UTF-16: `texto`, `minusculas`, `trozo` y
+          // `posicion` deben tener la misma longitud (un emoji son dos unidades).
+          const minuscula = bajar(normalizado);
+          for (let k = 0; k < normalizado.length; k++) {
+            emitir(normalizado.charAt(k), minuscula.charAt(k), t, p);
+          }
+          if (normalizado !== "") ultimoEspacio = false;
+        }
       }
       p += c.length;
     }
-    if (hasEOL) espacio(t, str.length);
+    if (hasEOL) {
+      if (guion) {
+        guion.eol = true;
+        guion.espacio ??= { t, p: str.length };
+      } else {
+        espacio(t, str.length);
+      }
+    }
   });
+  soltarGuion();
   return {
     texto: texto.join(""),
+    minusculas: minusculas.join(""),
     trozo: Int32Array.from(trozo),
     posicion: Int32Array.from(posicion),
   };
@@ -92,18 +182,45 @@ export function indexarPagina(trozos: readonly TrozoTexto[]): IndicePagina {
 /** ¿La página tiene algún texto buscable? */
 export const tieneTexto = (indice: IndicePagina): boolean => indice.texto.trim() !== "";
 
-/** Coincidencias (sin solaparse) de `consulta` ya normalizada en una página. */
+/** El carácter (punto de código) que acaba justo antes de `i`, o `""`. */
+function caracterAntes(s: string, i: number): string {
+  if (i <= 0) return "";
+  const bajo = s.charCodeAt(i - 1);
+  const inicio = bajo >= 0xdc00 && bajo <= 0xdfff && i >= 2 ? i - 2 : i - 1;
+  return String.fromCodePoint(s.codePointAt(inicio) ?? 0);
+}
+
+/** El carácter (punto de código) que empieza en `i`, o `""`. */
+const caracterEn = (s: string, i: number): string =>
+  i >= s.length ? "" : String.fromCodePoint(s.codePointAt(i) ?? 0);
+
+/**
+ * Coincidencias (sin solaparse) de `consulta`, ya normalizada con las mismas
+ * `opciones`, en una página.
+ */
 export function buscarEnPagina(
   indice: IndicePagina,
   consulta: string,
   pagina: number,
+  opciones: OpcionesBusqueda = SIN_OPCIONES,
 ): Coincidencia[] {
   const resultado: Coincidencia[] = [];
   if (consulta === "") return resultado;
-  let desde = indice.texto.indexOf(consulta);
+  const fuente = opciones.mayusculas ? indice.texto : indice.minusculas;
+  let desde = fuente.indexOf(consulta);
   while (desde !== -1) {
-    resultado.push({ pagina, tramos: tramos(indice, desde, desde + consulta.length) });
-    desde = indice.texto.indexOf(consulta, desde + consulta.length);
+    const hasta = desde + consulta.length;
+    const valida =
+      !opciones.palabraCompleta ||
+      (!DE_PALABRA.test(caracterAntes(fuente, desde)) &&
+        !DE_PALABRA.test(caracterEn(fuente, hasta)));
+    if (valida) {
+      resultado.push({ pagina, tramos: tramos(indice, desde, hasta) });
+      desde = fuente.indexOf(consulta, hasta);
+    } else {
+      // Un candidato que no vale no salta los que empiezan dentro de él.
+      desde = fuente.indexOf(consulta, desde + 1);
+    }
   }
   return resultado;
 }

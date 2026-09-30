@@ -13,24 +13,25 @@ archivos, tests, criterios de aceptación). El diseño que construyen: [PLAN.md]
 ## Estado hoy — *2026-09-30*
 
 Medido con Node 24.21.0 y npm 11.19.0 en **WSL2 (Ubuntu) sobre Windows**, al cerrar la
-Fase 8, tras una instalación limpia (`npm ci`). E2E con el Chromium de Playwright.
+**Fase 6** (iteración 13). E2E con el Chromium de Playwright. Cerradas las Fases 0–8 (la 6
+se hizo después de las 7, 7 bis y 8, por orden del usuario, y conserva su número).
 
 | Comprobación | Resultado |
 |---|---|
-| Código | SPA estática de Vite 8 + React 19. Abre un PDF o un Markdown local, uno a la vez (D16). **Los PDF se leen** en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo oscuro selectivo en un worker, vistas continua y página a página, zoom, giro, capa de texto, enlaces, búsqueda y miniaturas ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quater). **Los Markdown se leen** en un lector GFM: HTML como texto, política de URLs propia, código resaltado con copiar, índice (§4 quinquies), y **con sus imágenes locales** si se entregan con el `.md` (varios ficheros o una carpeta; §4 sexies) |
+| Código | SPA estática de Vite 8 + React 19. Abre un PDF o un Markdown local, uno a la vez (D16). **Los PDF se leen** en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo oscuro selectivo en un worker, vistas continua y página a página, zoom, giro a los dos lados, capa de texto, enlaces, búsqueda (con mayúsculas, palabra completa y palabras partidas con guion), miniaturas navegables con flechas, pantalla completa del área de lectura, atajos de una tecla desactivables con su ayuda y PDF con contraseña ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quater). **Los Markdown se leen** en un lector GFM: HTML como texto, política de URLs propia, código resaltado con copiar, índice (§4 quinquies), **con sus imágenes locales** si se entregan con el `.md` (varios ficheros o una carpeta; §4 sexies), **fórmulas con KaTeX** y **diagramas con Mermaid** en un marco aislado (`mermaid.html`, iframe con `sandbox` y CSP propia; §4 septies). **Web publicada** en Vercel (`bpdf.r3zon.com`) con `vercel.json` generado; las Fases 7 bis, 8 y 6 y ese fichero aún no están subidos |
 | `npm run lint` · `typecheck` | ✅ |
-| `npm run test:run` | ✅ 752 tests en 42 ficheros (incluye pdf.js y KaTeX reales en Node, el corpus de XSS de Markdown, la resolución de recursos y el saneador y el verificador del SVG de Mermaid) |
-| `npm run test:e2e` | ✅ 69 tests contra la build de producción (`vite preview`): 22 del visor PDF, 10 del lector de Markdown, 8 de recursos locales y 7 de fórmulas y diagramas (KaTeX y Mermaid hostiles, aislamiento del marco comprobado desde dentro, documento sin fórmulas ni diagramas sin descargas) |
-| `npm run build` · `build:tamano` | ✅ arranque 89,6 KB gzip (límite 150; +0,4 KB en la F8). A demanda: visor PDF 15 KB + 0,8 KB CSS, pdf.js 148 KB, lector de Markdown 75 KB + 1,8 KB CSS, KaTeX 77 KB + 4 KB CSS y sus fuentes, Mermaid (en el marco) ~50 KB + ~870 KB en trozos por tipo de diagrama, worker del modo oscuro 3 KB, worker de pdf.js 1,3 MB · 2 avisos conocidos e inocuos (`"use client"` de `lucide-react`) |
+| `npm run test:run` | ✅ 842 tests en 43 ficheros (incluye pdf.js y KaTeX reales en Node, la búsqueda sobre el texto real de pdf.js, el corpus de XSS de Markdown, la resolución de recursos, el saneador y el verificador del SVG de Mermaid y la sincronía de `vercel.json` con la fuente) |
+| `npm run test:e2e` | ✅ 77 tests en 6 ficheros contra la build de producción (`vite preview`): 30 del visor PDF (8 de la Fase 6: contraseña, pantalla completa con las cabeceras reales, atajos, búsqueda avanzada, miniaturas), 10 del lector de Markdown, 8 de recursos locales y 7 de fórmulas y diagramas (KaTeX y Mermaid hostiles, aislamiento del marco comprobado desde dentro, documento sin fórmulas ni diagramas sin descargas) |
+| `npm run build` · `build:tamano` | ✅ arranque 90,5 KB gzip (límite 150; +0,9 KB en la F6, casi todo los textos de la ayuda de atajos, que están en `messages.ts`). A demanda: visor PDF 15 KB + 0,8 KB CSS, pdf.js 148 KB, lector de Markdown 75 KB + 1,8 KB CSS, KaTeX 77 KB + 4 KB CSS y sus fuentes, Mermaid (en el marco) ~50 KB + ~870 KB en trozos por tipo de diagrama, worker del modo oscuro 3 KB, worker de pdf.js 1,3 MB · avisos conocidos e inocuos: 2 de `"use client"` (`lucide-react`) y el de un trozo de Mermaid de más de 500 kB (solo se carga en el marco, a demanda) |
 | CSP | ✅ `default-src 'none'`; la Fase 4 añadió `worker-src 'self'` y `font-src 'self'`, la Fase 5 `connect-src 'self'` (cmaps de pdf.js); la Fase 7, nada; la Fase 7 bis, `blob:` solo en `img-src` (imágenes locales de Markdown); la Fase 8, `frame-src 'self'` (el marco aislado de Mermaid, `/mermaid.html`, con su propia política: `style-src 'unsafe-inline'` confinado a un origen opaco y sin red). Sin `data:` en la build (`assetsInlineLimit: 0`). Sin `unsafe-*`, sin `'wasm-unsafe-eval'`, sin orígenes externos; cero violaciones y ninguna petición externa en los E2E; comprobada con `curl -I` |
-| `npm run docs:validar` · `docs:enlaces` | ✅ · ✅ (221 enlaces en 18 ficheros) |
+| `npm run docs:validar` · `docs:enlaces` | ✅ · ✅ (232 enlaces en 18 ficheros) |
 | `npm audit --audit-level=high` | ✅ 0 vulnerabilidades · 0 overrides · 0 scripts de instalación sin aprobar |
 | Dependencias de runtime | 13: `react`, `react-dom`, `lucide-react`, `clsx`, `tailwind-merge`, `pdfjs-dist` (6.3.289), `react-markdown` (10.1.0), `remark-gfm` (4.0.1), `lowlight` (3.3.0), `highlight.js` (11.11.1) y, de la Fase 8, `remark-math` (6.0.0), `katex` (0.18.9) y `mermaid` (11.17.2); todas las de contenido no confiable con versión exacta |
 | Benchmark (`npm run bench:pdf`, Ryzen 7 5800X) | Modo oscuro en el hilo principal: sin worker 18–28 ms a 2,2 Mpx y 113–141 ms a 16,8 Mpx; con worker 9–13 ms y 60–66 ms. 300 páginas: primera página ~0,9 s, máx. 4 lienzos (≤ 34 MiB a DPR 1), heap ~60 MiB |
 | Benchmark (`npm run bench:markdown`, mismo equipo) | Hasta ver el primer encabezado: 1 KB 0,33 s · 100 KB 0,5–0,9 s · **1 MB 3,3–7,3 s** · 5000 encabezados 0,6–1,0 s · 2000 bloques de código 0,8–1,1 s · listas cortas 200 KB 2,3–2,8 s (cuadrático) · 50 imágenes de 6 Mpx entregadas con 50 sin usar: texto 0,64 s, primera imagen 0,67 s, 50 URL `blob:`, heap 14 MiB · Fase 8: 1500 fórmulas en 2,4 s, 30 diagramas en 2,2 s (~60 ms cada uno), sin cambios para un Markdown sin fórmulas ni diagramas |
 | Markdown reales | 14 probados (los de `docs/` y README de paquetes con HTML, insignias remotas, tablas y código): sin errores, peticiones externas, `img` ni `href` fuera de la política |
 | PDF reales | 9 probados (papers, formulario, corpus de pdf.js, generados con Chromium): sin errores ni peticiones externas; límites del modo oscuro en ARCHITECTURE §4 quater |
-| CI en GitHub | ✅ en verde en su primera ejecución (commit `04c1291`); las Fases 7 bis y 8 aún no se han subido |
+| CI en GitHub | ✅ en verde en su primera ejecución (commit `04c1291`); las Fases 7 bis, 8 y 6 aún no se han subido |
 | Licencia | ✅ Apache-2.0 |
 
 ## Decisiones pendientes de confirmación
@@ -38,7 +39,6 @@ Fase 8, tras una instalación limpia (`npm ci`). E2E con el Chromium de Playwrig
 Detalle, opciones y recomendación de cada una en [PLAN.md §14](PLAN.md#14-decisiones). Una
 fase no empieza con una decisión que necesita sin confirmar.
 
-- [ ] 🟡 **D13** PDFs con contraseña: diálogo simple (recomendado). Hoy un PDF cifrado se detecta y se dice que no se abre — para F6
 - [ ] 🟡 **D14** Formularios de PDF: solo se muestran (recomendado). **Aplicado así en la F5** (el encargo excluía formularios): falta confirmarlo
 - [ ] 🟡 **Navegador mínimo del visor PDF**: pdf.js 6 carga su worker como módulo ES y necesita Firefox 114, pero `build.target` dice Firefox 111. Subir el mínimo a Firefox 114 (recomendado) o aceptar que en 111–113 un PDF no abra ([STACK.md](STACK.md), `pdfjs-dist`)
 - [ ] 🟡 **D9** Editor: CodeMirror 6 (recomendado) o textarea — bloquea F9
@@ -50,7 +50,6 @@ fase no empieza con una decisión que necesita sin confirmar.
 
 ## Fases
 
-- [ ] 🟠 **F6** Visor PDF: pantalla completa, atajos de una tecla y búsqueda avanzada (replanteada al cerrar la F5: [FASES.md](FASES.md)); incluye la contraseña si se confirma D13
 - [ ] 🟠 **F9** Editor Markdown, vista previa y modo dividido
 - [ ] 🟡 **F10** Preferencias (infraestructura con `zod`, panel, posición por documento, borrado)
 - [ ] 🟡 **F11** UI/UX final
@@ -75,6 +74,22 @@ fase no empieza con una decisión que necesita sin confirmar.
   con `mermaid-hostil.md` y `formulas-diagramas.spec.ts`
 - [ ] 🟡 **Marco de Mermaid en Firefox y Safari**: el iframe con origen opaco pide sus
   módulos en modo CORS; probado solo en Chromium
+- [ ] 🟡 **Visor PDF de la Fase 6 en Firefox y Safari**: pantalla completa (Safari la
+  permite en macOS y iPadOS, no en iPhone: allí no hay botón), atajos (`?` y `Mayús+R`
+  con otras distribuciones de teclado) y el diálogo de contraseña; probado solo en Chromium
+- [ ] 🟢 **Gestor de contraseñas del navegador y la contraseña de un PDF**: el campo es
+  `type="password"` con `autocomplete="off"` y el formulario nunca se envía, pero algún
+  navegador podría ofrecer guardarla (BPDF no la guarda). Probarlo a mano en Chrome, Firefox
+  y Safari; si alguno la ofrece, valorar otro tipo de campo
+- [ ] 🟠 **Tests de `App` intermitentes con la máquina cargada** (visto al cerrar la F6, y
+  ya presente antes: sobre `HEAD` sin la F6, con dos suites a la vez, fallan 7 de 10). «abrir
+  otro documento mientras un PDF carga…», «abre un Markdown…» y «abre un PDF…» esperan con
+  el tiempo por defecto de `findByRole` (1 s) a un visor que se carga con `React.lazy`; con
+  carga, el `import()` tarda más. En ejecuciones normales, 10 de 10 en verde. Arreglo
+  probable: esperar al visor con un tiempo mayor o precargar los módulos en esos tests
+- [ ] 🟢 **Probar la búsqueda de la Fase 6 con PDF reales con guiones de corte** (LaTeX,
+  ofimática): comprobada con el fixture, con un PDF generado por Chromium y con el único PDF
+  real del equipo (sin guiones); faltan documentos «de verdad» con palabras partidas
 - [ ] 🟢 **Medir la memoria de verdad** (→ F13): `performance.memory` de Chrome está
   cuantizado y da siempre ~10 MiB; hace falta `--enable-precise-memory-info` o el
   protocolo de depuración

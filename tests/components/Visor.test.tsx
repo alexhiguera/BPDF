@@ -3,9 +3,11 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { createRef, type MutableRefObject } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { atajosDeUnaTecla } from "@/app/pdf/atajos";
 import { Visor } from "@/app/pdf/Visor";
 import { messages } from "@/i18n/messages";
+import type { OpcionesBusqueda } from "@/pdf/visor/busqueda";
 import type { ControladorVisor, EstadoBusqueda } from "@/pdf/visor/controlador";
 import type { DestinoEnlace } from "@/pdf/visor/enlaces";
 import type { ParametrosPintura } from "@/pdf/visor/superficie";
@@ -31,10 +33,16 @@ function controladorFalso(total: number) {
       pedidos.push({ paginas: marcos.map((m) => m.numero), p }),
     ),
     mostrarMiniaturas: vi.fn(),
-    buscar: vi.fn(async (consulta: string, alProgreso: (e: EstadoBusqueda) => void) => {
-      busquedas.push(consulta);
-      responder = alProgreso;
-    }),
+    buscar: vi.fn(
+      async (
+        consulta: string,
+        alProgreso: (e: EstadoBusqueda) => void,
+        _opciones?: OpcionesBusqueda,
+      ) => {
+        busquedas.push(consulta);
+        responder = alProgreso;
+      },
+    ),
     cancelarBusqueda: vi.fn(),
     resaltarBusqueda: vi.fn(),
   };
@@ -292,6 +300,232 @@ describe("Visor: enlaces del documento", () => {
     expect(estadoPagina()).toHaveTextContent(t.status.page(7, 20));
     act(() => alEnlace.current({ tipo: "externo", url: "https://example.com/" }));
     expect(onOpenExternal).toHaveBeenCalledWith("https://example.com/");
+  });
+});
+
+describe("Visor: atajos de la Fase 6", () => {
+  afterEach(() => atajosDeUnaTecla.fijar(true));
+  const tecla = (key: string, mod: Partial<KeyboardEvent> = {}) =>
+    fireEvent.keyDown(window, { key, ...mod });
+
+  it("T muestra y oculta las miniaturas; R y Mayús+R giran", () => {
+    const { ultimo } = montar();
+    tecla("t");
+    expect(screen.getByRole("navigation", { name: t.thumbnails })).toBeInTheDocument();
+    tecla("t");
+    expect(screen.queryByRole("navigation", { name: t.thumbnails })).toBeNull();
+    tecla("r");
+    expect(ultimo()?.p.rotacion).toBe(90);
+    tecla("R", { shiftKey: true });
+    tecla("R", { shiftKey: true });
+    expect(ultimo()?.p.rotacion).toBe(270);
+  });
+
+  it("el botón «Girar a la izquierda» resta 90°", () => {
+    const { ultimo } = montar();
+    fireEvent.click(boton(t.rotateLeft));
+    expect(ultimo()?.p.rotacion).toBe(270);
+    expect(screen.getByText(t.status.rotation(270))).toBeInTheDocument();
+  });
+
+  it("Espacio y Mayús+Espacio pasan de página; sobre un botón, Espacio es del botón", () => {
+    montar(20);
+    tecla(" ");
+    tecla(" ");
+    expect(estadoPagina()).toHaveTextContent(t.status.page(3, 20));
+    tecla(" ", { shiftKey: true });
+    expect(estadoPagina()).toHaveTextContent(t.status.page(2, 20));
+    fireEvent.keyDown(boton(t.zoomIn), { key: " " });
+    expect(estadoPagina()).toHaveTextContent(t.status.page(2, 20));
+  });
+
+  it("→ / ← pasan de página solo en «página a página»", () => {
+    montar(20);
+    tecla("ArrowRight");
+    expect(estadoPagina()).toHaveTextContent(t.status.page(1, 20));
+    fireEvent.click(boton(t.viewSingle));
+    tecla("ArrowRight");
+    tecla("ArrowRight");
+    tecla("ArrowLeft");
+    expect(estadoPagina()).toHaveTextContent(t.status.page(2, 20));
+  });
+
+  it("Ctrl+G lleva el foco al campo de página con su contenido seleccionado", () => {
+    montar(20);
+    tecla("g", { ctrlKey: true });
+    expect(campo()).toHaveFocus();
+    const c = campo() as HTMLInputElement;
+    expect([c.selectionStart, c.selectionEnd]).toEqual([0, c.value.length]);
+  });
+
+  it("F3 / Mayús+F3 recorren las coincidencias, también desde el campo; con la búsqueda cerrada no hacen nada", async () => {
+    const { busquedas, responder } = montar(20);
+    tecla("F3");
+    expect(screen.queryByRole("searchbox")).toBeNull();
+    fireEvent.click(boton(t.search));
+    const caja = screen.getByRole("searchbox", { name: t.searchLabel });
+    fireEvent.change(caja, { target: { value: "x" } });
+    await waitFor(() => expect(busquedas).toEqual(["x"]));
+    const coincidencias = [4, 9, 12].map((pagina) => ({ pagina, tramos: [] }));
+    responder({
+      consulta: "x",
+      coincidencias,
+      revisadas: 20,
+      total: 20,
+      terminada: true,
+      sinTexto: false,
+    });
+    expect(screen.getByTestId("estado-busqueda")).toHaveTextContent(t.searchCount(1, 3));
+    fireEvent.keyDown(caja, { key: "F3" });
+    expect(screen.getByTestId("estado-busqueda")).toHaveTextContent(t.searchCount(2, 3));
+    tecla("F3");
+    expect(estadoPagina()).toHaveTextContent(t.status.page(12, 20));
+    tecla("F3", { shiftKey: true });
+    tecla("F3", { shiftKey: true });
+    expect(screen.getByTestId("estado-busqueda")).toHaveTextContent(t.searchCount(1, 3));
+  });
+
+  it("las opciones de búsqueda se ven con aria-pressed y relanzan la búsqueda con ellas", async () => {
+    const { falso } = montar(20);
+    fireEvent.click(boton(t.search));
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "Rosa" } });
+    await waitFor(() => expect(falso.buscar).toHaveBeenCalledTimes(1));
+    expect(falso.buscar.mock.lastCall?.[2]).toEqual({ mayusculas: false, palabraCompleta: false });
+    fireEvent.click(boton(t.searchMatchCase));
+    expect(boton(t.searchMatchCase)).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() => expect(falso.buscar).toHaveBeenCalledTimes(2));
+    expect(falso.buscar.mock.lastCall?.[2]).toEqual({ mayusculas: true, palabraCompleta: false });
+    fireEvent.click(boton(t.searchWholeWord));
+    await waitFor(() => expect(falso.buscar).toHaveBeenCalledTimes(3));
+    expect(falso.buscar.mock.lastCall?.[2]).toEqual({ mayusculas: true, palabraCompleta: true });
+    expect(boton(t.searchWholeWord)).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("? abre la ayuda; con el diálogo abierto no actúa ningún atajo; se cierra y el foco vuelve", async () => {
+    const { container, ultimo } = montar(20);
+    const origen = boton(t.zoomIn);
+    origen.focus();
+    tecla("?", { shiftKey: true });
+    const ayuda = screen.getByRole("dialog", { name: t.help.title });
+    expect(within(ayuda).getByRole("table", { name: t.help.table })).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+    tecla("r");
+    tecla("PageDown");
+    expect(ultimo()?.p.rotacion).toBe(0);
+    expect(estadoPagina()).toHaveTextContent(t.status.page(1, 20));
+    fireEvent.click(within(ayuda).getByRole("button", { name: t.help.close }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(origen).toHaveFocus();
+  });
+
+  it("el interruptor desactiva los de una tecla (en memoria, para toda la sesión); el botón de la barra reabre la ayuda", () => {
+    const { ultimo, unmount } = montar(20);
+    fireEvent.click(boton(t.shortcuts));
+    const casilla = screen.getByRole("checkbox", { name: t.help.singleKey });
+    expect(casilla).toBeChecked();
+    fireEvent.click(casilla);
+    expect(casilla).not.toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: t.help.close }));
+    for (const k of ["r", "t", "f", "?"]) tecla(k);
+    expect(ultimo()?.p.rotacion).toBe(0);
+    expect(screen.queryByRole("navigation", { name: t.thumbnails })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // La navegación sigue.
+    tecla(" ");
+    expect(estadoPagina()).toHaveTextContent(t.status.page(2, 20));
+    // Otro documento (el visor se monta de nuevo): siguen desactivados.
+    unmount();
+    montar(20);
+    tecla("r");
+    expect(screen.queryByText(t.status.rotation(90))).toBeNull();
+    fireEvent.click(boton(t.shortcuts));
+    fireEvent.click(screen.getByRole("checkbox", { name: t.help.singleKey }));
+    fireEvent.click(screen.getByRole("button", { name: t.help.close }));
+    tecla("r");
+    expect(screen.getByText(t.status.rotation(90))).toBeInTheDocument();
+    expect(localStorage.length).toBe(0);
+  });
+});
+
+describe("Visor: pantalla completa (Fase 6)", () => {
+  function conPantallaCompleta() {
+    let elemento: Element | null = null;
+    const pedir = vi.fn(async function (this: Element) {
+      elemento = this;
+      document.dispatchEvent(new Event("fullscreenchange"));
+    });
+    const salir = vi.fn(async () => {
+      elemento = null;
+      document.dispatchEvent(new Event("fullscreenchange"));
+    });
+    Object.defineProperty(document, "fullscreenEnabled", { configurable: true, value: true });
+    Object.defineProperty(document, "fullscreenElement", {
+      configurable: true,
+      get: () => elemento,
+    });
+    Object.defineProperty(document, "exitFullscreen", { configurable: true, value: salir });
+    HTMLElement.prototype.requestFullscreen = pedir as never;
+    return { pedir, salir };
+  }
+  afterEach(() => {
+    for (const p of ["fullscreenEnabled", "fullscreenElement", "exitFullscreen"]) {
+      delete (document as unknown as Record<string, unknown>)[p];
+    }
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>).requestFullscreen;
+  });
+
+  it("sin soporte del navegador no hay botón y F no hace nada", () => {
+    montar();
+    expect(screen.queryByRole("button", { name: t.fullscreen })).toBeNull();
+    expect(() => fireEvent.keyDown(window, { key: "f" })).not.toThrow();
+  });
+
+  it("F y el botón entran y salen; solo el área de lectura; se anuncia", async () => {
+    const { pedir, salir } = conPantallaCompleta();
+    montar();
+    const b = boton(t.fullscreen);
+    expect(b).toHaveAttribute("aria-pressed", "false");
+    await act(async () => fireEvent.keyDown(window, { key: "f" }));
+    expect(pedir).toHaveBeenCalledOnce();
+    expect(pedir.mock.contexts[0]).toBe(screen.getByTestId("lector-pdf"));
+    expect(b).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getAllByRole("status").at(-1)).toHaveTextContent(t.announce.fullscreen(true));
+    await act(async () => fireEvent.click(b));
+    expect(salir).toHaveBeenCalledOnce();
+    expect(b).toHaveAttribute("aria-pressed", "false");
+  });
+});
+
+describe("Visor: miniaturas con teclado (Fase 6)", () => {
+  it("un solo elemento tabulable; ↑/↓ mueven el foco sin mover el documento", () => {
+    montar(5);
+    fireEvent.click(boton(t.showThumbnails));
+    const panel = screen.getByRole("navigation", { name: t.thumbnails });
+    const mini = (n: number) => within(panel).getByRole("button", { name: t.thumbnail(n) });
+    expect(
+      within(panel)
+        .getAllByRole("button")
+        .filter((b) => b.tabIndex === 0),
+    ).toEqual([mini(1)]);
+    mini(1).focus();
+    fireEvent.keyDown(mini(1), { key: "ArrowDown" });
+    expect(mini(2)).toHaveFocus();
+    fireEvent.keyDown(mini(2), { key: "ArrowDown" });
+    fireEvent.keyDown(mini(3), { key: "ArrowUp" });
+    expect(mini(2)).toHaveFocus();
+    expect(mini(2).tabIndex).toBe(0);
+    expect(mini(1).tabIndex).toBe(-1);
+    // Las flechas del panel no desplazan ni cambian la página del visor.
+    expect(estadoPagina()).toHaveTextContent(t.status.page(1, 5));
+    // En los extremos, se queda.
+    fireEvent.keyDown(mini(2), { key: "ArrowUp" });
+    fireEvent.keyDown(mini(1), { key: "ArrowUp" });
+    expect(mini(1)).toHaveFocus();
+    // Intro/Espacio: es un botón; al activarlo va a su página.
+    fireEvent.click(mini(1));
+    fireEvent.keyDown(mini(1), { key: "ArrowDown" });
+    fireEvent.click(mini(2));
+    expect(estadoPagina()).toHaveTextContent(t.status.page(2, 5));
   });
 });
 

@@ -37,10 +37,18 @@ export function cargarPdfjs(rutas: RutasPdfjs = RUTAS_WEB): Promise<Pdfjs> {
   return modulo;
 }
 
-/** Opciones de `getDocument`. Cada una tiene su motivo en SEGURIDAD §4. */
-export function opcionesDocumento(datos: Uint8Array, rutas: RutasPdfjs = RUTAS_WEB) {
+/**
+ * Opciones de `getDocument`. Cada una tiene su motivo en SEGURIDAD §4.
+ * `password` solo aparece si se da una (Fase 6, D13): nunca se guarda.
+ */
+export function opcionesDocumento(
+  datos: Uint8Array,
+  rutas: RutasPdfjs = RUTAS_WEB,
+  contrasena?: string,
+) {
   return {
     data: datos,
+    ...(contrasena === undefined ? {} : { password: contrasena }),
     useWasm: false,
     // Solo para cargar los decodificadores en JavaScript (`*_nowasm_fallback.js`).
     wasmUrl: `${rutas.recursos}wasm/`,
@@ -67,15 +75,22 @@ export class PdfNoLegibleError extends Error {
 }
 
 /**
- * El PDF está cifrado con contraseña de apertura. BPDF no pide contraseñas
- * todavía (D13 pendiente): se informa y no se abre.
+ * El PDF está cifrado con contraseña de apertura (D13, Fase 6): la interfaz la
+ * pide. `motivo`: si falta o si la que se dio no es la correcta. El mensaje
+ * nunca lleva la contraseña.
  */
 export class PdfProtegidoError extends Error {
-  constructor(options?: { cause?: unknown }) {
+  constructor(
+    readonly motivo: "necesita" | "incorrecta" = "necesita",
+    options?: { cause?: unknown },
+  ) {
     super("pdf-protegido", options);
     this.name = "PdfProtegidoError";
   }
 }
+
+/** `PasswordResponses.INCORRECT_PASSWORD` de pdf.js (estable; un test lo vigila). */
+export const CONTRASENA_INCORRECTA = 2;
 
 /** La apertura se canceló (se abrió otro documento o se cerró este). */
 export class AperturaCanceladaError extends Error {
@@ -87,6 +102,11 @@ export class AperturaCanceladaError extends Error {
 
 /**
  * Abre un PDF a partir del `Blob` que entrega la capa de documentos (Fase 3).
+ *
+ * `contrasena` (Fase 6): la de apertura, si el usuario la ha escrito. Solo
+ * viaja a pdf.js en esta llamada; BPDF no la guarda en ningún sitio. Cada
+ * intento hace una copia nueva de los bytes (la anterior se transfirió al
+ * worker de pdf.js con la tarea que falló, que se destruye).
  *
  * `blob.arrayBuffer()` crea UNA copia de los bytes en memoria, que pdf.js
  * transfiere a su worker sin volver a copiarla (el `ArrayBuffer` queda
@@ -100,11 +120,12 @@ export async function abrirPdf(
   pdfjs: Pdfjs,
   rutas: RutasPdfjs = RUTAS_WEB,
   senal?: AbortSignal,
+  contrasena?: string,
 ): Promise<PDFDocumentProxy> {
   if (senal?.aborted) throw new AperturaCanceladaError();
   const bytes = new Uint8Array(await blob.arrayBuffer());
   if (senal?.aborted) throw new AperturaCanceladaError();
-  const tarea = pdfjs.getDocument(opcionesDocumento(bytes, rutas));
+  const tarea = pdfjs.getDocument(opcionesDocumento(bytes, rutas, contrasena));
   const cancelar = () => void tarea.destroy();
   senal?.addEventListener("abort", cancelar, { once: true });
   try {
@@ -120,7 +141,10 @@ export async function abrirPdf(
       throw new AperturaCanceladaError();
     }
     if (cause instanceof Error && cause.name === "PasswordException") {
-      throw new PdfProtegidoError({ cause });
+      const codigo = (cause as Error & { code?: unknown }).code;
+      // Sin `cause`: el error de pdf.js no lleva la contraseña, pero así ni
+      // siquiera puede acabar en un registro por accidente.
+      throw new PdfProtegidoError(codigo === CONTRASENA_INCORRECTA ? "incorrecta" : "necesita");
     }
     throw new PdfNoLegibleError({ cause });
   } finally {

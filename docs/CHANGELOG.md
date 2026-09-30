@@ -10,6 +10,151 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 13 — *2026-09-30* — Fase 6: pantalla completa, atajos, búsqueda avanzada y contraseña
+
+La Fase 6, especificada y aprobada en la iteración 12, completa el visor PDF. Se hizo
+después de las 7, 7 bis y 8 y conserva su número. Sin dependencias nuevas y sin cambios de
+CSP ni de cabeceras (así que tampoco de `vercel.json`).
+
+**Qué se hizo y por qué**
+
+- **Atajos, lista cerrada** (`atajos.ts`, ahora `atajoDe(tecla, contexto)`):
+  - De una tecla: `F`, `T`, `R`, `Mayús+R`, `?`.
+  - De navegación: `Espacio`/`Mayús+Espacio`, `→`/`←` solo en «página a página»,
+    `Ctrl/⌘+G`, `F3`/`Mayús+F3`.
+  - El contexto (vista, búsqueda abierta, atajos de una tecla, diálogo modal) entra como
+    parámetro: la resolución sigue siendo pura y probada en Node.
+  - `Mayús+R` se mira por `shiftKey` (con Bloq Mayús, `R` sigue girando a la derecha) y `?`
+    por el carácter (sale con Mayús en casi todos los teclados).
+  - `Espacio` no actúa sobre botones, enlaces ni casillas. `F3` actúa también en el campo
+    de búsqueda y, con la búsqueda cerrada, no se toca.
+- **Interruptor de los atajos de una tecla** (WCAG 2.1.4), en la ayuda:
+  - Vive en memoria del módulo, así que dura la sesión y sobrevive al abrir otro documento
+    (el visor se vuelve a montar). Se eligió frente a subir el estado a `App`: era cruzar
+    tres componentes por un booleano que la Fase 10 moverá a preferencias.
+  - La ayuda también se abre desde un botón de la barra: si no, con `?` desactivado no
+    habría forma de volver a activarlos.
+- **Pantalla completa** del área de lectura. `Permissions-Policy` no cambia: el valor por
+  defecto de `fullscreen` ya es `self`, y un E2E lo comprueba con las cabeceras reales.
+- **Búsqueda.** Se amplió el índice existente, no se rehízo:
+  - Dos textos de la misma longitud, con y sin mayúsculas, sobre las mismas tablas de trozo
+    y posición. El resaltado no cambió.
+  - Palabra completa por los caracteres vecinos (`\p{L}`, `\p{N}`).
+  - Guion de fin de línea unido, y guion blando ignorado.
+  - Probado con el texto real de pdf.js sobre un fixture nuevo, `busqueda.pdf`.
+  - También con un PDF generado por Chromium, que pone el guion (U+2010) en su propio trozo
+    con `hasEOL`. Ese caso lo cubre la regla del trozo vacío o de solo guion.
+  - Y con el único PDF real que hay en el equipo: sin opciones, mismas cifras que la F5.
+- **Contraseña** (D13). Cada intento vuelve a abrir el PDF con `password` y una copia nueva
+  de los bytes:
+  - `PdfProtegidoError` dice si faltaba o era incorrecta. **Ya no lleva el error de pdf.js
+    como `cause`**, para que la contraseña no pueda acabar en un registro por accidente.
+  - Borrado de la contraseña: el campo se vacía al enviarla, y la referencia se limpia al
+    terminar cada intento y al desmontar.
+  - La referencia no se borra al empezar el intento, sino al terminarlo. Con `StrictMode`,
+    que en desarrollo monta dos veces, se habría perdido.
+- **Miniaturas:** índice de tabulación móvil y `↑`/`↓`. El panel se queda esas flechas; sin
+  eso, además de mover el foco, desplazaban el documento.
+- **`<dialog>` en jsdom**: no tiene `showModal`, así que `tests/setup.ts` trae el mínimo
+  (solo tests). Lo modal de verdad (fondo inerte, `Esc`) se prueba en Playwright.
+
+**Rendimiento**, medido en Node y en el mismo equipo, con 1000 páginas de ~3000 caracteres:
+
+| | Índice de la F5 | Índice de la F6 |
+|---|---|---|
+| Indexar, por página | ~0,40 ms | ~0,52 ms |
+| Memoria del índice | ~25,6 MiB | ~30,2 MiB |
+| Cuatro búsquedas sobre las 1000 páginas | 20–30 ms | 20–30 ms |
+
+**Descartado**:
+- `onPassword` de pdf.js: mantiene viva la tarea de carga mientras el usuario escribe.
+- Declarar `fullscreen=(self)`: no cambia nada y obligaba a regenerar `vercel.json`.
+- Tokens `--rgb-find*`: el resaltado de la F5 ya usa el acento.
+
+**Errores propios por el camino**:
+- Los 8 E2E nuevos fallaron la primera vez contra un `vite preview` huérfano de una
+  ejecución anterior. Playwright reutiliza el servidor fuera de CI, y ese servía un `dist/`
+  viejo. Al pararlo pasaron 7 de 8.
+- El octavo buscaba el botón «Cerrar» de la ayuda, que coincidía también con «Cerrar
+  documento». Se renombró a «Cerrar la ayuda», porque también era ambiguo para un lector de
+  pantalla.
+- Un `\n` se perdió al escribir el generador de fixtures por el shell.
+
+**Encontrado, no arreglado (fuera de alcance)**: tres tests de `App` fallan de forma
+intermitente cuando la máquina está cargada.
+- La causa es que esperan un visor cargado con `React.lazy` usando el tiempo por defecto de
+  `findByRole` (1 s).
+- Ya pasaba antes de la F6: sobre `HEAD`, con dos suites a la vez, fallan 7 de 10.
+- En ejecuciones normales pasan 10 de 10.
+- Queda como tarea 🟠 en TAREAS.
+
+**Anuncio al usuario (CLAUDE.md §8)**: pantalla completa, atajos de una tecla con su ayuda
+e interruptor, girar a la izquierda, búsqueda con «Distinguir mayúsculas» y «Palabra
+completa» (y palabras partidas con guion), `F3`, flechas en las miniaturas, y los PDF con
+contraseña ya se abren.
+
+**Verificación.** Todo en verde:
+- `lint`, `typecheck`.
+- 842 tests en 43 ficheros.
+- 77 E2E, con cero errores de consola, cero violaciones de CSP y ninguna petición externa.
+- `build`, y `build:tamano` con 90,5 KB (+0,9 KB).
+- `npm audit` sin vulnerabilidades.
+- `docs:validar`, `docs:enlaces` y `git diff --check`.
+
+---
+
+### Iteración 12 — *2026-09-30* — Especificación de la Fase 6 y documentos al día
+
+Antes de empezar la Fase 6 (que quedó atrás cuando el usuario pidió primero las 7, 7 bis
+y 8), una revisión de los documentos contra el código encontró afirmaciones que ya no eran
+ciertas. Esta iteración solo toca documentación: ningún cambio de código, cabeceras ni
+tests.
+
+**Decisiones del usuario**
+
+- **D13 confirmada**: la contraseña de PDF entra en la F6 (diálogo, reintento, cancelar
+  cierra el documento, la contraseña no se guarda).
+- **Atajos de la F6, lista cerrada**: `F`, `T`, `R`, `Shift+R`, `?` (de una tecla,
+  desactivables desde la ayuda, en memoria) y `F3`/`Shift+F3`, `→`/`←`,
+  `Espacio`/`Shift+Espacio`, `Ctrl/Cmd+G`. **`I` sale de la tabla** de PLAN §9.4, igual que
+  `T` para el índice de Markdown: no tienen fase que los especifique.
+- Numeración histórica intacta: la siguiente es la 6, no la 9.
+
+**Qué se hizo y por qué**
+
+- **FASES, Fase 6 reescrita** con el punto de partida real del código (`atajos.ts`,
+  `estado.ts`, `busqueda.ts`, `PanelMiniaturas.tsx`, `engine.ts`), las reglas de foco de
+  cada atajo, el comportamiento de la pantalla completa y de la contraseña, el diseño del
+  índice de búsqueda (dos textos de la misma longitud, con y sin mayúsculas, sobre las
+  mismas tablas de trozo y posición) y los tests.
+- **Pantalla completa sin tocar cabeceras.** SEGURIDAD §2.2 decía que `fullscreen` «se
+  declarará» en `Permissions-Policy`, pero su valor por defecto ya es `self`: declararlo no
+  cambiaría nada y obligaría a regenerar `vercel.json` y volver a comprobar producción.
+  Un E2E lo comprobará con las cabeceras reales.
+- **Tokens `--rgb-find*` retirados del plan**: nunca se crearon (el resaltado de la F5 usa
+  el acento) y las opciones de búsqueda de la F6 no cambian el resaltado.
+- **Contradicciones corregidas**:
+  - CLAUDE.md §0 decía «solo local» y «no hay producción», aunque la web ya está en Vercel.
+  - TAREAS daba 752 tests en 42 ficheros; comprobado de nuevo, son 768 en 43.
+  - PLAN tenía varias afirmaciones viejas:
+    - el error `multiple`, retirado en la 7 bis;
+    - las imágenes locales como «pendiente»;
+    - la vista provisional de la F3, borrada en la F7;
+    - la virtualización «la da `PDFViewer`», en contra de D17;
+    - rutas de componentes que no existen;
+    - D5 sin mencionar Vercel.
+  - FASES F10 citaba `PdfViewer.tsx`.
+  - FASES F12 citaba `security-headers.mjs` y pedía quitar un `data:` que ya no está.
+
+**Descartado**: `onPassword` de pdf.js para la contraseña. Mantiene viva la tarea de carga
+mientras el usuario escribe, y complica la cancelación que ya existe. Se vuelve a abrir
+con `password` y una copia nueva de los bytes.
+
+**Verificación.** `docs:enlaces` y `docs:validar` en verde. Recuento: `test:run`, 768
+tests en 43 ficheros; `playwright test --list`, 69 E2E en 6 ficheros.
+
+---
+
 ### Iteración 11 — *2026-09-30* — Cabeceras HTTP en Vercel y cierre de la Fase 8
 
 Decisiones de la Fase 8 tomadas por el usuario: cabeceras en Vercel, **aprobadas**;

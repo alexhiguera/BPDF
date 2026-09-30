@@ -14,6 +14,7 @@ import type { Tamano } from "@/pdf/visor/disposicion";
 import { DocumentoVisor } from "@/pdf/visor/documento";
 import type { DestinoEnlace } from "@/pdf/visor/enlaces";
 import { coloresOscuro } from "./colores";
+import { DialogoContrasena } from "./DialogoContrasena";
 import { Visor } from "./Visor";
 import "@/styles/visor-pdf.css";
 
@@ -21,7 +22,9 @@ const t = messages.pdf;
 
 type Carga =
   | { fase: "cargando" }
-  | { fase: "error"; motivo: "unreadable" | "protected" }
+  /** Fase 6 (D13): el PDF tiene contraseña de apertura y se pide. */
+  | { fase: "contrasena"; incorrecta: boolean; comprobando: boolean }
+  | { fase: "error"; motivo: "unreadable" }
   | { fase: "listo"; controlador: ControladorVisor; primera: Tamano };
 
 /**
@@ -32,6 +35,12 @@ type Carga =
  * terminado y se destruye el controlador (renders, worker del modo oscuro y
  * documento de pdf.js). Nada de este documento puede aparecer después: sus
  * marcos se van con él, y todo lo asíncrono comprueba su generación.
+ *
+ * Contraseña (Fase 6, D13): si pdf.js la pide, se muestra el diálogo; cada
+ * «Abrir» es un intento nuevo (`intento`) que vuelve a abrir el PDF con ella.
+ * La contraseña solo pasa por `contrasena` (una referencia) hasta que el
+ * intento termina, y se borra también al desmontar. Abrir otro documento
+ * desmonta el visor: cancela el intento en curso.
  */
 export default function VisorPdf({
   documento,
@@ -43,6 +52,14 @@ export default function VisorPdf({
   onOpenExternal: (url: string) => void;
 }) {
   const [carga, setCarga] = useState<Carga>({ fase: "cargando" });
+  const [intento, setIntento] = useState(0);
+  const contrasena = useRef<string | undefined>(undefined);
+  useEffect(
+    () => () => {
+      contrasena.current = undefined;
+    },
+    [],
+  );
   // Los enlaces los resuelve el visor montado; el controlador llega antes.
   const alEnlace = useRef<(d: DestinoEnlace) => void>(() => {});
   const alCambio = useRef<() => void>(() => {});
@@ -53,14 +70,20 @@ export default function VisorPdf({
     titulo.current?.focus();
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `intento` es el disparador de cada reintento
   useEffect(() => {
     const abortar = new AbortController();
     let doc: DocumentoVisor | null = null;
     let controlador: ControladorVisor | null = null;
+    const clave = contrasena.current;
+    const olvidar = () => {
+      if (contrasena.current === clave) contrasena.current = undefined;
+    };
     (async () => {
       try {
         const pdfjs = await cargarPdfjs();
-        const pdf = await abrirPdf(documento.blob, pdfjs, RUTAS_WEB, abortar.signal);
+        const pdf = await abrirPdf(documento.blob, pdfjs, RUTAS_WEB, abortar.signal, clave);
+        olvidar();
         doc = new DocumentoVisor(pdf);
         const primera = DocumentoVisor.tamanoDe(await doc.pagina(1));
         if (abortar.signal.aborted) {
@@ -78,10 +101,14 @@ export default function VisorPdf({
       } catch (error) {
         void doc?.destruir();
         if (abortar.signal.aborted || error instanceof AperturaCanceladaError) return;
-        setCarga({
-          fase: "error",
-          motivo: error instanceof PdfProtegidoError ? "protected" : "unreadable",
-        });
+        olvidar();
+        if (error instanceof PdfProtegidoError) {
+          // Con una contraseña dada, cualquier rechazo es «no es correcta».
+          const incorrecta = clave !== undefined || error.motivo === "incorrecta";
+          setCarga({ fase: "contrasena", incorrecta, comprobando: false });
+          return;
+        }
+        setCarga({ fase: "error", motivo: "unreadable" });
       }
     })();
     return () => {
@@ -89,7 +116,7 @@ export default function VisorPdf({
       // El controlador destruye también el documento; si no llegó a crearse, se destruye este.
       void (controlador ? controlador.destruir() : doc?.destruir());
     };
-  }, [documento.blob]);
+  }, [documento.blob, intento]);
 
   if (carga.fase === "listo") {
     return (
@@ -107,7 +134,7 @@ export default function VisorPdf({
   return (
     <section
       aria-labelledby="titulo-documento"
-      aria-busy={carga.fase === "cargando"}
+      aria-busy={carga.fase === "cargando" || (carga.fase === "contrasena" && carga.comprobando)}
       className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center"
     >
       <h1
@@ -118,14 +145,28 @@ export default function VisorPdf({
       >
         {documento.name}
       </h1>
-      {carga.fase === "cargando" ? (
+      {carga.fase === "cargando" && (
         <p role="status" className="text-fg-muted">
           {t.loading}
         </p>
-      ) : (
+      )}
+      {carga.fase === "error" && (
         <p role="alert" className="max-w-prose text-danger">
           {t.errors[carga.motivo]}
         </p>
+      )}
+      {carga.fase === "contrasena" && (
+        <DialogoContrasena
+          incorrecta={carga.incorrecta}
+          comprobando={carga.comprobando}
+          intento={intento}
+          onEnviar={(clave) => {
+            contrasena.current = clave;
+            setCarga({ fase: "contrasena", incorrecta: false, comprobando: true });
+            setIntento((n) => n + 1);
+          }}
+          onCancelar={onClose}
+        />
       )}
       <Button variant="secondary" onClick={onClose}>
         {t.close}
