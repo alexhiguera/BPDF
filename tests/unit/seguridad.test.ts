@@ -21,8 +21,14 @@ describe("CSP (docs/SEGURIDAD.md §2.1)", () => {
     const politica = cspCabecera();
     expect(politica).not.toMatch(/'unsafe-inline'|'unsafe-eval'|'unsafe-hashes'/);
     expect(politica).not.toMatch(/https?:|\*|data:|blob:/);
-    // pdf.js lo necesitará (Fase 4/5); hasta que esté, no.
+    // pdf.js va con `useWasm: false`: no compila WebAssembly.
     expect(politica).not.toContain("'wasm-unsafe-eval'");
+  });
+
+  it("pdf.js solo puede pedir al propio origen: su worker, sus fuentes y sus cmaps", () => {
+    expect(CSP["worker-src"]).toEqual(["'self'"]);
+    expect(CSP["font-src"]).toEqual(["'self'"]);
+    expect(CSP["connect-src"]).toEqual(["'self'"]);
   });
 
   it("impide enmarcar la app, cambiar la base y enviar formularios", () => {

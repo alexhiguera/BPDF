@@ -8,8 +8,8 @@
  * nadie mira.
  *
  * Filosofía: DENEGAR POR DEFECTO. `default-src 'none'` y solo se abre lo que la
- * app usa HOY. Cada fase que necesite algo más (pdf.js: `'wasm-unsafe-eval'`,
- * worker; imágenes locales de Markdown: `blob:`) lo añade aquí con su motivo.
+ * app usa HOY. Cada fase que necesite algo más (pdf.js: worker, fuentes, cmaps;
+ * imágenes locales de Markdown: `blob:`) lo añade aquí con su motivo.
  */
 
 type Directivas = Readonly<Record<string, readonly string[]>>;
@@ -30,6 +30,12 @@ export const CSP: Directivas = {
   // p. ej. LiberationSans para Helvetica) que pdf.js carga con `FontFace` cuando el
   // documento no las incrusta. Las fuentes incrustadas llegan como bytes, sin URL.
   "font-src": ["'self'"],
+  // Fase 5: pdf.js pide al PROPIO origen, con `fetch` desde su worker, los mapas de
+  // caracteres (`/pdfjs/cmaps/`) de las fuentes CID no incrustadas (japonés, chino,
+  // coreano…). Sin esto, ese texto desaparece EN SILENCIO: la violación ocurre en el
+  // worker y no llega al documento. Solo 'self': el documento nunca sale de BPDF
+  // (entra como bytes) y ningún PDF puede pedir nada a otro origen.
+  "connect-src": ["'self'"],
   "object-src": ["'none'"],
   "base-uri": ["'none'"],
   "form-action": ["'none'"],

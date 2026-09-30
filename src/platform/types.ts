@@ -6,9 +6,8 @@ import type { OpenedDocument } from "@/documents/types";
  * `OpenedDocument`, nunca rutas ni APIs de la plataforma.
  *
  * Contiene solo lo que la app usa hoy. Cada fase añade el método que necesite
- * cuando lo necesite: guardar (`saveText`, Fase 9), enlaces externos
- * (`openExternal`, Fases 5 y 7) y «Abrir con…» del sistema (`onExternalOpen`,
- * Fase 14).
+ * cuando lo necesite: guardar (`saveText`, Fase 9) y «Abrir con…» del sistema
+ * (`onExternalOpen`, Fase 14).
  *
  * Por qué devuelve documentos y no `File`: en Electron el diálogo lo abre el
  * proceso main, que lee el fichero y asigna un id ligado a su ruta (para poder
@@ -27,4 +26,13 @@ export interface Platform {
    * Electron, además, el preload lo registrará en el main para obtener su id.
    */
   openDroppedFile(file: File): Promise<OpenedDocument>;
+
+  /**
+   * Abre un enlace de un documento FUERA de BPDF (docs/SEGURIDAD.md §4). Solo
+   * recibe URLs que ya han pasado la política del motor (`http:`, `https:`,
+   * `mailto:`), y aun así la plataforma no se fía: vuelve a comprobarla. Nunca
+   * navega la ventana de la app. En web, una pestaña nueva sin `opener` ni
+   * `Referer`; en Electron (Fase 14), `shell.openExternal` desde el main.
+   */
+  openExternal(url: string): void;
 }

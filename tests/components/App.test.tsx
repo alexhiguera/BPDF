@@ -7,9 +7,27 @@ import { App } from "@/app/App";
 import { ErrorBoundary } from "@/app/ErrorBoundary";
 import { project } from "@/config/project";
 import { messages } from "@/i18n/messages";
+import { PdfNoLegibleError, PdfProtegidoError } from "@/pdf/engine";
 import { BYTES_PNG, fichero, PDF_VALIDO, PlataformaEnMemoria } from "../helpers/documentos";
 
 const t = messages.document;
+
+/**
+ * pdf.js no corre en jsdom (sin worker ni lienzo): aquí se sustituye la carga y
+ * se prueba lo que hace la app con cada resultado. Por defecto la apertura no
+ * termina nunca (el visor se queda «abriendo»). El visor con pdf.js real se
+ * prueba en Playwright (e2e/specs/visor-pdf.spec.ts).
+ */
+const motor = vi.hoisted(() => ({
+  abrirPdf: vi.fn(
+    (_b: Blob, _p: unknown, _r: unknown, _s?: AbortSignal) => new Promise<never>(() => {}),
+  ),
+}));
+vi.mock("@/pdf/engine", async (original) => ({
+  ...(await original<typeof import("@/pdf/engine")>()),
+  cargarPdfjs: vi.fn(async () => ({})),
+  abrirPdf: motor.abrirPdf,
+}));
 
 function montar(plataforma = new PlataformaEnMemoria()) {
   const utils = render(<App platform={plataforma} />);
@@ -49,15 +67,46 @@ describe("App: estructura", () => {
 });
 
 describe("App: abrir documentos", () => {
-  it("abre un PDF con el botón y muestra su nombre, tipo y tamaño (sin su contenido)", async () => {
+  it("abre un PDF con el botón y monta el visor, que lo carga (sin mostrar sus bytes)", async () => {
     montar(new PlataformaEnMemoria().elegira(fichero("informe.pdf", PDF_VALIDO)));
     await abrir();
-    const titulo = screen.getByRole("heading", { level: 1 });
-    expect(titulo).toHaveTextContent("informe.pdf");
+    const titulo = await screen.findByRole("heading", { level: 1, name: "informe.pdf" });
     expect(titulo).toHaveFocus();
-    expect(screen.getByText(t.kinds.pdf)).toBeInTheDocument();
-    expect(screen.getByText(`${PDF_VALIDO.length} B`)).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(messages.pdf.loading);
     expect(screen.queryByText(/%PDF/)).toBeNull();
+    // pdf.js recibe el Blob que entregó la capa de documentos, con una señal para cancelar.
+    const [blob, , , senal] = motor.abrirPdf.mock.lastCall ?? [];
+    expect(blob).toBeInstanceOf(Blob);
+    expect(senal?.aborted).toBe(false);
+  });
+
+  it.each([
+    [new PdfNoLegibleError(), messages.pdf.errors.unreadable],
+    [new PdfProtegidoError(), messages.pdf.errors.protected],
+  ])("si pdf.js no puede abrirlo (%s) lo dice y se puede cerrar", async (error, aviso) => {
+    motor.abrirPdf.mockRejectedValueOnce(error);
+    montar(new PlataformaEnMemoria().elegira(fichero("roto.pdf", PDF_VALIDO)));
+    await abrir();
+    expect(await screen.findByRole("alert")).toHaveTextContent(aviso);
+    fireEvent.click(screen.getByRole("button", { name: messages.pdf.close }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(messages.emptyState.title);
+  });
+
+  it("abrir otro documento mientras un PDF carga cancela su apertura", async () => {
+    montar(
+      new PlataformaEnMemoria()
+        .elegira(fichero("lento.pdf", PDF_VALIDO))
+        .elegira(fichero("otro.md", "# o")),
+    );
+    await abrir();
+    await screen.findByRole("heading", { level: 1, name: "lento.pdf" });
+    const senal = motor.abrirPdf.mock.lastCall?.[3];
+    const enCabecera = within(screen.getByRole("banner"));
+    await act(async () =>
+      fireEvent.click(enCabecera.getByRole("button", { name: messages.open.button })),
+    );
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("otro.md");
+    expect(senal?.aborted).toBe(true);
   });
 
   it("abre un Markdown sin mostrar ni interpretar su contenido", async () => {
@@ -149,7 +198,7 @@ describe("App: nombres de fichero hostiles", () => {
     const contenido = nombre.endsWith(".pdf") ? PDF_VALIDO : "# x";
     const { container } = montar(new PlataformaEnMemoria().elegira(fichero(nombre, contenido)));
     await abrir();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(nombre.trim());
+    expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe(nombre.trim());
     expect(container.querySelector("main img, main script, main svg")).toBeNull();
   });
 
@@ -170,6 +219,7 @@ describe("App: accesibilidad con documento y con error", () => {
         .elegira(fichero("b.txt", "x")),
     );
     await abrir();
+    await screen.findByRole("heading", { level: 1, name: "a.pdf" });
     await act(async () =>
       fireEvent.click(screen.getByRole("button", { name: messages.open.button })),
     );

@@ -76,13 +76,13 @@ test("estado inicial: sin documento, con el botón para abrir, el atajo y sin av
   limpia(v);
 });
 
-test("abre un PDF con el selector: nombre, tipo y tamaño", async ({ page }) => {
+test("abre un PDF con el selector y lo muestra en el visor", async ({ page }) => {
   const v = await abrir(page);
   await elegir(page, botonAbrir(page), PDF);
   await expect(titulo(page)).toHaveText("minimo.pdf");
   await expect(titulo(page)).toBeFocused();
-  await expect(page.getByRole("main")).toContainText(messages.document.kinds.pdf);
-  await expect(page.getByRole("main")).toContainText("626 B");
+  await expect(page.locator('[data-pagina="1"][data-estado="lista"]')).toBeVisible();
+  await expect(page.getByTestId("estado-pagina")).toHaveText(messages.pdf.status.page(1, 1));
   limpia(v);
 });
 
@@ -211,7 +211,10 @@ test.describe("nombres de fichero hostiles se muestran como texto", () => {
       const buffer = nombre.endsWith(".pdf") ? readFileSync(PDF) : Buffer.from("# x");
       await elegir(page, botonAbrir(page), { name: nombre, mimeType: "", buffer });
       await expect(titulo(page)).toHaveText(nombre);
-      await expect(page.locator("main img, main svg, main script")).toHaveCount(0);
+      // El nombre es texto: ni elementos dentro del título ni atributos de evento
+      // en ninguna parte. (Los iconos SVG de la barra del visor son de BPDF.)
+      await expect(titulo(page).locator("*")).toHaveCount(0);
+      await expect(page.locator("main script, main [onload], main [onerror]")).toHaveCount(0);
       expect(
         await page.evaluate(() => (window as { __bpdfXss?: string }).__bpdfXss),
       ).toBeUndefined();

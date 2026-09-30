@@ -1,5 +1,18 @@
 # Spike: PDF en modo oscuro (Fase 4)
 
+> **Documento histórico** (se conserva como evidencia de la decisión). El laboratorio que
+> describe (`/spike.html`, `src/pdf-spike/`, `e2e/specs/pdf-spike.spec.ts`) **ya no existe**:
+> se borró en la Fase 5, cuyo visor reutiliza el motor y el modo oscuro de aquí. Qué fue de
+> las condiciones de [§12](#12-implicaciones-para-la-fase-5) (*2026-09-30*):
+> - D17 (visor propio) y D18 (build `legacy`) se **confirmaron**. El visor no usa
+>   `AnnotationLayer` ni `PDFLinkService`: los enlaces tienen su propia política.
+> - La transformación va en un **Web Worker** con franjas transferidas (medido, no WebGL).
+> - **Corrección**: `connect-src 'self'` **sí** hacía falta. pdf.js pide los cmaps de las
+>   fuentes CID desde su worker, y ahí la violación de CSP no se veía; ningún fixture del
+>   spike tenía texto CJK.
+>
+> Diseño vigente: [ARCHITECTURE.md](ARCHITECTURE.md) §4 quater.
+
 > **Resultado: Caso 1 con limitaciones conocidas.** El recoloreado selectivo funciona:
 > fondo oscuro, texto claro, fotografías intactas y gráficos con su color, con un coste
 > asumible. Se adopta como estrategia del visor (T-1), con dos condiciones para la Fase 5

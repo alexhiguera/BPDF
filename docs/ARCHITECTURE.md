@@ -5,12 +5,11 @@ escribir código) están en [`CLAUDE.md`](../CLAUDE.md). La arquitectura **objet
 motores, plataforma) está en [PLAN.md](PLAN.md) §4; este documento describe principios que
 ya rigen hoy y se amplía cuando cada fase los materializa.
 
-**Estado del código (2026-09-29, tras la Fase 4):** una SPA estática de Vite + React (D1)
-que abre y valida un PDF o un Markdown local (selector, `Ctrl/Cmd+O` o arrastre) y muestra
-su nombre, tipo y tamaño, todavía sin visor; sin backend, datos ni variables de entorno.
-La CSP estricta, los tokens de diseño, los textos centralizados y la frontera de
-plataforma ya rigen. El motor de PDF y el modo oscuro existen como módulos probados
-(`src/pdf/`), usados de momento solo por el laboratorio temporal `spike.html`.
+**Estado del código (2026-09-30, tras la Fase 5):** una SPA estática de Vite + React (D1)
+que abre un PDF o un Markdown local (selector, `Ctrl/Cmd+O` o arrastre). Los PDF se leen
+en el visor propio (§4 quater); de un Markdown aún solo se muestran su nombre, tipo y
+tamaño. Sin backend, datos ni variables de entorno. La CSP estricta, los tokens de diseño,
+los textos centralizados y la frontera de plataforma ya rigen.
 
 Varios principios vienen de la plantilla SaaS de R3ZON, que a su vez los destiló de
 **R3ZON ANTARES**. Se cita el origen para que quien venga después sepa qué evita cada regla
@@ -48,8 +47,9 @@ web para que Electron no obligue a rehacer nada ([ELECTRON.md](ELECTRON.md)).
 Solo `src/platform/` sabe si la app corre en web o en Electron. El resto del código
 recibe documentos (`OpenedDocument`), no ficheros ni rutas.
 
-**Cómo es hoy (Fase 3).** La interfaz `Platform` tiene dos métodos, los únicos que se
-usan: `pickDocument()` y `openDroppedFile(file)`. La web los implementa con APIs
+**Cómo es hoy (Fases 3 y 5).** La interfaz `Platform` tiene tres métodos, los únicos que
+se usan: `pickDocument()`, `openDroppedFile(file)` y, desde el visor PDF,
+`openExternal(url)` (enlaces de un documento, que la plataforma revalida y abre fuera). La web los implementa con APIs
 estándar (`<input type="file">` y `Blob.arrayBuffer()`); Electron (Fase 14) lo hará con
 IPC. Las dos terminan en la misma función, `readDocument`, que valida y construye el
 documento: la plataforma aporta el fichero y, si quiere, el id; la validación no se
@@ -88,8 +88,168 @@ sin construir nada de eso ahora.
 las regiones de imagen; con el `PDFViewer` de pdf.js no se puede
 ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §9). Separado así, cada pieza se prueba
 sola (la matemática de color con buffers de unos píxeles; la carga con pdf.js real en
-Node; los píxeles finales en Playwright), y el visor de la Fase 5 las reutiliza sin
-arrastrar el laboratorio, que se borra.
+Node; los píxeles finales en Playwright), y el visor de la Fase 5 las reutiliza. El
+laboratorio de la Fase 4 (`spike.html`, `src/pdf-spike/`) ya no existe; sus resultados
+siguen en [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md).
+
+### 4 quater. El visor PDF (Fase 5)
+
+Visor propio sobre las APIs núcleo de pdf.js (**D17**: sin `PDFViewer` ni
+`pdfjs-dist/web/pdf_viewer`), con la build `legacy` de pdf.js 6.3.289 (**D18**). Tres capas,
+de dentro afuera:
+
+| Capa | Dónde | Qué hace | React |
+|---|---|---|---|
+| Módulos puros | [`src/pdf/visor/`](../src/pdf/visor/) `disposicion.ts` · `busqueda.ts` · `enlaces.ts` | Zoom y ajustes, disposición de páginas, ventana de virtualización, presupuesto de memoria, campo de página; normalización e índice de búsqueda; política de enlaces | No |
+| Controladores | `documento.ts` · `superficie.ts` · `capas.ts` · `controlador.ts` y [`src/pdf/dark/`](../src/pdf/dark/) | El PDF abierto y sus cachés; una página en pantalla (lienzo, capa de texto, enlaces); la cola de render; la búsqueda; el modo oscuro en su worker | No |
+| Interfaz | [`src/app/pdf/`](../src/app/pdf/) | Carga (`VisorPdf.tsx`), estado de la vista (`estado.ts`, reductor puro), barra, estado, miniaturas, búsqueda, teclado | Sí |
+
+`VisorPdf` se carga a demanda (`React.lazy`) al abrir el primer PDF: ni él ni pdf.js
+entran en el arranque. Los módulos puros se prueban con Vitest en Node; los
+controladores, con dobles del documento y con pdf.js real en Node; el render, los píxeles,
+la capa de texto y la CSP, en Playwright contra la build.
+
+**Ciclo de vida.** La app monta el visor con `key={document.id}`: abrir otro documento lo
+desmonta. Al desmontar se aborta la apertura si no había terminado (`AbortSignal` →
+`loadingTask.destroy()`), se cancelan los renders, se termina el worker del modo oscuro y
+se destruye el documento de pdf.js. Nada del documento anterior puede aparecer después:
+sus marcos se van con él, cada `pintar()` abre una **generación** que descarta lo que
+llegue de las anteriores, y el controlador destruido ignora cualquier petición. Un PDF
+protegido con contraseña (`PasswordException`) o ilegible se dice con un aviso y se
+libera.
+
+**Modelo de página.** Cada página tiene un marco (un `<div>` vacío del tamaño CSS de la
+página, que pone React) y, si está viva, una `SuperficiePagina`: número, viewport
+(`viewportCss`: zoom × 96/72 y rotación), tamaño, estado (`vacia`, `pintando`, `lista`,
+`error`) y su lienzo. Los tamaños de todas las páginas se piden en segundo plano, por
+lotes de 50; hasta entonces se supone el de la primera.
+
+**Estrategia de render.** pdf.js pinta en un lienzo **nuevo, fuera del DOM**; en modo
+oscuro se recolorea ese lienzo; solo entonces sustituye al anterior (con su capa de texto
+y sus enlaces ya construidos). Nunca se ve una página a medio pintar ni un destello blanco
+en oscuro, y al cambiar el zoom se ve la página anterior estirada hasta que llega la
+nueva. Un render obsoleto se cancela (`RenderTask.cancel()`); como mucho **2 renders a la
+vez** (`RENDERS_A_LA_VEZ`): primero la página actual, luego las otras visibles, luego las
+vecinas (la siguiente antes que la anterior) y, detrás, las miniaturas. La concurrencia
+cuenta superficies, no llamadas: un render sustituido no ocupa hueco.
+
+**Vistas.** *Continua*: todas las páginas una debajo de otra (el contenedor tiene la
+altura del documento entero), pero solo tienen marco las vivas. *Página a página*: un
+solo marco, el de la página actual. Cambiar de vista conserva página, zoom, giro y modo,
+y lleva la vista a la página. En la continua, la página actual es la que ocupa el primer
+tercio del área visible; un cambio de zoom, giro o tamaños mantiene arriba la misma parte
+del documento (un «ancla»: página y fracción).
+
+**Virtualización (sin librería).** `disponer()` calcula el borde superior de cada página;
+`ventana()` busca con búsqueda binaria qué páginas se ven con el desplazamiento actual y
+declara vivas las visibles ±1. Solo esas tienen marco y lienzo; al salir, el lienzo se
+deja a 0×0 (devuelve su memoria sin esperar al recolector), se quitan sus capas y pdf.js
+libera la página (`page.cleanup()`). Un documento de 300 páginas tiene como mucho 4
+lienzos.
+
+**Política de memoria.**
+
+- Lienzos: visibles ±1 y, para las vecinas, un **presupuesto de 160 MiB**
+  (`PRESUPUESTO_LIENZOS`): las visibles se pintan siempre; una vecina, solo si cabe. Caben
+  cuatro A4 a lo ancho en una pantalla de DPR 2 (~34 MiB cada una); a zoom muy alto las
+  vecinas esperan a acercarse.
+- Resolución (`render.ts`): el tamaño CSS y la resolución física van separados. El DPR se
+  usa como mucho hasta **2** (`DPR_MAXIMO`) y un lienzo nunca pasa de **16,7 Mpx** (4096²,
+  `PIXELES_MAXIMOS`, 64 MiB): por encima se baja la resolución, no se gasta más memoria.
+- Transitoria del modo oscuro: una franja de 256 filas por franja en vuelo (dos como
+  mucho). Durante un cambio de zoom conviven un momento dos lienzos de la misma página.
+- Texto: el de la capa de texto, en una caché de 12 páginas; el índice de búsqueda, una
+  vez por página y solo cadenas (lo único que crece con el documento: ~el tamaño de su
+  texto).
+- Miniaturas: solo las visibles en su panel (±200 px), a 112 px CSS de ancho y DPR ≤ 2
+  (~0,5 MiB cada una); al cerrar el panel se liberan todas.
+
+**Worker del modo oscuro.** Medido antes de decidir (`npm run bench:pdf`, Chromium, DPR 1
+y 2; [CHANGELOG](CHANGELOG.md) iteración 7): recolorear en el hilo principal lo bloquea
+~7–10 ms por Mpx (70–90 ms en una A4 a lo ancho con DPR 2; 100–140 ms a 14–17 Mpx). Con el
+worker ([`trabajador.ts`](../src/pdf/dark/trabajador.ts)), el hilo principal solo lee y
+escribe las franjas (~3,5 ms/Mpx: 30–39 ms y 50–66 ms), repartido en bloques de una franja,
+y el cálculo corre en paralelo. Las franjas van y vuelven **transferidas** (sin copia). Se
+eligió un Web Worker y no WebGL porque reutiliza tal cual el código probado del spike, no
+depende de la GPU ni de un contexto que se puede perder, y no añade dependencias. Si el
+navegador no puede crear el worker, o este falla, el visor usa el mismo código en el hilo
+principal (y vuelve a pintar la página que se quedó a medias). El worker es un fichero del
+propio origen (CSP `worker-src 'self'`, sin cambios en la CSP).
+
+**Modo oscuro.** `oscuro` es el recoloreado selectivo de la Fase 4 (la heurística de color
+solo fuera de las regiones de imagen que registra pdf.js con `recordImages`); `original`
+es lo que pinta pdf.js. Nunca `filter: invert()`. Las regiones se registran en el primer
+render de cada página, normalizadas: valen para cualquier zoom y, con otro giro, se rotan
+en el espacio normalizado (`rotarNormalizadas`). El cambio es inmediato y reversible en
+cualquier momento: nadie queda atrapado en la transformación.
+
+**Capa de texto.** `TextLayer` de pdf.js (API pública) sobre cada página viva, construida
+en un contenedor aparte y cambiada de una vez con el lienzo. Se reconstruye con cada
+render (zoom, giro): es barata frente al render. Su tamaño se fija en píxeles (pdf.js lo
+escribe con `round()` de CSS, que no tienen todos los navegadores objetivo) y el giro lo
+aplica la CSS de pdf.js (`data-main-rotation`), adaptada en
+[`visor-pdf.css`](../src/styles/visor-pdf.css) con los tokens de BPDF. Solo
+`textContent`, `createElement` y atributos: nada de HTML en crudo.
+
+**Enlaces.** No se usa la capa de anotaciones interactiva de pdf.js: las anotaciones
+`Link` se leen con `getAnnotations()` y pasan por la política de
+[`enlaces.ts`](../src/pdf/visor/enlaces.ts): externos, solo `http:`, `https:` y `mailto:`
+(absolutos y sin credenciales), abiertos por `Platform.openExternal` (en web, una pestaña
+nueva sin `opener` ni `Referer`); internos (destino explícito, destino con nombre o las
+acciones página siguiente/anterior/primera/última), mueven el visor. Todo lo demás
+(JavaScript, formularios, `GoToR`, adjuntos, `file:`…) no es un enlace. Cada enlace es un
+`<a>` transparente con nombre accesible cuyo clic nunca navega la app. Las apariencias de
+anotaciones y formularios se pintan en el lienzo (`AnnotationMode.ENABLE`), sin
+interacción.
+
+**Búsqueda.** Sobre el texto que trae el PDF (sin OCR). El índice de cada página
+normaliza con NFKD, sin diacríticos y en minúsculas, colapsa los espacios y trata el fin
+de línea como un espacio; cada carácter recuerda de qué trozo de `getTextContent` sale y,
+como la capa de texto crea un elemento por trozo en ese orden, una coincidencia se resalta
+envolviendo sus caracteres en `<mark>`. Recorre el documento cediendo el hilo, una
+búsqueda nueva anula la anterior y, si ninguna página tiene texto, lo dice (probablemente
+un escaneo).
+
+**Miniaturas.** Panel lateral con un botón por página (la actual, con
+`aria-current="page"`); `IntersectionObserver` decide cuáles se pintan. Se pintan aparte,
+en su propio lienzo pequeño: nunca reutilizan el de la página grande.
+
+**Teclado** (no se intercepta nada mientras se escribe en un campo):
+
+| Tecla | Acción |
+|---|---|
+| Ctrl/⌘ + O | Abrir archivo (la app) |
+| AvPág / RePág | Página siguiente / anterior |
+| Inicio / Fin | Primera / última página |
+| ↓ / ↑ | Desplazar; en «página a página», en el borde pasa de página |
+| Ctrl/⌘ + «+» o «=» · Ctrl/⌘ + «−» · Ctrl/⌘ + 0 | Acercar · alejar · 100 % |
+| Ctrl/⌘ + rueda | Acercar / alejar (no el zoom del navegador) |
+| Ctrl/⌘ + F | Buscar en el documento (Intro / Mayús+Intro: siguiente / anterior; Esc: cerrar) |
+
+**Accesibilidad.** Cada botón tiene nombre accesible (el icono nunca va solo), los modos
+dicen su estado con `aria-pressed` y texto visible, la barra de estado es texto («Página
+12/148 · Zoom 100 % · Oscuro · Continua») y los cambios que pide el usuario se anuncian en
+una región `role="status"`. Cada página es un grupo con nombre («Página 3 de 148»); el
+lienzo es `aria-hidden` y el texto accesible es el de la capa de texto.
+
+**Límites conocidos.**
+
+- El modo oscuro conserva las **imágenes**: un diagrama o una captura rasterizados con
+  fondo blanco quedan como un recuadro blanco en la página oscura.
+- Una banda de color intenso con texto blanco se aclara (el color se lleva a 3:1 sobre la
+  página) y su texto pasa a oscuro: se lee, pero no es el diseño original.
+- Los colores pastel se oscurecen conservando el tono; lo que se distingue solo por
+  pasteles (mapas de calor claros) pierde diferencia.
+- Un escaneo se oscurece con la heurística (≥ 90 % de la página es imagen): conserva el
+  tono del papel y el ruido JPEG.
+- La búsqueda no une palabras partidas con guion al final de línea, y en un PDF sin texto
+  no encuentra nada (sin OCR).
+- En la vista continua, el ajuste al ancho o a la página usa el tamaño **típico** del
+  documento (la mediana), no el de la página actual: una página apaisada no cambia el zoom
+  de todas.
+- «Página a página» no pinta de antemano la página siguiente.
+- pdf.js 6 carga su worker como módulo ES: el visor necesita Firefox 114 o posterior,
+  aunque la app arranque en los navegadores mínimos de `build.target` (Firefox 111).
 
 ### 5. La menor complejidad que cumpla los requisitos
 

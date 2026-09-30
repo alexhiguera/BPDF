@@ -17,6 +17,17 @@ export async function abrir(page: Page, ruta = "/"): Promise<Vigilancia> {
     v.errores.push(m.text());
   });
   page.on("pageerror", (e) => v.errores.push(e.message));
+  // Los workers (el de pdf.js, el del modo oscuro) tienen su propia consola: sus
+  // errores también cuentan. OJO: una violación de CSP DENTRO de un worker no dispara
+  // `securitypolicyviolation` en el documento y Chromium tampoco la pasa a esta
+  // consola, así que esta vigilancia no la ve. Lo que un worker necesita de la CSP se
+  // prueba por su efecto (p. ej. el texto CJK de visor-pdf.spec.ts, que necesita
+  // `connect-src 'self'` para los cmaps de pdf.js).
+  page.on("worker", (w) =>
+    w.on("console", (m) => {
+      if (m.type() === "error" || m.type() === "warning") v.errores.push(`[worker] ${m.text()}`);
+    }),
+  );
   page.on("request", (r) => {
     if (new URL(r.url()).origin !== origen) v.externas.push(r.url());
   });

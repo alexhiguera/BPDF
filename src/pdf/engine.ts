@@ -3,6 +3,11 @@ import type { PDFDocumentProxy } from "pdfjs-dist";
 /**
  * Carga de pdf.js y de un documento (docs/PDF_DARK_MODE_SPIKE.md §3, SEGURIDAD §4).
  *
+ * - **Build `legacy`** de pdf.js (D18): la moderna exige APIs de JavaScript de
+ *   2025–2026 (`Uint8Array.prototype.toHex`, `Map.prototype.getOrInsertComputed`…)
+ *   que no tienen los navegadores mínimos de `build.target`. La `legacy` las trae
+ *   con polyfills; su detección de `globalThis` con `Function("return this")` no
+ *   llega a ejecutarse en ningún navegador objetivo (la CSP lo confirma en E2E).
  * - pdf.js se importa a demanda (`import()`): no entra en el arranque de la app.
  * - Worker, fuentes estándar, cmaps y decodificadores se sirven desde el PROPIO
  *   origen (`public/pdfjs/`, lo copia `scripts/copiar-pdfjs.mjs`). Nada remoto.
@@ -11,7 +16,7 @@ import type { PDFDocumentProxy } from "pdfjs-dist";
  * - El documento entra como BYTES (`data`), nunca como URL: pdf.js no hace
  *   ninguna petición para obtenerlo.
  */
-export type Pdfjs = typeof import("pdfjs-dist");
+export type Pdfjs = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
 
 /** Dónde encuentra pdf.js sus recursos. En el navegador, bajo la base de Vite. */
 export type RutasPdfjs = { worker: string; recursos: string };
@@ -23,9 +28,9 @@ export const RUTAS_WEB: RutasPdfjs = {
 
 let modulo: Promise<Pdfjs> | undefined;
 
-/** Importa pdf.js una sola vez y apunta su worker al del propio origen. */
+/** Importa pdf.js (`legacy`) una sola vez y apunta su worker al del propio origen. */
 export function cargarPdfjs(rutas: RutasPdfjs = RUTAS_WEB): Promise<Pdfjs> {
-  modulo ??= import("pdfjs-dist").then((pdfjs) => {
+  modulo ??= import("pdfjs-dist/legacy/build/pdf.mjs").then((pdfjs) => {
     pdfjs.GlobalWorkerOptions.workerSrc = rutas.worker;
     return pdfjs;
   });
@@ -53,11 +58,30 @@ export function opcionesDocumento(datos: Uint8Array, rutas: RutasPdfjs = RUTAS_W
 /** `VerbosityLevel.ERRORS` de pdf.js (su valor es estable y un test lo vigila). */
 export const VERBOSIDAD_SOLO_ERRORES = 0;
 
-/** pdf.js no ha podido abrir el documento (dañado, cifrado sin clave, no es PDF…). */
+/** pdf.js no ha podido abrir el documento (dañado, no es PDF…). */
 export class PdfNoLegibleError extends Error {
   constructor(options?: { cause?: unknown }) {
     super("pdf-no-legible", options);
     this.name = "PdfNoLegibleError";
+  }
+}
+
+/**
+ * El PDF está cifrado con contraseña de apertura. BPDF no pide contraseñas
+ * todavía (D13 pendiente): se informa y no se abre.
+ */
+export class PdfProtegidoError extends Error {
+  constructor(options?: { cause?: unknown }) {
+    super("pdf-protegido", options);
+    this.name = "PdfProtegidoError";
+  }
+}
+
+/** La apertura se canceló (se abrió otro documento o se cerró este). */
+export class AperturaCanceladaError extends Error {
+  constructor() {
+    super("apertura-cancelada");
+    this.name = "AperturaCanceladaError";
   }
 }
 
@@ -67,19 +91,39 @@ export class PdfNoLegibleError extends Error {
  * `blob.arrayBuffer()` crea UNA copia de los bytes en memoria, que pdf.js
  * transfiere a su worker sin volver a copiarla (el `ArrayBuffer` queda
  * desasociado en este hilo). El `Blob` original no se toca.
+ *
+ * `senal` permite cancelar: se destruye la tarea de pdf.js (y con ella lo que
+ * hubiera cargado su worker) y se rechaza con `AperturaCanceladaError`.
  */
 export async function abrirPdf(
   blob: Blob,
   pdfjs: Pdfjs,
   rutas: RutasPdfjs = RUTAS_WEB,
+  senal?: AbortSignal,
 ): Promise<PDFDocumentProxy> {
-  const tarea = pdfjs.getDocument(
-    opcionesDocumento(new Uint8Array(await blob.arrayBuffer()), rutas),
-  );
+  if (senal?.aborted) throw new AperturaCanceladaError();
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  if (senal?.aborted) throw new AperturaCanceladaError();
+  const tarea = pdfjs.getDocument(opcionesDocumento(bytes, rutas));
+  const cancelar = () => void tarea.destroy();
+  senal?.addEventListener("abort", cancelar, { once: true });
   try {
-    return await tarea.promise;
+    const documento = await tarea.promise;
+    if (senal?.aborted) {
+      await tarea.destroy();
+      throw new AperturaCanceladaError();
+    }
+    return documento;
   } catch (cause) {
     await tarea.destroy();
+    if (senal?.aborted || cause instanceof AperturaCanceladaError) {
+      throw new AperturaCanceladaError();
+    }
+    if (cause instanceof Error && cause.name === "PasswordException") {
+      throw new PdfProtegidoError({ cause });
+    }
     throw new PdfNoLegibleError({ cause });
+  } finally {
+    senal?.removeEventListener("abort", cancelar);
   }
 }

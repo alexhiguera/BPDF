@@ -10,6 +10,146 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 7 — *2026-09-30* — Fase 5: visor PDF funcional
+
+Primera versión que **lee** un PDF: visor propio sobre las APIs núcleo de pdf.js (D17)
+con la build `legacy` (D18), las dos confirmadas al empezar. Reutiliza sin cambios de
+algoritmo el modo oscuro de la Fase 4, ahora en un Web Worker. El diseño completo está en
+[ARCHITECTURE.md](ARCHITECTURE.md) §4 quater; aquí, el porqué de cada decisión y lo que
+salió mal.
+
+**Qué se hizo y por qué**
+
+- **Tres capas** (módulos puros → controladores sin React → interfaz). Lo que más falla en
+  un visor (qué páginas viven, qué se cancela, qué llega tarde de un documento anterior)
+  queda fuera de React y se prueba sin montar nada; la interfaz solo dice qué marcos hay.
+- **Render en un lienzo nuevo, oscurecido y después sustituido**: sin páginas a medio
+  pintar ni destellos blancos en oscuro. Cada `pintar()` abre una generación y todo lo que
+  llega de otra se descarta; como mucho 2 renders a la vez, contando **superficies** (un
+  render sustituido no ocupa hueco: lo destapó un test, ver errores).
+- **Virtualización propia** (búsqueda binaria sobre los bordes de las páginas; visibles
+  ±1) y **presupuesto de 160 MiB** para las vecinas. El presupuesto nació de medir: a zoom
+  500 % los cuatro lienzos vivos sumaban 256 MiB.
+- **Resolución física separada del tamaño CSS**: DPR ≤ 2 y ≤ 16,7 Mpx por lienzo (a partir
+  de ahí se baja la resolución, no se gasta más memoria).
+- **Worker del modo oscuro, medido antes de decidir** (`npm run bench:pdf`, Chromium de
+  Playwright, Ryzen 7 5800X). Hilo principal bloqueado, sin worker → con worker:
+
+  | Lienzo | Sin worker | Con worker |
+  |---|---|---|
+  | 2,2 Mpx (A4 a lo ancho, DPR 1) | 18–28 ms | 9–13 ms |
+  | 3,6 Mpx (200 %, DPR 1) | 28–34 ms | 15–18 ms |
+  | 8,8 Mpx (A4 a lo ancho, DPR 2) | 70–88 ms | 30–39 ms |
+  | 14,2 Mpx (400 % DPR 1 · 200 % DPR 2) | 98–120 ms | 50–54 ms |
+  | 16,8 Mpx (tope) | 113–141 ms | 60–66 ms |
+
+  Con worker, lo que queda en el hilo principal es leer y escribir las franjas
+  (~3,5 ms/Mpx), en bloques de una franja; la latencia total de la primera página sube
+  algo (el worker arranca) y la de las siguientes queda igual o mejor. Se eligió un worker
+  y no WebGL: mismo código probado, sin GPU ni contexto que perder, sin dependencias. Si
+  no hay worker o falla, el mismo código corre en el hilo principal.
+- **Capa de texto con `TextLayer`** reconstruida en cada render (más simple que
+  `update()` y barata frente al render) y con su tamaño en píxeles: pdf.js lo escribe con
+  `round()` de CSS, que Chrome 111 no tiene.
+- **Enlaces sin `AnnotationLayer`**: `getAnnotations()` + una política propia (solo
+  `http:`, `https:`, `mailto:` y destinos internos) + `<a>` transparentes cuyo clic nunca
+  navega la app. La política de URLs vive en `src/lib/url-externa.ts` para que la use
+  también Markdown (Fase 7) y la plataforma la revalida.
+- **`Platform.openExternal`** (web: `window.open(url, "_blank", "noopener,noreferrer")`),
+  primer uso de la plataforma desde un visor.
+- **Búsqueda propia** sobre `getTextContent` con NFKD, sin tildes, minúsculas y fin de línea
+  como espacio; el índice guarda de qué trozo sale cada carácter para resaltar con `<mark>`
+  en la capa de texto.
+- **Miniaturas, búsqueda y atajos** se adelantaron de la Fase 6 (los pedía el alcance);
+  la Fase 6 queda replanteada en FASES.md.
+- **El visor se carga a demanda** (`React.lazy`): el arranque pasa de 84,2 a 85,5 KB gzip.
+- **Ajustes con el tamaño típico** (mediana) en la vista continua: con el de la página
+  actual, un documento con una página apaisada cambiaba de zoom al pasar por ella (se vio
+  en un PDF real).
+- **Laboratorio de la Fase 4 borrado** (`spike.html`, `src/pdf-spike/`, `messages.pdfSpike`,
+  su E2E y su test de componentes, y los modos de referencia «invertido» y «heurística» de
+  `aplicar.ts`). Sus aserciones de píxeles pasaron al E2E del visor; el benchmark mide
+  ahora el visor. Nada del laboratorio tenía que pasar al visor salvo la lectura de los
+  tokens de color (`src/app/pdf/colores.ts`).
+- **`r3zon-template.json`**: estaba borrado (y commiteado) para no publicar la plantilla,
+  pero CLAUDE.md §11 y TEMPLATE.md lo seguían enlazando (`docs:enlaces` en rojo). Se
+  reescribieron esas referencias: el origen queda registrado en TEMPLATE.md.
+
+**Hallazgo de seguridad/privacidad corregido: `connect-src 'self'`.** Con la CSP de
+producción, el texto de fuentes CID no incrustadas (japonés, chino, coreano)
+**desaparecía en silencio**: pdf.js pide sus cmaps con `fetch` desde su worker, el worker
+recibe la CSP con su script (`connect-src` cae en `default-src 'none'`) y la violación no
+llega al documento, así que la vigilancia de los E2E no la veía. La Fase 4 lo había dado
+por innecesario porque ningún fixture tenía texto CJK. Se reprodujo con un fixture nuevo
+(`cjk.pdf`: el E2E fallaba), se añadió `connect-src 'self'` con su motivo en
+`security-headers.ts` (solo el propio origen; nada `unsafe-*` ni externo) y se comprobó con
+`curl -I` que la cabecera llega también al worker. Se intentó que la vigilancia lo
+detectara escuchando la consola de los workers: Chromium no pasa esas violaciones a esa
+consola, así que la garantía es el E2E funcional (documentado en `vigilancia.ts`).
+
+**PDF reales** (§28 del encargo; descargados o generados en el scratchpad, sin subir nada
+a ningún servicio): el paper de TraceMonkey (gráficas vectoriales, 14 págs.), «Attention Is
+All You Need» de arXiv (figuras raster, tablas, 15 págs., enlaces internos y externos), el
+formulario W-4 del IRS (formulario denso), dos del corpus de pdf.js (transparencias de
+TCPDF; un paper con logos), y cuatro generados con Chromium (documento de empresa con logo,
+tabla, gráfico de barras y foto; manual de 41 páginas con índice enlazado; escaneo raster
+sin texto; diapositivas oscuras 16:9). Todos abren en < 0,9 s, sin errores de consola, sin
+violaciones de CSP y sin peticiones externas; texto, enlaces y búsqueda funcionan. Modo
+oscuro: texto, formularios, tablas, gráficos vectoriales, fotos y transparencias bien; las
+diapositivas oscuras no se tocan. Límites vistos (ARCHITECTURE §4 quater): un diagrama
+raster con fondo blanco queda como recuadro blanco; una banda de color con texto blanco se
+aclara y el texto pasa a oscuro; los pasteles se oscurecen y pierden diferencia; el escaneo
+conserva un tono cálido. No se pudo probar uno de ofimática (no hay LibreOffice): TAREAS.
+
+**300 páginas**: primera página en ~0,9 s; en el recorrido rápido nunca más de 4 lienzos
+(≤ 34 MiB a DPR 1); heap JS ~58–61 MiB al terminar.
+
+**Descartado**
+
+- `PDFViewer`, `PDFLinkService`, `PDFFindController` y `AnnotationLayer` (D17 y la política
+  de enlaces propia). Una librería de virtualización (son 60 líneas puras y probadas).
+- WebGL para el modo oscuro (ver arriba).
+- La CSS Custom Highlight API para el resaltado: no existe en Firefox < 140 ni Safari <
+  17.2. Se envuelve el texto en `<mark>` y se restaura al quitarlo.
+- El elemento `<search>` (Chrome 118+): `role="search"` en un `<div>`.
+- `type="number"` en el campo de página: acepta «1e3» y cambia con la rueda.
+- Pintar de antemano la página siguiente en «página a página»: otro lienzo vivo para un
+  beneficio pequeño; queda como posible mejora.
+- Pedir contraseña (D13 sigue pendiente): un PDF cifrado se detecta y se dice.
+
+**Errores propios por el camino**
+
+- Una regla `.pagina-pdf { position: relative }` fuera de las capas de Tailwind ganaba a la
+  utilidad `absolute`: las páginas se apilaban mal y la segunda quedaba fuera de su sitio.
+  Se vio en la primera prueba en navegador, no en los tests.
+- El índice de búsqueda desalineaba posiciones con los caracteres fuera del plano básico
+  (un emoji son dos unidades UTF-16); lo cazó su test.
+- Un render sustituido seguía ocupando uno de los 2 huecos hasta resolverse; lo cazó el
+  test del controlador con páginas que no terminan de cargar.
+- Contar pasos de zoom de 100 % a 200 % (5, no 7): falló el E2E de copia y la primera
+  tabla del benchmark medía 300 % y 500 % en lugar de 200 % y 400 %. Corregidos los dos.
+- Referencias a «iteración 13» en los documentos (es la 7).
+
+**Tests**
+
+- Unitarios nuevos: disposición, zoom, ventana y presupuesto; búsqueda; política de
+  enlaces con corpus de URLs hostiles; capas (resaltado, enlaces, texto hostil); documento
+  con pdf.js real (tamaños, texto, CJK, enlaces, caché, destrucción); controlador (orden,
+  concurrencia, cancelación, liberación, recorrido rápido de 300 páginas, búsqueda);
+  transformación por franjas y worker (protocolo, transferencia, fallo, destrucción);
+  estado de la vista; atajos; apertura protegida y cancelación en `engine.test.ts`.
+- Componentes: `Visor.test.tsx` (navegación, campo validado, zoom, giro, modos, teclado sin
+  interceptar campos, búsqueda, enlaces, miniaturas, jest-axe). `App.test.tsx` cambia su
+  test de PDF: antes comprobaba el resumen provisional (nombre, tipo, tamaño); ahora un PDF
+  monta el visor, y el test comprueba el visor, los avisos de PDF dañado y protegido y que
+  abrir otro documento aborta la carga (pdf.js se sustituye en jsdom).
+- E2E: `visor-pdf.spec.ts` (22 tests: los 21 flujos pedidos más CJK y el de ficheros no
+  servidos). `abrir.spec.ts`: el test de PDF comprueba el visor; en el de nombres hostiles
+  la aserción «ningún `svg` en `main`» ya no vale (la barra del visor tiene iconos SVG
+  propios), y se sustituye por dos más precisas: el título no contiene ningún elemento y
+  no hay `script` ni atributos `onload`/`onerror` en `main`.
+- Cifras: 380 tests en 29 ficheros; 45 E2E.
+
 ### Iteración 6 — *2026-09-29* — Fase 4: spike del PDF en modo oscuro
 
 Había que saber, antes de construir el visor, si el requisito central es alcanzable:

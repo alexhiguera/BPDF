@@ -1,5 +1,6 @@
 import { ACCEPT } from "@/documents/detect";
 import { readDocument } from "@/documents/read";
+import { urlPermitida } from "@/lib/url-externa";
 import type { Platform } from "./types";
 
 /**
@@ -10,12 +11,17 @@ import type { Platform } from "./types";
  * `doc` se inyecta para poder probarla en jsdom.
  */
 export function createWebPlatform(doc: Document = document): Platform {
+  const ventana = doc.defaultView;
   return {
     async pickDocument() {
       const file = await pickFile(doc);
       return file ? readDocument(file) : null;
     },
     openDroppedFile: (file) => readDocument(file),
+    openExternal(url) {
+      const segura = urlPermitida(url);
+      if (segura) ventana?.open(segura, "_blank", "noopener,noreferrer");
+    },
   };
 }
 

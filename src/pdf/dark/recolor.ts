@@ -134,11 +134,3 @@ export function transformarPixeles(
     pixeles[i] = recolorear(pixeles[i] ?? 0);
   }
 }
-
-/** Negativo completo (referencia de lo que NO se quiere): 255 − canal, alfa intacto. */
-export function invertirPixeles(pixeles: Uint32Array): void {
-  for (let i = 0; i < pixeles.length; i++) {
-    const p = pixeles[i] ?? 0;
-    pixeles[i] = ((p & 0xff000000) | (~p & 0x00ffffff)) >>> 0;
-  }
-}

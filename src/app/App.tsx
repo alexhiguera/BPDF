@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { project } from "@/config/project";
 import { DocumentProvider, useDocument } from "@/documents/DocumentProvider";
@@ -10,13 +10,19 @@ import { DropZone } from "./DropZone";
 import { EmptyState } from "./EmptyState";
 
 /**
+ * El visor PDF se carga a demanda, al abrir el primer PDF: ni él ni pdf.js
+ * entran en el arranque de la app (límite de `build:tamano`).
+ */
+const VisorPdf = lazy(() => import("./pdf/VisorPdf"));
+
+/**
  * La aplicación. Recibe la plataforma (web hoy, Electron en la Fase 14) desde
  * `main.tsx`, y los tests una falsa.
  */
 export function App({ platform }: { platform: Platform }) {
   return (
     <DocumentProvider platform={platform}>
-      <Shell />
+      <Shell platform={platform} />
     </DocumentProvider>
   );
 }
@@ -25,11 +31,16 @@ export function App({ platform }: { platform: Platform }) {
  * Shell: barra superior (cromo) y área de lectura. Una sola vista y sin
  * router: el documento abierto decide qué se monta en `<main>`.
  */
-function Shell() {
+function Shell({ platform }: { platform: Platform }) {
   const { document, error, openWithPicker, openDropped, close, dismissError } = useDocument();
   const main = useRef<HTMLElement>(null);
 
   useOpenShortcut(openWithPicker);
+
+  const cerrar = () => {
+    close();
+    main.current?.focus(); // el botón pulsado desaparece con el documento
+  };
 
   return (
     <DropZone onFiles={openDropped}>
@@ -48,17 +59,24 @@ function Shell() {
           </Button>
         )}
       </header>
-      <main ref={main} id="contenido" tabIndex={-1} className="flex flex-1 flex-col bg-reading">
+      <main
+        ref={main}
+        id="contenido"
+        tabIndex={-1}
+        className="flex min-h-0 flex-1 flex-col overflow-auto bg-reading"
+      >
         {error && <DocumentErrorAlert error={error} onDismiss={dismissError} />}
-        {document ? (
-          <DocumentSummary
-            key={document.id}
-            document={document}
-            onClose={() => {
-              close();
-              main.current?.focus(); // el botón pulsado desaparece con el documento
-            }}
-          />
+        {document?.kind === "pdf" ? (
+          <Suspense fallback={<p className="p-6 text-fg-muted">{messages.pdf.loading}</p>}>
+            <VisorPdf
+              key={document.id}
+              documento={document}
+              onClose={cerrar}
+              onOpenExternal={(url) => platform.openExternal(url)}
+            />
+          </Suspense>
+        ) : document ? (
+          <DocumentSummary key={document.id} document={document} onClose={cerrar} />
         ) : (
           <EmptyState onOpen={openWithPicker} />
         )}

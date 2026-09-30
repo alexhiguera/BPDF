@@ -1,40 +1,18 @@
 import { readFileSync } from "node:fs";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import {
+  AperturaCanceladaError,
   abrirPdf,
   opcionesDocumento,
-  type Pdfjs,
   PdfNoLegibleError,
-  type RutasPdfjs,
+  PdfProtegidoError,
   VERBOSIDAD_SOLO_ERRORES,
 } from "@/pdf/engine";
-import { ANOTACIONES_DESACTIVADAS } from "@/pdf/render";
+import { ANOTACIONES_EN_LIENZO } from "@/pdf/render";
 import { crearPdfModoOscuro, GEOMETRIA } from "../../fixtures/pdf/modo-oscuro/generar.mjs";
+import { crearPdfProtegido } from "../../fixtures/pdf/visor/generar.mjs";
+import { cargarPdfjsNode as cargarPdfjs, RUTAS } from "../../helpers/pdfjs";
 
-/**
- * pdf.js real, en Node (sin lienzo: el render se prueba en Playwright). En Node
- * pdf.js corre su worker en el mismo hilo y lee los recursos del disco.
- *
- * Se usa la build `legacy/`: la moderna exige APIs de JavaScript que Node 24 aún
- * no trae (`Uint8Array.prototype.toHex`, `Map.prototype.getOrInsertComputed`…,
- * docs/PDF_DARK_MODE_SPIKE.md §9). `abrirPdf` recibe el módulo por parámetro, así
- * que la función probada es la misma que usa el navegador.
- */
-const DIST = path.resolve("node_modules/pdfjs-dist");
-const RUTAS: RutasPdfjs = {
-  worker: pathToFileURL(path.join(DIST, "legacy/build/pdf.worker.mjs")).href,
-  recursos: `${DIST}/`,
-};
-let modulo: Promise<Pdfjs> | undefined;
-function cargarPdfjs(rutas: RutasPdfjs): Promise<Pdfjs> {
-  modulo ??= import("pdfjs-dist/legacy/build/pdf.mjs").then((pdfjs) => {
-    pdfjs.GlobalWorkerOptions.workerSrc = rutas.worker;
-    return pdfjs as unknown as Pdfjs;
-  });
-  return modulo;
-}
 const FIXTURE = "tests/fixtures/pdf/modo-oscuro/modo-oscuro.pdf";
 const abiertos: { loadingTask: { destroy(): Promise<void> } }[] = [];
 afterAll(async () => {
@@ -42,13 +20,13 @@ afterAll(async () => {
 });
 
 async function abrir(bytes: Uint8Array | Buffer) {
-  const pdfjs = await cargarPdfjs(RUTAS);
+  const pdfjs = await cargarPdfjs();
   const doc = await abrirPdf(new Blob([new Uint8Array(bytes)]), pdfjs, RUTAS);
   abiertos.push(doc);
   return { pdfjs, doc };
 }
 
-describe("fixture del spike", () => {
+describe("fixtures", () => {
   it("el fichero versionado es exactamente lo que produce el generador", () => {
     expect(Buffer.compare(readFileSync(FIXTURE), crearPdfModoOscuro())).toBe(0);
   });
@@ -74,7 +52,7 @@ describe("abrirPdf", () => {
     const bytes = new Uint8Array(readFileSync(FIXTURE));
     const blob = new Blob([bytes]);
     const antes = new Uint8Array(await blob.arrayBuffer());
-    const pdfjs = await cargarPdfjs(RUTAS);
+    const pdfjs = await cargarPdfjs();
     abiertos.push(await abrirPdf(blob, pdfjs, RUTAS));
     const despues = new Uint8Array(await blob.arrayBuffer());
     expect(blob.size).toBe(bytes.length);
@@ -82,7 +60,7 @@ describe("abrirPdf", () => {
   });
 
   it("un PDF dañado se rechaza con PdfNoLegibleError (y no queda nada abierto)", async () => {
-    const pdfjs = await cargarPdfjs(RUTAS);
+    const pdfjs = await cargarPdfjs();
     const truncado = readFileSync(FIXTURE).subarray(0, 300);
     await expect(
       abrirPdf(new Blob([new Uint8Array(truncado)]), pdfjs, RUTAS),
@@ -91,6 +69,45 @@ describe("abrirPdf", () => {
     await expect(abrirPdf(new Blob([basura]), pdfjs, RUTAS)).rejects.toBeInstanceOf(
       PdfNoLegibleError,
     );
+  });
+});
+
+describe("abrirPdf: protegido y cancelación", () => {
+  it("un PDF con contraseña de apertura se rechaza con PdfProtegidoError", async () => {
+    const pdfjs = await cargarPdfjs();
+    await expect(
+      abrirPdf(new Blob([new Uint8Array(crearPdfProtegido())]), pdfjs, RUTAS),
+    ).rejects.toBeInstanceOf(PdfProtegidoError);
+  });
+
+  it("con la señal ya abortada no llega a pedir nada a pdf.js", async () => {
+    const pdfjs = await cargarPdfjs();
+    const c = new AbortController();
+    c.abort();
+    await expect(
+      abrirPdf(new Blob([new Uint8Array(readFileSync(FIXTURE))]), pdfjs, RUTAS, c.signal),
+    ).rejects.toBeInstanceOf(AperturaCanceladaError);
+  });
+
+  it("abortar durante la carga destruye la tarea y rechaza con AperturaCanceladaError", async () => {
+    const pdfjs = await cargarPdfjs();
+    const c = new AbortController();
+    const abriendo = abrirPdf(
+      new Blob([new Uint8Array(crearPdfModoOscuro())]),
+      pdfjs,
+      RUTAS,
+      c.signal,
+    );
+    queueMicrotask(() => c.abort());
+    await expect(abriendo).rejects.toBeInstanceOf(AperturaCanceladaError);
+  });
+
+  it("un documento abierto se destruye y deja de responder", async () => {
+    const pdfjs = await cargarPdfjs();
+    const doc = await abrirPdf(new Blob([new Uint8Array(readFileSync(FIXTURE))]), pdfjs, RUTAS);
+    await doc.loadingTask.destroy();
+    // pdf.js lanza en el acto: ya no hay transporte con su worker.
+    await expect(Promise.resolve().then(() => doc.getPage(1))).rejects.toThrow();
   });
 });
 
@@ -115,9 +132,9 @@ describe("configuración segura (docs/SEGURIDAD.md §4)", () => {
     }
   });
 
-  it("el render sin anotaciones usa el valor real de AnnotationMode.DISABLE", async () => {
-    const pdfjs = await cargarPdfjs(RUTAS);
-    expect(ANOTACIONES_DESACTIVADAS).toBe(pdfjs.AnnotationMode.DISABLE);
+  it("las anotaciones se pintan en el lienzo sin capa interactiva (AnnotationMode.ENABLE)", async () => {
+    const pdfjs = await cargarPdfjs();
+    expect(ANOTACIONES_EN_LIENZO).toBe(pdfjs.AnnotationMode.ENABLE);
     expect(VERBOSIDAD_SOLO_ERRORES).toBe(pdfjs.VerbosityLevel.ERRORS);
   });
 });

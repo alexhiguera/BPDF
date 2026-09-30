@@ -1,0 +1,139 @@
+/*
+ * Estilos del visor PDF que no son utilidades de Tailwind: la capa de texto de
+ * pdf.js y las capas de enlaces y resaltado de BPDF (docs/ARCHITECTURE.md →
+ * visor PDF). Se cargan con el visor, no en el arranque.
+ *
+ * Las reglas de `.textLayer` son una adaptación de `web/pdf_viewer.css` de
+ * pdf.js (Copyright Mozilla Foundation, Apache License 2.0), reducida a lo que
+ * necesita `TextLayer` (API pública de pdf.js): posicionar cada trozo de texto,
+ * transparente, encima de su dibujo en el lienzo, para seleccionarlo y copiarlo.
+ * Los colores salen de los tokens de globals.css.
+ */
+
+.pagina-pdf {
+  /* `--scale-factor` lo fija BPDF por página al zoom de su render. */
+  --scale-factor: 1;
+  --user-unit: 1;
+  --total-scale-factor: calc(var(--scale-factor) * var(--user-unit));
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+  /* Sin `position`: la pone el componente (`absolute` en el lector, `relative` en
+   * las miniaturas). Una regla aquí, fuera de las capas de Tailwind, ganaría a
+   * sus utilidades. */
+  overflow: hidden;
+}
+
+.pagina-pdf > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.textLayer {
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  z-index: 0;
+
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
+.textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  user-select: text;
+}
+
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.textLayer .markedContent {
+  display: contents;
+}
+
+.textLayer span[role="img"] {
+  user-select: none;
+  cursor: default;
+}
+
+.textLayer ::selection {
+  background: rgb(var(--rgb-accent) / 0.35);
+  color: transparent;
+}
+
+.textLayer br::selection {
+  background: transparent;
+}
+
+.textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  user-select: none;
+}
+
+/* Rotación de vista: la capa se construye sin rotar y se gira aquí (pdf.js). */
+.textLayer[data-main-rotation="90"] {
+  transform: rotate(90deg) translateY(-100%);
+}
+.textLayer[data-main-rotation="180"] {
+  transform: rotate(180deg) translate(-100%, -100%);
+}
+.textLayer[data-main-rotation="270"] {
+  transform: rotate(270deg) translateX(-100%);
+}
+
+/* Coincidencias de la búsqueda: trozos de texto envueltos en <mark>. */
+.textLayer mark.coincidencia {
+  position: static;
+  color: transparent;
+  background: rgb(var(--rgb-accent) / 0.3);
+  border-radius: 2px;
+}
+.textLayer mark.coincidencia.activa {
+  background: rgb(var(--rgb-accent) / 0.65);
+  outline: 2px solid var(--color-accent);
+}
+
+/* Enlaces del documento: zonas transparentes sobre el lienzo y el texto. */
+.enlaces-pdf {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.enlaces-pdf > a {
+  position: absolute;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.enlaces-pdf > a:hover {
+  background: rgb(var(--rgb-accent) / 0.12);
+}
+.enlaces-pdf > a:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 0;
+}

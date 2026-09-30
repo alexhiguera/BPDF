@@ -1,24 +1,30 @@
 # Estructura del repositorio
 
-Estado tras la Fase 4 (*2026-09-29*). Cada fase actualiza este árbol con lo que crea; lo
+Estado tras la Fase 5 (*2026-09-30*). Cada fase actualiza este árbol con lo que crea; lo
 que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas vacías).
 
 ```text
 ├── CLAUDE.md                 reglas de trabajo (personas y agentes)
 ├── README.md                 qué es BPDF y cómo arrancarlo
 ├── LICENSE                   Apache-2.0
-├── r3zon-template.json       registro de origen: de qué plantilla nace (no se actualiza)
 ├── index.html                entrada de Vite; sin scripts en línea
-├── spike.html                TEMPORAL: laboratorio del modo oscuro de PDF (F4; se borra en F5)
-├── vite.config.ts            build estática (entradas index y spike), cabeceras de `preview`, plugin de BPDF
-├── playwright.bench.config.ts  benchmark del modo oscuro (`npm run bench:pdf`, fuera de CI)
+├── vite.config.ts            build estática, workers como módulos ES, cabeceras de `preview`, plugin de BPDF
+├── playwright.bench.config.ts  benchmark del visor PDF (`npm run bench:pdf`, fuera de CI)
 ├── src/
 │   ├── main.tsx              arranque: crea la plataforma y monta <App/> en el ErrorBoundary
 │   ├── app/                  la aplicación: shell y vistas
-│   │   ├── App.tsx           proveedor del documento, enlace de salto, cabecera, <main>, Ctrl/Cmd+O
+│   │   ├── App.tsx           proveedor del documento, enlace de salto, cabecera, <main>, Ctrl/Cmd+O;
+│   │   │                     monta el visor PDF (a demanda) o el resumen provisional (Markdown)
 │   │   ├── DropZone.tsx      zona de soltar a pantalla completa (envuelve la app)
 │   │   ├── EmptyState.tsx    vista sin documento: «Abrir archivo», atajo, privacidad
-│   │   ├── DocumentSummary.tsx  vista PROVISIONAL del documento abierto (F5/F7 la sustituyen)
+│   │   ├── DocumentSummary.tsx  vista PROVISIONAL de un Markdown abierto (la F7 la sustituye)
+│   │   ├── pdf/              interfaz del visor PDF (F5), cargada a demanda
+│   │   │   ├── VisorPdf.tsx  carga del PDF, estados cargando/error y ciclo de vida
+│   │   │   ├── Visor.tsx     área de lectura: disposición, desplazamiento, teclado, búsqueda
+│   │   │   ├── BarraHerramientas.tsx · BarraBusqueda.tsx · PanelMiniaturas.tsx
+│   │   │   ├── estado.ts     estado de la vista (reductor puro)
+│   │   │   ├── atajos.ts     tabla de atajos de teclado (pura)
+│   │   │   └── colores.ts    colores del modo oscuro leídos de los tokens
 │   │   ├── DocumentErrorAlert.tsx  aviso de fichero no válido (role="alert")
 │   │   └── ErrorBoundary.tsx red ante errores de render (sin telemetría)
 │   ├── components/ui/        primitivos accesibles: Button, Field, Input
@@ -28,6 +34,7 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   └── public-site.ts    robots.txt y sitemap.xml (fechas literales)
 │   ├── i18n/messages.ts      TODOS los textos visibles (D2)
 │   ├── styles/globals.css    Tailwind 4 + tokens de diseño
+│   ├── styles/visor-pdf.css  capa de texto de pdf.js (adaptada), enlaces y resaltado; con el visor
 │   ├── documents/            el documento abierto, sin UI ni plataforma
 │   │   ├── types.ts          OpenedDocument (PDF: Blob · Markdown: texto)
 │   │   ├── detect.ts         extensión, firma %PDF-, UTF-8 estricto, nombre saneado
@@ -36,17 +43,19 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   ├── read.ts           readDocument(): valida y construye el documento
 │   │   └── DocumentProvider.tsx  estado (un documento, D16) y useDocument()
 │   ├── platform/             ÚNICA frontera web/Electron
-│   │   ├── types.ts          interfaz Platform (pickDocument, openDroppedFile)
+│   │   ├── types.ts          interfaz Platform (pickDocument, openDroppedFile, openExternal)
 │   │   ├── web.ts            implementación con APIs estándar del navegador
 │   │   └── index.ts          createPlatform() (la rama de Electron llega en F14)
-│   ├── lib/                  utils.ts (cn()) · format.ts (tamaños legibles)
+│   ├── lib/                  utils.ts (cn()) · format.ts (tamaños legibles) · url-externa.ts (política de URLs)
 │   ├── vite-env.d.ts         tipos de Vite (imports de CSS)
 │   │
-│   ├── pdf/                  el motor de PDF, sin React (F4; el visor llega en F5–F6)
-│   │   ├── engine.ts         carga de pdf.js a demanda y del documento (bytes, useWasm: false)
-│   │   ├── render.ts         render de una página con la API núcleo + regiones de imagen
-│   │   └── dark/             modo oscuro: color.ts (OKLab, contraste) · recolor.ts · regiones.ts · aplicar.ts
-│   ├── pdf-spike/            TEMPORAL: laboratorio y benchmark de la F4 (se borra en F5)
+│   ├── pdf/                  el motor y el visor de PDF, sin React
+│   │   ├── engine.ts         carga de pdf.js (legacy) y del documento: bytes, cancelación, errores
+│   │   ├── render.ts         render de una página + regiones de imagen; política de resolución
+│   │   ├── dark/             modo oscuro: color.ts · recolor.ts · regiones.ts · aplicar.ts (franjas,
+│   │   │                     transformadores) · trabajador.ts (worker) · transformador-worker.ts
+│   │   └── visor/            disposicion.ts · busqueda.ts · enlaces.ts (puros) · documento.ts ·
+│   │                         superficie.ts · capas.ts · controlador.ts (ARCHITECTURE §4 quater)
 │   ├── markdown/  editor/    llegan en F7–F9
 │   └── preferences/          llega en F10
 ├── electron/                 llega en F14 (proceso main y preload; fuera de src/)
@@ -58,8 +67,8 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   ├── _fixtures/            proyecto ficticio autocontenido para probar validadores
 │   └── public-docs.test.ts   el validador de public_docs
 ├── e2e/                      Playwright contra la build de producción
-│   ├── specs/                app.spec.ts (base) · abrir.spec.ts (apertura) · pdf-spike.spec.ts (modo oscuro, temporal)
-│   ├── bench/                benchmark del modo oscuro (no es un test; `npm run bench:pdf`)
+│   ├── specs/                app.spec.ts (base) · abrir.spec.ts (apertura) · visor-pdf.spec.ts (visor PDF)
+│   ├── bench/                benchmark del visor PDF (no es un test; `npm run bench:pdf`)
 │   └── vigilancia.ts         consola, CSP y red vigiladas en cada carga
 ├── scripts/                  herramientas (.mjs, sin dependencias extra)
 │   ├── validar-public-docs.mjs · verificar-enlaces-docs.mjs · verificar-overrides.mjs

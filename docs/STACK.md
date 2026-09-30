@@ -50,9 +50,9 @@ explica, para que el documento no se quede atrás.
 | Dependencia | Para qué |
 |---|---|
 | `react`, `react-dom` | La interfaz |
-| `lucide-react` | Iconos (hoy, el indicador de carga de `Button`) |
+| `lucide-react` | Iconos (el indicador de carga de `Button` y los botones del visor PDF, siempre con nombre accesible) |
 | `clsx`, `tailwind-merge` | La función `cn()` para combinar clases |
-| `pdfjs-dist` | El motor de PDF (pdf.js de Mozilla). **Versión exacta** (6.3.289): procesa contenido no confiable. Se carga a demanda, con `useWasm: false` y sus recursos servidos desde el propio origen ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §3) |
+| `pdfjs-dist` | El motor de PDF (pdf.js de Mozilla). **Versión exacta** (6.3.289): procesa contenido no confiable. Build **`legacy`** (D18). Se carga a demanda, con `useWasm: false` y sus recursos servidos desde el propio origen ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §3). El visor usa solo sus APIs núcleo y `TextLayer` (D17, [ARCHITECTURE.md](ARCHITECTURE.md) §4 quater) |
 
 ### `pdfjs-dist`: qué trae y qué implica
 
@@ -61,12 +61,25 @@ explica, para que el documento no se quede atrás.
   **no entra en el bundle**. Se instala en desarrollo porque npm instala las opcionales
   por defecto (y no se pueden omitir una a una sin omitir también los binarios de
   Rolldown). Pasa por `npm audit` como el resto.
-- **Build moderna frente a `legacy`.** La moderna (la que se importa en el navegador)
-  exige APIs de JavaScript de 2025–2026 (`Map.prototype.getOrInsertComputed`,
-  `Math.sumPrecise`, `Uint8Array.prototype.toHex`…) que **no están en los navegadores
-  mínimos de `build.target`**. La `legacy` las trae con polyfills. Los tests de Node usan
-  la `legacy` (Node 24 tampoco las tiene). Qué usar en el visor lo decide la Fase 5
-  (pendiente de aprobación: PDF_DARK_MODE_SPIKE.md §12).
+- **Build `legacy` (D18, confirmada en la Fase 5).** La moderna exige APIs de
+  JavaScript de 2025–2026 (`Map.prototype.getOrInsertComputed`, `Math.sumPrecise`,
+  `Uint8Array.prototype.toHex`…) que **no están en los navegadores mínimos de
+  `build.target`**. La `legacy` (`pdfjs-dist/legacy/build/pdf.mjs` y su worker
+  `legacy/build/pdf.worker.min.mjs`) las trae con polyfills. Una sola build para todo:
+  navegador, tests de Node (Node 24 tampoco tiene esas APIs) y Electron; el worker que
+  copia `copiar-pdfjs.mjs` y el módulo que importa `engine.ts` son de la misma build.
+  - **Compatibilidad real.** La `legacy` transpila el JavaScript, pero pdf.js 6 crea su
+    worker como **módulo ES** (`type: "module"`): el visor necesita Chrome/Edge 80,
+    Safari 15 y **Firefox 114**. Como `build.target` dice Firefox 111 (lo que exige
+    Tailwind 4), en Firefox 111–113 la app arranca pero un PDF no se abre (aviso de PDF
+    ilegible). Pendiente de decidir si se sube el mínimo (TAREAS).
+  - **CSP.** Sus polyfills detectan `globalThis` con `Function("return this")`, pero esa
+    rama no se ejecuta en ningún navegador objetivo (los E2E dan cero violaciones sin
+    `'unsafe-eval'`).
+  - **Peso.** `pdf-*.js` 488 KB (148 KB gzip) y el worker 1,3 MB, los dos cargados a
+    demanda al abrir el primer PDF; no cuentan para `build:tamano`.
+  - **Electron.** Su Chromium podría usar la moderna, pero se usa la misma build: sin
+    bifurcación ([ELECTRON.md](ELECTRON.md) §3.1).
 - **Recursos en tiempo de ejecución** (worker, fuentes estándar, cmaps y decodificadores
   en JavaScript): los copia `scripts/copiar-pdfjs.mjs` a `public/pdfjs/` en `predev` y
   `prebuild`, sin los `.wasm`, el motor de JavaScript de PDF (`quickjs-eval`) ni el sandbox.
@@ -87,6 +100,10 @@ sustituido por `@tailwindcss/vite`).
 
 **Añadida en la Fase 4:** `pdfjs-dist` 6.3.289 (runtime). Ninguna librería de procesado de
 imagen: la transformación del modo oscuro usa solo Canvas y funciones propias.
+
+**Fase 5: ninguna dependencia nueva.** El visor (virtualización, zoom, búsqueda,
+miniaturas, enlaces, worker del modo oscuro) es código propio sobre pdf.js y React: sin
+librería de virtualización, de estado ni de atajos.
 
 **Política** ([`CLAUDE.md`](../CLAUDE.md) §11 bis): ninguna dependencia «para más
 adelante»; versiones exactas para los motores que procesan contenido no confiable; toda

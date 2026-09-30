@@ -57,4 +57,10 @@ export class PlataformaEnMemoria implements Platform {
   openDroppedFile(file: File) {
     return readDocument(file);
   }
+
+  /** Enlaces que la app ha pedido abrir fuera (no se abre nada). */
+  readonly externas: string[] = [];
+  openExternal(url: string) {
+    this.externas.push(url);
+  }
 }

@@ -35,16 +35,25 @@ Por eso todo lo que dependa de la CSP se comprueba con `preview` o con los E2E, 
 con `dev`. Las dos modalidades devuelven 404 para rutas que no existen (`appType: "mpa"`
 en [`vite.config.ts`](../vite.config.ts): sin fallback de SPA).
 
-### Laboratorio del modo oscuro de PDF (temporal, Fase 4)
+### Probar el visor PDF con documentos reales
 
-`/spike.html` (en `dev` o `preview`) abre cualquier PDF local y lo pinta con cada
-estrategia: original, inversión completa, solo heurística y recoloreado selectivo. Permite
-cambiar de página y de escala, marcar las regiones de imagen detectadas y medir. Sirve para
-probar el modo oscuro con **tus** documentos reales; nada sale del navegador. Se borra en
-la Fase 5 ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md)).
+`npm run build && npm run preview` y abre cualquier PDF local (botón, `Ctrl/Cmd+O` o
+arrastrar). En `dev` también funciona, pero **sin CSP**: lo que dependa de ella (el worker,
+los cmaps de fuentes CJK) solo se comprueba en `preview` (CLAUDE.md §13). Nada sale del
+navegador. El laboratorio de la Fase 4 (`/spike.html`) ya no existe; sus resultados están
+en [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md).
 
-Los fixtures del spike se regeneran con `node tests/fixtures/pdf/modo-oscuro/generar.mjs`
-(`--grande` añade uno de 300 páginas, sin versionar).
+Para depurar, cada marco de página lleva sus medidas en el DOM: `data-estado`
+(`vacia`, `pintando`, `lista`, `error`), `data-ms-render`, `data-ms-oscuro` y
+`data-ms-oscuro-principal` (lo que la transformación ocupó el hilo principal). El visor
+(`data-testid="visor-pdf"`) dice cuántos lienzos viven (`data-lienzos`), cuánto ocupan
+(`data-bytes-lienzos`) y dónde corre el modo oscuro (`data-transformador`: `worker` o
+`hilo-principal`).
+
+Los fixtures se regeneran con `node tests/fixtures/pdf/modo-oscuro/generar.mjs`
+(`--grande` añade uno de 300 páginas, sin versionar) y
+`node tests/fixtures/pdf/visor/generar.mjs` (enlaces, acentos, apaisada, girada,
+protegido, sin texto y CJK).
 
 ## Scripts
 
@@ -58,7 +67,7 @@ Los fixtures del spike se regeneran con `node tests/fixtures/pdf/modo-oscuro/gen
 | `typecheck` | `tsc --noEmit` |
 | `test` · `test:run` · `test:coverage` | Vitest (unitarios, componentes, a11y) |
 | `test:e2e` · `test:e2e:ui` | Playwright contra la build de producción (`vite preview`, puerto 3100) |
-| `bench:pdf` | Benchmark del modo oscuro de PDF (render, transformación, memoria a escalas 1, 2 y 4). Imprime una tabla; no es un test y no corre en CI |
+| `bench:pdf` | Benchmark del visor PDF: render y modo oscuro por página con y sin worker, a DPR 1 y 2 y a varios zooms, y un documento de 300 páginas (apertura, recorrido, lienzos, memoria). Imprime tablas; no es un test y no corre en CI |
 | `docs:validar` | Valida `public_docs/` contra el contrato y la identidad contra `project.ts` |
 | `docs:enlaces` | Enlaces rotos en `docs/`, `README.md` y `CLAUDE.md` |
 | `deps:overrides` | ¿Siguen haciendo falta los `overrides`? (hoy no hay ninguno) |
@@ -76,24 +85,33 @@ npm run test:e2e      # build de producción + Playwright (Chromium)
 - **Documentos de prueba** en `tests/fixtures/`, cada uno con su procedencia en su
   `README.md`; los casos que no merecen un fichero en disco (PDF falso, vacío, UTF-16,
   nombres con `<`, comillas o emoji) se construyen en el propio test. El PDF mínimo se
-  regenera con `node tests/fixtures/pdf/generar.mjs`, y el del modo oscuro con
-  `node tests/fixtures/pdf/modo-oscuro/generar.mjs`.
-- **pdf.js en los tests de Node** (`tests/unit/pdf/engine.test.ts`) usa la build `legacy`:
-  la moderna exige APIs que Node 24 no trae. El render y los píxeles, en Playwright.
-- **E2E del modo oscuro** (`pdf-spike.spec.ts`): no compara capturas enteras; muestrea
+  regenera con `node tests/fixtures/pdf/generar.mjs`; los del modo oscuro con
+  `node tests/fixtures/pdf/modo-oscuro/generar.mjs`, y los del visor con
+  `node tests/fixtures/pdf/visor/generar.mjs`. Un test comprueba que los versionados son
+  exactamente lo que producen los generadores.
+- **pdf.js en los tests de Node** (`tests/helpers/pdfjs.ts`: carga, apertura, texto,
+  enlaces) usa la build `legacy`, la misma que el navegador (D18). El render, los píxeles,
+  la capa de texto y la CSP, en Playwright.
+- **Visor PDF**: los módulos puros (`tests/unit/pdf/`) sin DOM; los controladores con un
+  documento de mentira que controla cuándo termina cada página; la interfaz
+  (`tests/components/Visor.test.tsx`) con un controlador de mentira; y el visor real en
+  `e2e/specs/visor-pdf.spec.ts`. El modo oscuro no compara capturas enteras: muestrea
   píxeles en el interior de superficies lisas de posición conocida (la geometría la exporta
   el generador del fixture).
 - `tests/helpers/documentos.ts`: ficheros de prueba y una **plataforma en memoria** que
   sustituye el selector del sistema por una cola de respuestas y usa la validación real.
   Los componentes que abren documentos se prueban con ella (`<App platform={…} />`).
 - **Probar a mano la apertura:** `npm run build && npm run preview` y abre, arrastra o
-  pulsa `Ctrl/Cmd+O`. Lo que se ve hoy es la vista provisional (nombre, tipo y tamaño).
+  pulsa `Ctrl/Cmd+O`. Un PDF se abre en el visor; un Markdown, en la vista provisional
+  (nombre, tipo y tamaño) hasta la Fase 7.
 - Hay guardarraíles que no prueban una función sino una regla: contraste de los tokens
   (`tokens.test.ts`), invariantes de la CSP y prohibición de `innerHTML`
   (`seguridad.test.ts`), y textos centralizados (`textos.test.ts`).
 - Los E2E vigilan en cada carga los errores de consola, las violaciones de CSP y
   cualquier petición fuera del propio origen (`e2e/vigilancia.ts`), con un test de
-  control que comprueba que esa vigilancia funciona. Única tolerancia: el 404 de
+  control que comprueba que esa vigilancia funciona; también la consola de los workers.
+  **No ve** una violación de CSP dentro de un worker (el navegador no la notifica al
+  documento): lo que un worker necesita de la CSP se prueba por su efecto. Única tolerancia: el 404 de
   `/favicon.ico`, que pide Google Chrome (no el Chromium de CI) mientras no haya favicon
   (Fase 11).
 - El selector de archivos se prueba con el evento `filechooser` de Playwright (el

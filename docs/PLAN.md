@@ -32,7 +32,8 @@ superficie de ataque, menos mantenimiento y mejor encaje con Electron.
 ## 2. Auditoría de la plantilla
 
 Repositorio auditado el 2026-09-29: un único commit (`Initial commit`), R3ZON SaaS
-Template **v1.0.0** (`r3zon-template.json`), 118 ficheros versionados, sin `LICENSE`.
+Template **v1.0.0** (lo registraba `r3zon-template.json`, retirado antes de publicar el
+repositorio; ver [TEMPLATE.md](TEMPLATE.md)), 118 ficheros versionados, sin `LICENSE`.
 
 ### 2.1 Qué trae
 
@@ -86,7 +87,7 @@ hacer con ella; la Fase 1 lo ejecutó (bitácora, iteración 3).
 | `robots.ts`, `sitemap.ts` | **Sustituidos** (Fase 2) | Se generan en la build desde `src/config/public-site.ts`, con el dominio de `project.ts` |
 | `.env.example` | **Eliminar** | BPDF no necesita variables de entorno |
 | `modules/` | **Eliminar** (o dejar una línea en MODULES.md) | Ningún módulo del catálogo aplica; `desktop-electron` recomendaba «URL remota», que BPDF descarta ([ELECTRON.md](ELECTRON.md)) |
-| `r3zon-template.json` | **Conservar como registro de origen** (D15) | BPDF se separa del core SaaS; no adoptará versiones nuevas del core |
+| `r3zon-template.json` | **Conservar como registro de origen** (D15). *Retirado después, antes de publicar el repositorio: el origen queda escrito en [TEMPLATE.md](TEMPLATE.md)* | BPDF se separa del core SaaS; no adoptará versiones nuevas del core |
 | `docs/auditoria-template-final.md` | **Eliminar** | Lo exige `tests/unit/project.test.ts` en un proyecto derivado |
 | Next.js 16 | **Sustituido por Vite + React en la Fase 2** (D1) | Ver §3 |
 
@@ -156,7 +157,7 @@ Cambios respecto al diseño de la Fase 0, y por qué:
 - **Unión discriminada** en lugar de `data: ArrayBuffer | string`: el tipo dice qué
   contiene cada documento y el compilador obliga a comprobar `kind`.
 - **PDF como `Blob`, no `ArrayBuffer`**: en web el `File` apunta al disco y no ocupa
-  memoria hasta que se lee. Abrir solo lee los primeros 1024 bytes; el visor (Fase 5) hará
+  memoria hasta que se lee. Abrir solo lee los primeros 1024 bytes; el visor (Fase 5) hace
   `await blob.arrayBuffer()` y pdf.js transferirá esos bytes a su worker sin copiarlos.
   Leerlo entero al abrir sería tener una copia en memoria sin que nadie la use aún.
 - **Markdown: solo el texto**; los bytes leídos se descartan tras decodificar.
@@ -243,25 +244,20 @@ No hay alternativa razonable en navegador: es el motor de Firefox, mantenido por
 con worker, capa de texto, enlaces y búsqueda. Se carga con `import()` al abrir el primer
 PDF, nunca en el bundle inicial.
 
-> **Cambio propuesto por la Fase 4, pendiente de aprobación** (PDF_DARK_MODE_SPIKE.md §12):
-> `PDFViewer` crea sus propios lienzos opacos (el texto sale con flecos de color al
-> recolorearlo) y no pasa `recordImages`, del que depende el modo oscuro. El visor tendría
-> que renderizar cada página con la API núcleo y reutilizar de pdf.js solo `TextLayer`,
-> `AnnotationLayer` y, si encaja, `PDFLinkService`. El párrafo siguiente es el plan
-> anterior. También queda pendiente elegir entre la build moderna y la `legacy` de pdf.js
-> (la moderna no funciona en los navegadores mínimos de `build.target`).
-
-Componentes de `pdfjs-dist/web/pdf_viewer.mjs` que se usarán (verificado en 6.3.289):
-`PDFViewer` / `PDFSinglePageViewer` (modos continuo y de página: `ScrollMode.VERTICAL` y
-`ScrollMode.PAGE`), `EventBus`, `PDFLinkService`, `PDFFindController`. Esto da gratis
-virtualización, zoom con `page-width`/`page-fit`, rotación, capa de texto (selección y
-copia), capa de enlaces y búsqueda con resaltado. **Las miniaturas no están** en esos
-componentes (viven en la app de visor de Firefox): se implementan con `page.render` a
-escala baja.
+**Visor propio sobre la API núcleo (D17, implementado en la Fase 5).** `PDFViewer` crea
+sus propios lienzos opacos (el texto sale con flecos de color al recolorearlo) y no pasa
+`recordImages`, del que depende el modo oscuro (PDF_DARK_MODE_SPIKE.md §9 y §12). BPDF
+pinta cada página con `page.render` y construye él mismo la virtualización, el zoom, las
+vistas continua y página a página, la búsqueda, las miniaturas y los enlaces; de pdf.js
+reutiliza `TextLayer` (selección y copia). No usa `AnnotationLayer` ni `PDFLinkService`:
+los enlaces pasan por su propia política. Build **`legacy`** de pdf.js (D18): la moderna
+exige navegadores de 2025–2026. Diseño completo: [ARCHITECTURE.md](ARCHITECTURE.md)
+§4 quater.
 
 Recursos que pdf.js necesita y se **sirven desde el propio origen** (copiados de
-`node_modules/pdfjs-dist` en el build): worker (`build/pdf.worker.mjs`), `cmaps/`,
-`standard_fonts/`, `wasm/` (decodificadores JPEG 2000/JBIG2 e ICC), `iccs/`.
+`node_modules/pdfjs-dist` en `predev`/`prebuild` por `scripts/copiar-pdfjs.mjs`): el worker
+(`legacy/build/pdf.worker.min.mjs`), `cmaps/`, `standard_fonts/` y los decodificadores
+JPEG 2000/JBIG2 en JavaScript. Sin `*.wasm` ni `iccs/` (`useWasm: false`).
 
 ### 6.2 Funcionalidades
 
@@ -273,7 +269,8 @@ Configuración segura del motor: [SEGURIDAD.md](SEGURIDAD.md) §4.
 
 ### 6.3 Lectura oscura (el punto técnico difícil)
 
-> **Resuelto en la Fase 4 (2026-09-29): recoloreado selectivo.** Heurística de color en
+> **Resuelto en la Fase 4 (2026-09-29) e integrado en el visor en la Fase 5, en un Web
+> Worker: recoloreado selectivo.** Heurística de color en
 > OKLab (invierte la luminosidad de lo neutro y conserva lo que tiene color) aplicada solo
 > **fuera** de las regiones de imagen que registra el propio pdf.js (`recordImages`), con
 > reglas para escaneos y páginas ya oscuras. Fotos intactas (±3 por canal), texto claro a
@@ -442,7 +439,8 @@ con un bloque `[data-theme="light"]`.
 - **Errores:** fichero no soportado, demasiado grande, PDF dañado, con contraseña (D13),
   Markdown no UTF-8. Cada uno con texto claro y sin detalles técnicos crudos. Los de
   apertura (✅ F3) se muestran como aviso (`role="alert"`) que se puede descartar, sin
-  cerrar el documento abierto; «PDF dañado» y contraseña llegan con el visor (Fase 5).
+  cerrar el documento abierto; «PDF dañado» y «PDF protegido» los dice el visor (Fase 5; abrir
+  un PDF con contraseña espera a D13).
 
 ### 9.4 Atajos de teclado
 
@@ -464,6 +462,12 @@ con un bloque `[data-theme="light"]`.
 \* Atajos de una tecla: solo actúan con el foco fuera de campos de texto y se pueden
 desactivar en preferencias (WCAG 2.1.4). En web, `Ctrl/Cmd +/−` sustituyen al zoom del
 navegador **solo dentro del visor**.
+
+**Estado (Fase 5, 2026-09-30).** Implementados: `Ctrl/Cmd+O`; `Ctrl/Cmd+F` con `Enter` /
+`Shift+Enter` en el campo; zoom con `Ctrl/Cmd +/−/0` y `Ctrl/Cmd`+rueda; `PageDown`/`PageUp`;
+`Home`/`End`; y `↓`/`↑` para desplazar (en «página a página», al llegar al borde pasa de
+página). Tabla y motivo en [ARCHITECTURE.md](ARCHITECTURE.md) §4 quater. Quedan para la
+Fase 6: `F3`, `→`/`←`, `Espacio`, `Ctrl/Cmd+G` y los de una tecla con su ayuda.
 
 ## 10. Accesibilidad
 
@@ -546,7 +550,7 @@ terceros sin licencia clara.
 
 ## 14. Decisiones
 
-### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3)
+### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3; D17 y D18 al empezar la Fase 5)
 
 | ID | Decisión | Dónde se aplica |
 |---|---|---|
@@ -554,8 +558,10 @@ terceros sin licencia clara.
 | **D2** | Interfaz en **español** en v1, con todos los textos en **un único módulo de mensajes** para facilitar otros idiomas | Fase 2 en adelante |
 | **D3** | Licencia **Apache-2.0** | Fase 1: `LICENSE` (texto canónico de apache.org) y `license` en `package.json` |
 | **D4** | Documentación pública **en el Docusaurus de R3ZON** (`docs.r3zon.com/bpdf`), sin que BPDF dependa de ese repositorio para compilar ni probar | Fase 1: se conserva `public_docs/` y su validador |
-| **D15** | BPDF **se separa del core SaaS** de la plantilla; conserva solo infraestructura, tooling y componentes útiles | Fase 1: `r3zon-template.json` como registro de origen; `docs/TEMPLATE.md` |
+| **D15** | BPDF **se separa del core SaaS** de la plantilla; conserva solo infraestructura, tooling y componentes útiles | Fase 1: registro de origen en `docs/TEMPLATE.md` (el manifiesto `r3zon-template.json` se retiró antes de publicar) |
 | **D16** | **Un documento abierto a la vez**: sin pestañas, varios documentos, historial, recientes ni gestor de documentos. La arquitectura no lo impide más adelante | Fase 3: `DocumentProvider` guarda uno; abrir otro lo sustituye ([§4.2](#42-modelo-de-documento)) |
+| **D17** | **Visor PDF propio** sobre la API núcleo de pdf.js, sin `PDFViewer` ni `pdfjs-dist/web/pdf_viewer` (confirmada al empezar la Fase 5) | Fase 5: `src/pdf/visor/`, `src/app/pdf/` ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quater) |
+| **D18** | Build **`legacy`** de pdf.js en web (confirmada al empezar la Fase 5) | Fase 5: `engine.ts` y el worker copiado; revisable si solo se publica Electron ([STACK.md](STACK.md)) |
 
 ### 14.1 Pendientes de confirmación (usuario)
 
@@ -569,16 +575,14 @@ terceros sin licencia clara.
 | **D10** | Tema claro de interfaz | **No en v1** (solo «página original» en PDF) | Fase 11 |
 | **D11** | Escritorio: plataformas, firma de código, auto-actualización | Windows, macOS y Linux; **sin auto-actualización en v1**; firma según presupuesto (sin firma, SmartScreen y Gatekeeper avisan) | Fase 15 |
 | **D12** | Móvil / tablet en web | Escritorio como objetivo; diseño adaptable básico sin optimizar gestos | Fase 11 |
-| **D13** | PDFs con contraseña | Soportados con un diálogo simple (pdf.js lo gestiona con `onPassword`) | Fase 5 |
-| **D14** | Formularios y anotaciones de PDF | Solo se muestran; no se rellenan ni se editan | Fase 5 |
-| **D17** | Visor PDF propio sobre la API núcleo de pdf.js en lugar de `PDFViewer` (surge de la Fase 4) | **Visor propio**: es lo que permite el modo oscuro validado. Reutiliza `TextLayer` y `AnnotationLayer`; hay que construir virtualización, zoom, modos y búsqueda ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §12) | Fases 5 y 6 |
-| **D18** | Build de pdf.js: moderna o `legacy` (surge de la Fase 4) | **`legacy`** en web: la moderna exige navegadores de 2025–2026 y no cumple `build.target`. Revisable si solo se publica Electron | Fase 5 |
+| **D13** | PDFs con contraseña | Soportados con un diálogo simple (pdf.js lo gestiona con `onPassword`). *Hoy (Fase 5) un PDF cifrado se detecta y se dice que aún no se abre* | Fase 6 |
+| **D14** | Formularios y anotaciones de PDF | Solo se muestran; no se rellenan ni se editan. *Aplicado así en la Fase 5 (apariencias pintadas en el lienzo, sin interacción), que excluía formularios: falta confirmarlo* | Fase 5 |
 
 ### 14.2 Técnicas, resueltas por una fase
 
 | ID | Decisión | La resuelve |
 |---|---|---|
-| **T-1** | Estrategia de modo oscuro del PDF y, con ella, `PDFViewer` frente a visor propio. **Resuelta en la Fase 4:** recoloreado selectivo con las regiones de `recordImages`; exige visor propio sobre la API núcleo (pendiente de aprobación, [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §11–12) | Fase 4 ✅ |
+| **T-1** | Estrategia de modo oscuro del PDF y, con ella, `PDFViewer` frente a visor propio. **Resuelta en la Fase 4:** recoloreado selectivo con las regiones de `recordImages`; exige visor propio sobre la API núcleo (D17, confirmada; [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §11–12) | Fase 4 ✅ |
 | **T-2** | `@vitejs/plugin-react` sí o no. **Resuelta en la Fase 2: no** (Vite transforma el JSX solo; se renuncia a Fast Refresh; [STACK.md](STACK.md)) | Fase 2 ✅ |
 | **T-3** | `style-src` sin `'unsafe-inline'`. **Desde la Fase 2 la CSP ya no lo lleva**; queda comprobar que pdf.js, KaTeX y Mermaid no lo exigen (cada fase al integrarlos; si alguno lo exigiera, se pide aprobación) | Fases 4–8; cierre en la 12 |
 | **T-4** | Trusted Types (`require-trusted-types-for 'script'`) viable con pdf.js y Mermaid | Fase 12 |
@@ -591,7 +595,7 @@ terceros sin licencia clara.
 | Riesgo | Prob. | Impacto | Mitigación |
 |---|---|---|---|
 | El modo oscuro no alcanza calidad aceptable en PDFs reales | Media | Alto (es la razón de ser) | Spike con corpus variado antes de construir el visor; selector «original» siempre disponible; limitaciones documentadas |
-| Coste del post-proceso por píxel en páginas grandes o zoom alto | Media | Medio | Medir en el spike; WebGL o `OffscreenCanvas` en worker; tope de píxeles |
+| Coste del post-proceso por píxel en páginas grandes o zoom alto | Media | Medio | Medido (F4 y F5): recoloreado en un Web Worker con franjas transferidas; tope de 16,7 Mpx por lienzo y DPR ≤ 2 |
 | Cambios de API de pdf.js entre mayores (6.x → 7.x) | Alta a medio plazo | Medio | Versión exacta; todo el acoplamiento en `src/pdf/`; tests de render en Playwright |
 | Peso de Mermaid (varios MB) y KaTeX | Alta | Medio | Carga diferida; fase aparte; medir |
 | TypeScript 7 con alguna herramienta nueva (Vite, Electron) | Baja | Bajo | Salida documentada en la plantilla: fijar TS 6 |

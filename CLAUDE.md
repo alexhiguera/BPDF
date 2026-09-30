@@ -14,11 +14,11 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   objetivo en [`docs/PLAN.md`](docs/PLAN.md).
 - **Principio rector:** los documentos del usuario **no salen del dispositivo**. Sin
   backend, API, base de datos, cuentas, sincronización ni telemetría.
-- **Estado:** Fase 4 cerrada. La app es una SPA estática de Vite + React (D1) que abre
-  y valida un PDF o un Markdown local (selector o arrastre) sin mostrarlo todavía: un
-  documento a la vez (D16). El modo oscuro de PDF está validado en un spike
-  ([`docs/PDF_DARK_MODE_SPIKE.md`](docs/PDF_DARK_MODE_SPIKE.md)), con un laboratorio
-  TEMPORAL en `/spike.html` que se borra en la Fase 5. Plan y estado:
+- **Estado:** Fase 5 cerrada. La app es una SPA estática de Vite + React (D1) que abre
+  un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16). Los PDF
+  se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo oscuro
+  selectivo en un worker ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §4 quater); el
+  Markdown aún solo se valida (Fase 7). Plan y estado:
   [`docs/FASES.md`](docs/FASES.md) y [`docs/TAREAS_PENDIENTES.md`](docs/TAREAS_PENDIENTES.md).
 - **Estática, siempre:** la build (`dist/`) son ficheros. Nada de servidor, SSR, API ni
   funciones serverless, ni variables de entorno.
@@ -42,6 +42,7 @@ npm run test:run          # Vitest: unitarios, componentes y accesibilidad
 npm run test:e2e          # Playwright contra la build de producción (vite preview)
 npm run build             # build estática en dist/
 npm run build:tamano      # peso del arranque (tras build; límite 150 KB gzip)
+npm run bench:pdf         # benchmark del visor PDF (mide; no es un test ni corre en CI)
 npm run preview           # sirve dist/ con la CSP y las cabeceras de seguridad
 npm run docs:validar      # public_docs + identidad del proyecto
 npm run docs:enlaces      # enlaces de docs internos
@@ -214,8 +215,8 @@ BPDF no depende de él para compilar ni para probar. Contrato:
 
 ## 11. Origen: la plantilla R3ZON
 
-BPDF se creó desde R3ZON SaaS Template v1.0.0 ([`r3zon-template.json`](r3zon-template.json))
-y **no adopta versiones nuevas de su core** (D15): la plantilla es un SaaS y BPDF no. Si
+BPDF se creó desde R3ZON SaaS Template v1.0.0 (el registro del origen está en
+[`docs/TEMPLATE.md`](docs/TEMPLATE.md)) y **no adopta versiones nuevas de su core** (D15): la plantilla es un SaaS y BPDF no. Si
 una mejora de proceso de la plantilla (documentación, CI, validadores) sirve aquí, se
 trae a mano, se revisa y se anota en la bitácora. Detalle:
 [`docs/TEMPLATE.md`](docs/TEMPLATE.md).

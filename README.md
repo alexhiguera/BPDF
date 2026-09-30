@@ -4,9 +4,10 @@ Visor gratuito y open source de **PDF** y **Markdown**, pensado para leer en mod
 Tus documentos se abren en tu dispositivo y **no se suben a ningún servidor**: sin
 cuentas, sin sincronización, sin telemetría.
 
-> **Estado: en desarrollo.** Todavía no se puede usar para leer: la aplicación ya abre
-> y valida ficheros PDF y Markdown locales (con el selector o arrastrándolos), pero aún
-> no muestra su contenido.
+> **Estado: en desarrollo, sin publicar.** Ya lee **PDF** locales (con el selector o
+> arrastrándolos) en modo oscuro: página a página o en continuo, con zoom, giro,
+> búsqueda, miniaturas, selección de texto y enlaces. Los **Markdown** se abren y se
+> validan, pero aún no se muestra su contenido.
 > El plan completo está en [`docs/FASES.md`](docs/FASES.md) y el estado en
 > [`docs/TAREAS_PENDIENTES.md`](docs/TAREAS_PENDIENTES.md).
 

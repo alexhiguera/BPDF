@@ -1,7 +1,9 @@
 # Origen: la plantilla R3ZON
 
-BPDF se creó el 2026-09-29 desde **R3ZON SaaS Template v1.0.0** (lo registra
-[`r3zon-template.json`](../r3zon-template.json)).
+BPDF se creó el 2026-09-29 desde **R3ZON SaaS Template v1.0.0**. Este documento es el
+registro de ese origen: el manifiesto que lo registraba (`r3zon-template.json`) se retiró
+del repositorio antes de publicarlo, porque solo servía al procedimiento de actualización
+de la plantilla, que aquí ya no aplica (D15).
 
 ## BPDF se separó del core (D15)
 
@@ -12,7 +14,6 @@ el procedimiento de actualización de la plantilla (diff entre etiquetas aplicad
 `git apply --3way`) ya no aplica, porque casi todo lo que traería son piezas que aquí no
 existen.
 
-`r3zon-template.json` no se actualiza: solo dice de dónde viene el repositorio.
 
 ## Qué se conservó de la plantilla
 

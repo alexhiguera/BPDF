@@ -30,7 +30,7 @@ export function DropZone({
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: soltar ficheros no tiene rol ARIA; la alternativa accesible es el botón «Abrir archivo».
     <div
-      className="relative flex min-h-dvh flex-col"
+      className="relative flex h-dvh flex-col"
       data-dragging={depth > 0 || undefined}
       onDragEnter={(e) => {
         if (!carriesFiles(e)) return;

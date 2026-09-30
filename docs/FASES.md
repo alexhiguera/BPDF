@@ -41,8 +41,8 @@ F0 ─► F1 ─► F2 ─┬─► F3 ─┬─► F5 ─► F6 ─────
 | 2 | Base de la app | Absorbe la **CSP base** y la estructura preparada para Electron. La capa `platform/` y la infraestructura de preferencias, previstas aquí, se aplazaron a su primer uso (F3 y F10) |
 | 3 | Apertura local de archivos | Igual |
 | 4 | **Spike: modo oscuro de PDF** | **Nueva.** Es el mayor riesgo técnico y decide la arquitectura del visor (T-1). Se hace antes de construir el visor, no después |
-| 5 | Visor PDF: núcleo | El visor propuesto se divide en dos sesiones (5 y 6) por tamaño |
-| 6 | Visor PDF: miniaturas, búsqueda, atajos, pantalla completa | |
+| 5 | Visor PDF funcional | El visor propuesto se divide en dos sesiones (5 y 6) por tamaño. Al ejecutarla, la F5 absorbió miniaturas, búsqueda y atajos con modificador |
+| 6 | Visor PDF: pantalla completa, atajos de una tecla y búsqueda avanzada | Lo que queda del visor tras la F5 |
 | 7 | Markdown: lectura | Igual; incluye su parte de seguridad (sanitización, URLs) |
 | 8 | Markdown: matemáticas y Mermaid | **Separada** de la 7: son las dos dependencias más pesadas y con más historial de vulnerabilidades |
 | 9 | Editor Markdown + vista previa + dividido | Igual |
@@ -82,7 +82,8 @@ identidad de BPDF; `LICENSE` Apache-2.0; `public_docs/` conservado (D4) con port
   configuración del hosting la crea la fase que la necesite, según D5.
 - **`comprobarDerivacion` y sus tests se retiraron** con `supabase/config.toml`: vigilaban
   los puertos de Supabase y la auditoría de la plantilla, que ya no existen (D15).
-  `r3zon-template.json` queda como registro de origen, sin `reservadoPorLaPlantilla`.
+  `r3zon-template.json` quedó como registro de origen, sin `reservadoPorLaPlantilla` (se retiró
+  del repositorio antes de publicarlo; el origen queda en [TEMPLATE.md](TEMPLATE.md)).
 - **`NEXT_PUBLIC_SITE_URL` desaparece**: `siteUrl()` usa `project.domain`.
 - **`modules/` se borró** sin conservar una copia: `docs/MODULES.md` explica por qué no
   aplica ningún módulo.
@@ -189,7 +190,7 @@ color, a ~10 ms por megapíxel. Todo en [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_S
 alternativas, fixtures, resultados, benchmark, limitaciones y decisión.
 
 Quedan como código definitivo `src/pdf/engine.ts`, `src/pdf/render.ts` y `src/pdf/dark/*`,
-con sus tests. Es temporal el laboratorio `spike.html` + `src/pdf-spike/` (se borra en F5).
+con sus tests. El laboratorio `spike.html` + `src/pdf-spike/` era temporal y se borró en la F5.
 
 **Desviaciones respecto a la especificación**, por si una fase posterior se apoya en ella:
 
@@ -200,9 +201,9 @@ con sus tests. Es temporal el laboratorio `spike.html` + `src/pdf-spike/` (se bo
   `recordImages` y frágil (internos de pdf.js). Descartada por coste, no medida.
 - **`useWasm: false`**: no se copian `*.wasm` ni `iccs/` (sí los decodificadores en JS);
   la CSP no necesita `'wasm-unsafe-eval'`. Sí necesitó `worker-src 'self'` y
-  `font-src 'self'`.
+  `font-src 'self'` (y, se vio en la F5, `connect-src 'self'` para los cmaps).
 - **Laboratorio en la build** (`spike.html`, `noindex`) y no «solo en desarrollo»: los
-  E2E van contra la build de producción, que es donde existe la CSP. Se borra en F5.
+  E2E van contra la build de producción, que es donde existe la CSP. Se borró en la F5.
 - **Corpus parcial:** 8 páginas generadas (texto, foto, gráficos, mixta, fondos de color,
   compleja, escaneo, diapositiva oscura) y un documento de 300 páginas. No se generaron
   `multiply`, grupos de transparencia, máscara suave, formulario ni LaTeX (difíciles de
@@ -214,146 +215,90 @@ con sus tests. Es temporal el laboratorio `spike.html` + `src/pdf-spike/` (se bo
 
 ---
 
-## Fase 5 — Visor PDF: núcleo
+## Fase 5 — Visor PDF funcional ✅
 
-**Objetivo.** Leer un PDF completo con buena experiencia: render, modo oscuro, zoom,
-navegación, modos continuo/página, rotación, selección y copia, enlaces, contraseña.
+Cerrada el 2026-09-30. Bitácora: iteración 7. Diseño completo (capas, render,
+virtualización, memoria, worker, capa de texto, enlaces, búsqueda, teclado, límites):
+[ARCHITECTURE.md](ARCHITECTURE.md) §4 quater.
 
-**Dependencias.** F3, F4. **D13** (contraseña), **D14** (formularios), **D17** (visor propio) y **D18** (build de pdf.js) confirmadas.
+**Hecho.** Visor propio sobre la API núcleo de pdf.js (D17) con la build `legacy` (D18):
+carga por bytes con cancelación y generaciones; vistas continua y página a página con
+virtualización propia (visibles ±1 y presupuesto de 160 MiB); zoom (botones, porcentaje,
+100 %, Ctrl/⌘ ±/0, Ctrl/⌘+rueda, límites 25–500 %), ajustar al ancho y a la página;
+resolución física separada del tamaño CSS (DPR ≤ 2, ≤ 16,7 Mpx por lienzo); modo oscuro
+de la Fase 4 en un Web Worker con alternativa en el hilo principal, y modo original;
+rotación de vista 90/180/270; capa de texto (`TextLayer`) con selección y copia; enlaces
+internos y externos con su política; navegación con campo validado; miniaturas;
+búsqueda con recuento, resaltado y salto; atajos de teclado; barra de estado y anuncios
+accesibles. El laboratorio de la Fase 4 (`spike.html`, `src/pdf-spike/`, sus textos y su
+E2E) está borrado; el benchmark mide ahora el visor (`npm run bench:pdf`).
 
-> **Antes de empezar, leer [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §12.** La
-> Fase 4 cambia el punto de partida de esta fase:
-> - **D17 y D18 deben estar confirmadas** (visor propio sobre la API núcleo; build
->   `legacy` o moderna de pdf.js).
-> - Se reutilizan `src/pdf/engine.ts`, `src/pdf/render.ts` (con `recordImages` y el
->   lienzo `alpha: true`) y `src/pdf/dark/*` tal cual.
-> - Se **borra** el laboratorio: `spike.html` y su entrada en `vite.config.ts`,
->   `src/pdf-spike/`, `messages.pdfSpike` y `e2e/specs/pdf-spike.spec.ts` (sus aserciones de
->   píxeles pasan a los E2E del visor). `e2e/bench/` se reapunta al visor o se borra.
-> - Transformación **fuera del hilo principal** si pasa de ~50 ms (a 8 Mpx ya lo pasa).
-> - Virtualización con pocos lienzos vivos: ~30 MiB por página a 8 Mpx.
-> - Validar el modo oscuro con **PDF reales** (`multiply`, transparencias, LaTeX,
->   formularios, anotaciones) y en Firefox si la web lo soporta.
->
-> Los párrafos de esta fase que mencionan `PDFViewer` describen el plan anterior a la
-> Fase 4; si D17 se confirma, se sustituyen por el visor propio al empezar.
+**Desviaciones respecto a la especificación anterior** (que describía `PDFViewer`):
 
-**Decisiones ya tomadas** (plan anterior a F4, ver el aviso): `PDFViewer` + `EventBus` +
-`PDFLinkService` de `pdfjs-dist/web/pdf_viewer.mjs`, y su CSS (`pdf_viewer.css`,
-adaptado a los tokens); modo oscuro aplicado en `pagerendered`; `maxCanvasPixels` =
-16 777 216.
+- **Visor propio (D17)**: sin `PDFViewer`, `EventBus`, `PDFLinkService` ni
+  `PDFFindController`; virtualización, zoom, vistas y búsqueda son de BPDF. Tampoco
+  `AnnotationLayer`: los enlaces son `<a>` propios con la política de `enlaces.ts` (solo
+  enlaces, nada interactivo más), y las apariencias de anotaciones y formularios se pintan
+  en el lienzo (D14: se ven, no se rellenan).
+- **Miniaturas, búsqueda y atajos se adelantaron** de la Fase 6 a esta (lo pidió el
+  alcance de la fase). La búsqueda no tiene aún «distinguir mayúsculas» ni «palabra
+  completa».
+- **Contraseña (D13) no implementada**: D13 sigue pendiente de confirmar. Un PDF cifrado
+  se detecta (`PasswordException`) y se dice que BPDF aún no lo abre.
+- **Rotación en un solo sentido** (90° a la derecha, cuatro pulsaciones dan la vuelta).
+- **Firefox 114+** para el visor: pdf.js 6 carga su worker como módulo ES
+  (ARCHITECTURE §4 quater, límites).
+- **PDF reales** (§28 del encargo): probados nueve (paper con gráficas vectoriales, paper
+  con figuras raster y tablas, formulario oficial, documento de empresa con logo, tablas,
+  foto y gráfico generado con Chromium, documento largo con índice enlazado, escaneo sin
+  texto, diapositivas oscuras, transparencias del corpus de pdf.js). No se pudo generar uno
+  de ofimática (no hay LibreOffice en el equipo): queda en TAREAS. Resultados y límites en
+  la bitácora.
 
-**Alcance**
-
-- `src/pdf/PdfViewer.tsx`: monta el contenedor que exige `PDFViewer` (posición absoluta),
-  carga el documento con `engine.ts`, conecta `EventBus`, destruye todo al desmontar
-  (`pdfDocument.destroy()`, `viewer.setDocument(null)`). Recibe el `OpenedPdf` de la
-  Fase 3: lee `await document.blob.arrayBuffer()` (una lectura que puede fallar si el
-  fichero cambió en disco: error «no se pudo leer») y pasa los bytes como `data`. Se monta
-  en `src/app/App.tsx` en lugar de `DocumentSummary`, con `key={document.id}`.
-- Barra de PDF (`src/pdf/PdfToolbar.tsx`): página actual/total con campo editable (ir a
-  página), anterior/siguiente, zoom −/+ y selector (50–400 %, ajustar a ancho, ajustar a
-  página), rotar izquierda/derecha, continuo/página (`ScrollMode.VERTICAL`/`PAGE`),
-  página oscura/original.
-- Zoom con `Ctrl/Cmd +/−/0` y `Ctrl/Cmd`+rueda (listener `wheel` no pasivo solo en el
-  contenedor); pellizco de trackpad (llega como `wheel` con `ctrlKey`).
-- Capa de texto (selección y copia nativas) y capa de anotaciones con enlaces
-  (`AnnotationMode.ENABLE`); `PDFLinkService` con `externalLinkTarget = BLANK`,
-  `externalLinkRel = "noopener noreferrer nofollow"` y filtro propio de protocolos
-  (`http`, `https`, `mailto`); en Electron, `platform.openExternal`.
-- Modo oscuro de F4 tras cada `pagerendered`; al cambiar oscuro/original se re-renderizan
-  las páginas visibles. Sin destello de página clara: ocultar el lienzo hasta aplicar el
-  post-proceso (o pintar antes el fondo con `--rgb-page`).
-- Contraseña: diálogo accesible (`<dialog>`), reintento, cancelar cierra el documento; la
-  contraseña no se guarda.
-- Errores: PDF dañado (`InvalidPDFException`), vacío, cancelado.
-
-**Fuera de alcance.** Miniaturas, búsqueda, pantalla completa, atajos de una tecla (F6);
-recordar página (F10).
-
-**Archivos esperados.** `src/pdf/PdfViewer.tsx`, `src/pdf/PdfToolbar.tsx`,
-`src/pdf/engine.ts`, `src/pdf/link-policy.ts`, `src/pdf/PasswordDialog.tsx`,
-`src/pdf/pdf-viewer.css` (adaptación de `pdf_viewer.css`), `src/app/App.tsx`,
-`src/platform/*` (`openExternal` y el contexto de plataforma, primer uso desde un componente),
-`src/i18n/messages.ts`, `tests/unit/pdf/*`, `tests/components/PdfToolbar.test.tsx`,
-`tests/fixtures/pdf/*`, `e2e/specs/pdf.spec.ts`.
-
-**Seguridad.** SEGURIDAD §4 completa: `enableScripting: false`, `enableXfa: false`, sin
-`pdf.sandbox.mjs` en `public/pdfjs/`, filtro de protocolos, recursos del propio origen.
-Fixtures hostiles: PDF con JavaScript de apertura (comprobar que no se ejecuta con un
-`OpenAction` que intentaría cambiar algo observable), enlaces `javascript:`, `file:`,
-`Launch`, `GoToR`.
-
-**Tests**
-
-- Unitarios: `link-policy` (protocolos permitidos y no), estado de zoom (límites, pasos).
-- Componentes + jest-axe: `PdfToolbar` (etiquetas, `aria-live` de página),
-  `PasswordDialog`.
-- E2E: abrir PDF de 10 páginas → «1 de 10»; siguiente, ir a 7, `End`; zoom +/−/ajustar;
-  rotar (dimensiones del lienzo intercambiadas); modo página frente a continuo;
-  seleccionar texto y copiar (portapapeles con permisos de Playwright); clic en enlace
-  interno navega; enlace externo abre pestaña nueva con `noopener`; enlace `javascript:`
-  no hace nada; PDF cifrado pide contraseña; PDF truncado muestra error; **cero
-  violaciones de CSP**.
-
-**Criterios de aceptación.** Definición de hecho común; todas las funciones del alcance
-con su E2E; un PDF de 300 páginas abre y navega sin bloquear la UI más de 100 ms
-(medición con `performance`); memoria estable al recorrerlo entero.
-
-**Documentación.** PLAN §6 (implementado), SEGURIDAD §4 (implementado, tests
-enlazados), STACK, STRUCTURE, bitácora, TAREAS.
-
-**Resultado esperado.** Un lector de PDF completo y oscuro, sin miniaturas ni búsqueda.
+**Pendiente de la fase**: nada bloqueante. Lo que sale (contraseña, opciones de búsqueda,
+rotación a la izquierda, PDF de ofimática, Firefox) está en
+[TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md).
 
 ---
 
-## Fase 6 — Visor PDF: miniaturas, búsqueda, atajos, pantalla completa
+## Fase 6 — Visor PDF: pantalla completa, atajos de una tecla y búsqueda avanzada
+
+> **Replanteada al cerrar la Fase 5**, que ya hizo las miniaturas, la búsqueda básica y
+> los atajos con modificador. Lo que sigue es lo que queda del visor.
 
 **Objetivo.** Completar el visor PDF.
 
-**Dependencias.** F5.
+**Dependencias.** F5. **D13** (contraseña) si se incluye aquí.
 
 **Alcance**
 
-- **Miniaturas** (`src/pdf/Thumbnails.tsx`): panel lateral, lista virtualizada
-  (`IntersectionObserver`), render con `page.render` a escala baja + modo oscuro de F4,
-  caché LRU de ~100 miniaturas como `ImageBitmap`, página actual resaltada con
-  `aria-current`, clic y teclado (flechas, `Enter`) navegan. Se cancelan los renders que
-  salen de pantalla.
-- **Búsqueda** (`src/pdf/FindBar.tsx`): `PDFFindController` + `EventBus`; opciones:
-  distinguir mayúsculas y palabra completa; contador «n de m» en `aria-live`;
-  `Enter`/`Shift+Enter`, `F3`/`Shift+F3`, `Escape` cierra. Colores `--rgb-find` y
-  `--rgb-find-current` (visibles en modo oscuro y original).
 - **Pantalla completa:** `requestFullscreen` sobre el área de lectura; `F`; salir con
   `Escape`.
-- **Atajos** (`src/pdf/shortcuts.ts` + `src/lib/shortcuts.ts` genérico): tabla de PLAN
-  §9.4; los de una tecla se ignoran con foco en campos de texto y se pueden desactivar
-  (en memoria hasta la Fase 10, que la persiste); ayuda `?` con la lista (`<dialog>`).
+- **Atajos de una tecla** (`T` miniaturas, `R` rotar, `F` pantalla completa…, tabla de
+  PLAN §9.4) sobre `src/app/pdf/atajos.ts`: se ignoran con foco en campos de texto y se
+  pueden desactivar (en memoria hasta la Fase 10, que la persiste); ayuda `?` con la
+  lista (`<dialog>`).
+- **Búsqueda:** opciones «distinguir mayúsculas» y «palabra completa»; `F3`/`Shift+F3`;
+  unir palabras cortadas con guion al final de línea.
+- **Miniaturas:** navegación con flechas dentro del panel.
+- **Rotar a la izquierda.**
+- **Contraseña (D13)**, si se confirma: diálogo accesible (`<dialog>`), reintento,
+  cancelar cierra el documento; la contraseña no se guarda.
 
 **Fuera de alcance.** Esquema/marcadores del PDF (outline), candidato posterior;
 anotaciones.
 
-**Archivos esperados.** `src/pdf/Thumbnails.tsx`, `src/pdf/FindBar.tsx`,
-`src/pdf/shortcuts.ts`, `src/lib/shortcuts.ts`, `src/app/ShortcutsHelp.tsx`,
-`src/pdf/PdfToolbar.tsx`, `src/i18n/messages.ts`, tests y E2E correspondientes.
-
-**Seguridad.** Nada nuevo. El texto buscado no se guarda.
-
 **Tests**
 
-- Unitarios: resolución de atajos (combinaciones, foco en input, desactivados, Mac con
-  `metaKey` frente a `ctrlKey`).
-- Componentes + jest-axe: `Thumbnails` (roles, `aria-current`), `FindBar`,
-  `ShortcutsHelp`.
-- E2E: buscar una palabra con 3 apariciones → «1 de 3», siguiente → «2 de 3» y salta de
-  página; miniatura 5 → página 5; `T` abre/cierra; `R` rota; `F` entra en pantalla
-  completa (`document.fullscreenElement`); con los atajos de una tecla desactivados, `R`
-  no rota.
+- Unitarios: resolución de atajos (una tecla, foco en input, desactivados).
+- Componentes + jest-axe: ayuda de atajos, opciones de búsqueda, diálogo de contraseña.
+- E2E: `T` abre/cierra miniaturas; `R` rota; `F` entra en pantalla completa
+  (`document.fullscreenElement`); con los atajos de una tecla desactivados, `R` no rota;
+  búsqueda con «palabra completa».
 
-**Criterios de aceptación.** Definición de hecho común; con un PDF de 300 páginas el panel
-de miniaturas abre en < 300 ms y no renderiza más que las visibles más un margen.
+**Criterios de aceptación.** Definición de hecho común.
 
-**Documentación.** PLAN §6.2 y §9.4, bitácora, TAREAS.
+**Documentación.** PLAN §6.2 y §9.4, ARCHITECTURE §4 quater, bitácora, TAREAS.
 
 **Resultado esperado.** Visor PDF con todas las funciones pedidas.
 

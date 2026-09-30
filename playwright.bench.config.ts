@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 import base from "./playwright.config";
 
 /**
- * Benchmark del spike de modo oscuro (Fase 4, docs/PDF_DARK_MODE_SPIKE.md §8).
+ * Benchmark del visor PDF (Fase 5, docs/ARCHITECTURE.md → visor PDF).
  * No es un test: mide e imprime. Fuera de la suite normal y de CI, porque sus
  * cifras dependen de la máquina. Uso: `npm run bench:pdf`.
  */

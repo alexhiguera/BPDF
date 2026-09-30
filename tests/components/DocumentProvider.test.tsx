@@ -180,6 +180,7 @@ describe("DocumentProvider: carreras y liberación", () => {
     const rota: Platform = {
       pickDocument: () => Promise.reject(new TypeError("fallo interno")),
       openDroppedFile: () => Promise.reject(new TypeError("fallo interno")),
+      openExternal: () => {},
     };
     const v = montar(rota);
     await act(() => v().openWithPicker());

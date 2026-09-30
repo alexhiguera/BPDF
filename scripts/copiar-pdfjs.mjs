@@ -27,8 +27,9 @@ if (!existsSync(ORIGEN)) {
 }
 
 const COPIAS = [
-  // El worker donde pdf.js parsea el documento, aislado del DOM de la app.
-  ["build/pdf.worker.min.mjs", "pdf.worker.min.mjs"],
+  // El worker donde pdf.js parsea el documento, aislado del DOM de la app. Build
+  // `legacy` (D18), la misma que importa `src/pdf/engine.ts`: las dos deben coincidir.
+  ["legacy/build/pdf.worker.min.mjs", "pdf.worker.min.mjs"],
   // Decodificadores JPEG 2000 y JBIG2 en JavaScript (se usan con useWasm: false).
   ["wasm/openjpeg_nowasm_fallback.js", "wasm/openjpeg_nowasm_fallback.js"],
   ["wasm/jbig2_nowasm_fallback.js", "wasm/jbig2_nowasm_fallback.js"],

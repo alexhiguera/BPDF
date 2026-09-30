@@ -1,0 +1,118 @@
+%PDF-1.5
+%âãÏÓ
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R /Dests << /anexo [11 0 R /Fit] >> >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R 9 0 R 11 0 R] /Count 5 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842]  /Contents 4 0 R /Resources << /Font << /F1 20 0 R >> >> /Annots [13 0 R 14 0 R 15 0 R 16 0 R 17 0 R 18 0 R 19 0 R] >>
+endobj
+4 0 obj
+<< /Length 499 >>
+stream
+BT /F1 24 Tf 0 0 0 rg 72 780 Td (Manual de prueba del visor) Tj ET
+BT /F1 14 Tf 0 0 0 rg 76 706 Td (Ir al capitulo 3) Tj ET
+BT /F1 14 Tf 0 0 0 rg 76 666 Td (Ir al anexo) Tj ET
+BT /F1 14 Tf 0 0 0 rg 76 626 Td (Enlace externo) Tj ET
+BT /F1 14 Tf 0 0 0 rg 76 586 Td (Pagina siguiente) Tj ET
+BT /F1 14 Tf 0 0 0 rg 76 546 Td (Enlace javascript \(ignorado\)) Tj ET
+BT /F1 14 Tf 0 0 0 rg 76 506 Td (Enlace a fichero \(ignorado\)) Tj ET
+BT /F1 14 Tf 0 0 0 rg 76 466 Td (Accion JavaScript \(ignorada\)) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842]  /Contents 6 0 R /Resources << /Font << /F1 20 0 R >> >> >>
+endobj
+6 0 obj
+<< /Length 397 >>
+stream
+BT /F1 20 Tf 0 0 0 rg 72 780 Td (La canción del búho) Tj ET
+BT /F1 12 Tf 0 0 0 rg 72 740 Td (Primera búsqueda del documento.) Tj ET
+BT /F1 12 Tf 0 0 0 rg 72 720 Td (Segunda BÚSQUEDA, en mayúsculas.) Tj ET
+BT /F1 12 Tf 0 0 0 rg 72 700 Td (Tercera busqueda, sin tilde.) Tj ET
+BT /F1 12 Tf 0 0 0 rg 72 660 Td (Esta es una frase) Tj ET
+BT /F1 12 Tf 0 0 0 rg 72 645 Td (partida entre dos lineas.) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595]  /Contents 8 0 R /Resources << /Font << /F1 20 0 R >> >> >>
+endobj
+8 0 obj
+<< /Length 70 >>
+stream
+BT /F1 28 Tf 0 0 0 rg 72 520 Td (Capitulo 3 \(pagina apaisada\)) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Rotate 90 /Contents 10 0 R /Resources << /Font << /F1 20 0 R >> >> >>
+endobj
+10 0 obj
+<< /Length 63 >>
+stream
+BT /F1 20 Tf 0 0 0 rg 72 780 Td (Pagina girada 90 grados) Tj ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842]  /Contents 12 0 R /Resources << /Font << /F1 20 0 R >> >> >>
+endobj
+12 0 obj
+<< /Length 102 >>
+stream
+BT /F1 20 Tf 0 0 0 rg 72 780 Td (Anexo) Tj ET
+BT /F1 12 Tf 0 0 0 rg 72 740 Td (Ultima búsqueda.) Tj ET
+endstream
+endobj
+13 0 obj
+<< /Type /Annot /Subtype /Link /Border [0 0 0] /Rect [72 700 300 724] /Dest [7 0 R /XYZ null null null] >>
+endobj
+14 0 obj
+<< /Type /Annot /Subtype /Link /Border [0 0 0] /Rect [72 660 300 684] /Dest /anexo >>
+endobj
+15 0 obj
+<< /Type /Annot /Subtype /Link /Border [0 0 0] /Rect [72 620 300 644] /A << /S /URI /URI (https://example.com/bpdf) >> >>
+endobj
+16 0 obj
+<< /Type /Annot /Subtype /Link /Border [0 0 0] /Rect [72 580 300 604] /A << /S /Named /N /NextPage >> >>
+endobj
+17 0 obj
+<< /Type /Annot /Subtype /Link /Border [0 0 0] /Rect [72 540 300 564] /A << /S /URI /URI (javascript:alert\(1\)) >> >>
+endobj
+18 0 obj
+<< /Type /Annot /Subtype /Link /Border [0 0 0] /Rect [72 500 300 524] /A << /S /URI /URI (file:///etc/passwd) >> >>
+endobj
+19 0 obj
+<< /Type /Annot /Subtype /Link /Border [0 0 0] /Rect [72 460 300 484] /A << /S /JavaScript /JS (app.alert\(1\)) >> >>
+endobj
+20 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+xref
+0 21
+0000000000 65535 f 
+0000000015 00000 n 
+0000000098 00000 n 
+0000000180 00000 n 
+0000000367 00000 n 
+0000000917 00000 n 
+0000001045 00000 n 
+0000001493 00000 n 
+0000001621 00000 n 
+0000001741 00000 n 
+0000001880 00000 n 
+0000001994 00000 n 
+0000002124 00000 n 
+0000002278 00000 n 
+0000002401 00000 n 
+0000002503 00000 n 
+0000002641 00000 n 
+0000002762 00000 n 
+0000002897 00000 n 
+0000003029 00000 n 
+0000003163 00000 n 
+trailer
+<< /Size 21 /Root 1 0 R >>
+startxref
+3261
+%%EOF

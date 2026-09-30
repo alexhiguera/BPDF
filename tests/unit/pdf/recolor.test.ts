@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { esPaginaOscura } from "@/pdf/dark/aplicar";
+import { esPaginaOscura, oscurecerFranja } from "@/pdf/dark/aplicar";
 import { contraste, type Rgb } from "@/pdf/dark/color";
 import {
   crearRecoloreado,
   desempaquetar,
   empaquetar,
-  invertirPixeles,
   recolorearRgb,
   transformarPixeles,
 } from "@/pdf/dark/recolor";
@@ -88,7 +87,7 @@ describe("crearRecoloreado (con caché)", () => {
   });
 });
 
-describe("transformarPixeles e invertirPixeles", () => {
+describe("transformarPixeles y oscurecerFranja", () => {
   const blanco = empaquetar([255, 255, 255]);
 
   it("no toca los píxeles marcados en la máscara (dentro de una imagen)", () => {
@@ -106,11 +105,16 @@ describe("transformarPixeles e invertirPixeles", () => {
     );
   });
 
-  it("el negativo invierte cada canal y conserva el alfa", () => {
-    const px = new Uint32Array([empaquetar([255, 0, 10])]);
-    invertirPixeles(px);
-    expect(desempaquetar(px[0] ?? 0)).toEqual([0, 255, 245]);
-    expect((px[0] ?? 0) >>> 24).toBe(0xff);
+  it("una franja se recolorea fuera de las regiones, en coordenadas del lienzo", () => {
+    // Franja de 4×2 px que empieza en la fila 10; la región cubre x∈[2,4), y∈[10,12).
+    const datos = new Uint8ClampedArray(4 * 2 * 4).fill(255);
+    oscurecerFranja(datos, 4, 10, [[2, 10, 4, 10, 2, 12]], crearRecoloreado(op));
+    const px = (x: number, y: number) => [...datos.subarray((y * 4 + x) * 4, (y * 4 + x) * 4 + 3)];
+    expect(px(0, 0)).toEqual(recolorearRgb([255, 255, 255], op));
+    expect(px(1, 1)).toEqual(recolorearRgb([255, 255, 255], op));
+    expect(px(2, 0)).toEqual([255, 255, 255]);
+    expect(px(3, 1)).toEqual([255, 255, 255]);
+    expect(datos[3]).toBe(255); // alfa intacto
   });
 });
 

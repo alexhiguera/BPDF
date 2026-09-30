@@ -1,7 +1,8 @@
 # BPDF — Seguridad y privacidad (diseño)
 
 > **Estado: diseño objetivo** (Fase 0, *2026-09-29*); implementados los controles de las
-> Fases 2 (CSP, cabeceras, DOM) y 3 (apertura de ficheros, §2.6). Cada control indica la
+> Fases 2 (CSP, cabeceras, DOM), 3 (apertura de ficheros, §2.6), 4 (motor de PDF) y 5
+> (visor PDF, §4; *2026-09-30*). Cada control indica la
 > fase que lo implementa ([FASES.md](FASES.md)). Cuando un control exista, esa fase lo marca aquí como
 > implementado y enlaza su test. Las auditorías realizadas van a
 > [auditoria.md](auditoria.md).
@@ -61,7 +62,7 @@ y solo abre lo que la app usa hoy. Vive en **un único fichero fuente**,
 En `vite dev` **no hay CSP**: Vite inyecta scripts y estilos en línea para desarrollar.
 Nada se da por bueno por funcionar en `dev`.
 
-**Vigente** ✅ (Fase 2; la Fase 4 añadió `worker-src` y `font-src`):
+**Vigente** ✅ (Fase 2; la Fase 4 añadió `worker-src` y `font-src`; la Fase 5, `connect-src`):
 
 ```text
 default-src 'none';
@@ -70,6 +71,7 @@ style-src 'self';
 img-src 'self';
 worker-src 'self';            ← Fase 4: el worker de pdf.js, desde el propio origen
 font-src 'self';              ← Fase 4: sustitutas de las fuentes estándar de PDF
+connect-src 'self';           ← Fase 5: cmaps de pdf.js (fuentes CID), desde su worker
 object-src 'none';
 base-uri 'none';
 form-action 'none';
@@ -94,9 +96,14 @@ aprobación antes de añadirlo.
 - `'wasm-unsafe-eval'`: BPDF carga pdf.js con `useWasm: false`, que usa decodificadores en
   JavaScript y un intérprete de PostScript sin `eval` (verificado en su código). Los
   `.wasm` ni se sirven ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §3).
-- `connect-src`: con el documento entregado como bytes, pdf.js no hace `fetch` en los
-  casos medidos. Si un PDF con fuentes CID (cmaps) lo necesitara, aparecería como
-  violación en el E2E y se añadiría con su motivo.
+- ~~`connect-src`~~: se creyó innecesario porque ningún PDF medido lo pedía. **Sí hacía
+  falta** (Fase 5, abajo).
+
+**Añadida en la Fase 5, medida:**
+
+| Directiva | Motivo |
+|---|---|
+| `connect-src 'self'` | pdf.js pide al propio origen, con `fetch` **desde su worker**, los mapas de caracteres (`/pdfjs/cmaps/*.bcmap`) de las fuentes CID no incrustadas (japonés, chino, coreano). Sin ella, ese texto **desaparece en silencio**: la violación ocurre en el worker (que recibe la cabecera con su script), no llega al `securitypolicyviolation` del documento y Chromium no la pasa a la consola que ve Playwright. Por eso los E2E no la detectaron en la Fase 4. Se prueba por su efecto: `e2e/specs/visor-pdf.spec.ts` abre un PDF con texto japonés no incrustado y comprueba que se ve, se pide el cmap y se encuentra al buscar. Solo `'self'`: el documento entra como bytes y ningún PDF puede provocar una petición a otro origen |
 
 **Lo que añadirán otras fases, y por qué** (nada de esto está hoy en la política):
 
@@ -142,11 +149,16 @@ en las fases que los usen (6 y 7).
 
 ### 2.4 Navegación, iframes, workers
 
-- Enlaces externos: `target="_blank"` + `rel="noopener noreferrer"`; solo `http:`,
-  `https:` y `mailto:` (§3.2).
+- Enlaces externos: solo `http:`, `https:` y `mailto:` ([`src/lib/url-externa.ts`](../src/lib/url-externa.ts),
+  una sola política para PDF y Markdown, §3.2 y §4), abiertos **por la plataforma**
+  (`Platform.openExternal`): en web, `window.open(url, "_blank", "noopener,noreferrer")`,
+  que vuelve a aplicar la política; nunca navegan la ventana de la app ✅ (Fase 5).
 - Sin iframes propios (`frame-src 'none'`). Mermaid **no** usa `securityLevel: "sandbox"`
   (que necesita un iframe `data:`), sino SVG convertido a `<img>`.
-- Workers: solo el de pdf.js, servido desde `'self'`. Sin workers creados desde `blob:`.
+- Workers: el de pdf.js (`/pdfjs/pdf.worker.min.mjs`) y el del modo oscuro
+  (`/assets/trabajador-*.js`, empaquetado por Vite), los dos servidos desde `'self'` y como
+  módulos ES. Sin workers creados desde `blob:`. El del modo oscuro solo recibe píxeles
+  (nunca el documento) ✅ (Fase 5).
 - **Sin service worker en v1**: no hace falta (sin backend que cachear; offline lo da
   Electron) y añade superficie (caché envenenada, actualizaciones que no llegan). Se
   reevalúa si se quiere PWA.
@@ -241,17 +253,18 @@ comprueba el DOM: sin `script`, `iframe`, `object`, `embed`, `svg` en línea, at
 
 | Vector | Control | Fase |
 |---|---|---|
-| PDF malformado o hostil al parser | pdf.js parsea **en su worker** (aislado del DOM de la app). Errores capturados y mostrados como «PDF dañado» (`PdfNoLegibleError`). Versión exacta (6.3.289) y actualización inmediata ante avisos (precedente: CVE-2024-4367, ejecución de JS mediante fuentes, corregida en 4.2.67) | ✅ 4 (motor y test de PDF dañado) · 5 (visor) |
-| JavaScript embebido (acciones de documento, de página, de campos) | **No se distribuyen** `pdf.sandbox*` ni `quickjs-eval.*` (el motor para ejecutarlo): un E2E comprueba que dan 404. `enableScripting` es una opción de la capa de anotaciones y se fija en `false` en la Fase 5 | ✅ 4 (ficheros) · 5 |
+| PDF malformado o hostil al parser | pdf.js parsea **en su worker** (aislado del DOM de la app). Errores capturados y mostrados como «PDF dañado» (`PdfNoLegibleError`). Versión exacta (6.3.289) y actualización inmediata ante avisos (precedente: CVE-2024-4367, ejecución de JS mediante fuentes, corregida en 4.2.67) | ✅ 4 (motor, test de PDF dañado) · ✅ 5 (visor: aviso y liberación, E2E) |
+| JavaScript embebido (acciones de documento, de página, de campos) | **No se distribuyen** `pdf.sandbox*` ni `quickjs-eval.*` (el motor para ejecutarlo): un E2E comprueba que dan 404. El visor no usa la capa de anotaciones interactiva de pdf.js (donde vive `enableScripting`): no hay nada que pueda ejecutar un script del PDF. Las acciones JavaScript de los enlaces se descartan (`enlaces.ts`, test y fixture `visor.pdf`) | ✅ 4 · ✅ 5 |
 | Formularios XFA | `enableXfa: false` en `opcionesDocumento` (test) | ✅ 4 |
-| Formularios AcroForm | `annotationMode: AnnotationMode.ENABLE` (se pintan, no son editables) (D14) | 5 |
-| Enlaces externos | pdf.js ya limita a `http`, `https`, `ftp`, `mailto`, `tel`; BPDF restringe a `http`, `https`, `mailto` y los abre con `noopener noreferrer` (Electron: vía main) | 5 |
-| Acciones `Launch`, `GoToR` (otro fichero), `ImportData`, `SubmitForm`, `file:` | No se ejecutan: sin scripting y con el filtro de enlaces. Test con fixture que las contiene | 5 |
-| Ficheros adjuntos embebidos | No se exponen en v1 | 5 |
-| Recursos remotos | Worker, `cmaps/`, `standard_fonts/` y los decodificadores en JavaScript se sirven **desde el propio origen** (`scripts/copiar-pdfjs.mjs`); `useWasm: false`. El documento se pasa como bytes (`data`), nunca como URL (test). E2E: ninguna petición fuera del propio origen | ✅ 4 |
-| Agotamiento de memoria (páginas gigantes, zoom) | `maxCanvasPixels`, límite de tamaño de fichero, virtualización | 5, 13 |
-| PDFs cifrados | Contraseña solo en memoria, nunca persistida (D13) | 5 |
-| Post-proceso del modo oscuro | Trabaja sobre píxeles del lienzo propio (mismo origen, sin `crossOrigin`); no interpreta contenido. Por franjas, sin copiar la página entera | ✅ 4 |
+| Formularios AcroForm y anotaciones | `AnnotationMode.ENABLE`: sus apariencias se **pintan en el lienzo**; no hay capa interactiva, así que no se pueden rellenar ni ejecutan nada (D14, pendiente de confirmar) | ✅ 5 |
+| Enlaces externos | Política propia ([`enlaces.ts`](../src/pdf/visor/enlaces.ts) + [`url-externa.ts`](../src/lib/url-externa.ts)): solo `http:`, `https:` y `mailto:`, absolutos y sin credenciales, hasta 2048 caracteres; abiertos por `Platform.openExternal` (web: pestaña nueva sin `opener` ni `Referer`; Electron: `shell.openExternal` desde el main, Fase 14). El `<a>` nunca navega la app (el clic se intercepta; el central se anula). Corpus de URLs hostiles en `tests/unit/pdf/enlaces.test.ts`; E2E con `window.open` interceptado | ✅ 5 |
+| Acciones `Launch`, `GoToR` (otro fichero), `ImportData`, `SubmitForm`, `file:`, adjuntos | No son enlaces para BPDF: solo se siguen destinos internos, cuatro acciones con nombre de navegación y URLs permitidas. Fixture `visor.pdf` con `javascript:`, `file:` y acción JavaScript: E2E comprueba que no hay `<a>` para ellas | ✅ 5 |
+| Ficheros adjuntos embebidos | No se exponen en v1 | ✅ 5 (no hay interfaz) |
+| Recursos remotos | Worker, `cmaps/`, `standard_fonts/` y los decodificadores en JavaScript se sirven **desde el propio origen** (`scripts/copiar-pdfjs.mjs`); `useWasm: false`. El documento se pasa como bytes (`data`), nunca como URL (test). E2E: ninguna petición fuera del propio origen en todos los recorridos del visor, también con PDF reales | ✅ 4 · ✅ 5 |
+| Agotamiento de memoria (páginas gigantes, zoom) | Tope de 16,7 Mpx por lienzo y DPR ≤ 2; virtualización (visibles ±1); presupuesto de 160 MiB para las vecinas; lienzos liberados a 0×0; `page.cleanup()` al salir; límite de tamaño de fichero (Fase 3). E2E y benchmark con 300 páginas ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quater) | ✅ 5 · 13 (medir con el corpus grande) |
+| PDFs cifrados | Se detectan (`PasswordException` → `PdfProtegidoError`) y se dice que BPDF aún no los abre. Pedir la contraseña espera a D13: solo en memoria, nunca persistida | ✅ 5 (detección) · D13 |
+| Texto del documento en la interfaz | Capa de texto de pdf.js y resaltado de la búsqueda solo con `textContent`/`createElement` (test con texto hostil en `tests/unit/pdf/capas.test.ts`); nada de HTML en crudo | ✅ 5 |
+| Post-proceso del modo oscuro | Trabaja sobre píxeles del lienzo propio (mismo origen, sin `crossOrigin`); no interpreta contenido. Por franjas, sin copiar la página entera. En un worker que solo recibe bytes RGBA | ✅ 4 · ✅ 5 |
 
 ## 5. Electron
 

@@ -44,8 +44,9 @@ Server Actions ni rutas de servidor (ver D1 en [PLAN.md](PLAN.md) §3).
 
 ## 3. Contrato `Platform`
 
-**Vigente desde la Fase 3** ([`src/platform/types.ts`](../src/platform/types.ts)), solo
-con lo que la app usa hoy (un documento a la vez, D16):
+**Vigente desde la Fase 3**, con `openExternal` desde la Fase 5
+([`src/platform/types.ts`](../src/platform/types.ts)), solo con lo que la app usa hoy (un
+documento a la vez, D16):
 
 ```ts
 interface Platform {
@@ -53,6 +54,8 @@ interface Platform {
   pickDocument(): Promise<OpenedDocument | null>;
   /** Un fichero soltado en la ventana (el DOM da un `File` en web y en Electron). */
   openDroppedFile(file: File): Promise<OpenedDocument>;
+  /** Un enlace de un documento, fuera de BPDF. Solo http:, https: y mailto:; se revalida. */
+  openExternal(url: string): void;
 }
 ```
 
@@ -67,9 +70,12 @@ main. Cómo encaja la Fase 14:
   vuelve a validar: no se fía de nadie.
 - `openDroppedFile(file)` → `window.bpdf.registerDropped(file)` → `{ id }` →
   `readDocument(file, id)`.
+- `openExternal(url)` → `window.bpdf.openExternal(url)` → el main revalida la URL con la
+  misma política (`http:`, `https:`, `mailto:`) y llama a `shell.openExternal`. En web es
+  `window.open(url, "_blank", "noopener,noreferrer")`; en Electron **nunca** una ventana
+  nueva de la app (`setWindowOpenHandler` → `deny`, §6).
 
-**Lo que añadirá cada fase** (y solo entonces): `openExternal(url)` (enlaces de PDF y
-Markdown, Fases 5 y 7), `saveText(doc, text, { saveAs })` (Fase 9), `onExternalOpen(cb)`
+**Lo que añadirá cada fase** (y solo entonces): `saveText(doc, text, { saveAs })` (Fase 9), `onExternalOpen(cb)`
 («Abrir con…» y argv, Fase 14). Si la Fase 7 admite soltar un `.md` con sus imágenes,
 `openDroppedFile` pasará a recibir varios ficheros.
 
@@ -77,6 +83,24 @@ Markdown, Fases 5 y 7), `saveText(doc, text, { saveAs })` (Fase 9), `onExternalO
 rama de Electron según exista `window.bpdf`. No se simula antes: no hay preload que
 detectar. `App` recibe la plataforma como propiedad desde `main.tsx`, y los tests de
 componentes pasan una falsa (`tests/helpers/documentos.ts`) que usa la validación real.
+
+### 3.1 El visor PDF en Electron (D17, D18)
+
+El visor de la Fase 5 corre igual en Electron: es la misma build (`dist/`), sin rama
+propia. Lo que la Fase 14 tiene que cuidar:
+
+- **Build `legacy` de pdf.js (D18).** La web la necesita (la moderna exige navegadores de
+  2025–2026). El Chromium de Electron es reciente y podría usar la moderna, pero BPDF no
+  mantiene dos ramas: se usa la misma. Si algún día solo se publicara Electron, D18 se
+  revisa (la moderna pesa menos y no lleva polyfills).
+- **Workers como módulos ES** (el de pdf.js y el del modo oscuro) servidos por `app://`:
+  el protocolo debe registrarse con `standard`, `secure` y `supportFetchAPI` para que
+  `new Worker(url, { type: "module" })` y el `fetch` de los cmaps desde el worker de pdf.js
+  funcionen, y servir `.mjs` y `.js` como `text/javascript`.
+- **La misma CSP**, también en las respuestas de `app://`, incluida `connect-src 'self'`
+  (cmaps de las fuentes CID; SEGURIDAD §2.1): su ausencia no da error visible, hace
+  desaparecer el texto CJK.
+- **Enlaces externos** por `openExternal` (arriba). Los internos no salen del renderer.
 
 ## 4. API del preload (`window.bpdf`)
 
