@@ -1,7 +1,8 @@
 # Stack tecnológico
 
-Estado tras la Fase 4 (*2026-09-29*): la Fase 4 añadió `pdfjs-dist` (el motor de PDF) para
-el spike de modo oscuro. El stack **objetivo** (pipeline de Markdown, Electron) y el motivo
+Estado tras la Fase 7 (*2026-09-30*): la Fase 4 añadió `pdfjs-dist` (el motor de PDF) y la
+Fase 7 el pipeline de Markdown (`react-markdown`, `remark-gfm`) y el resaltado de código
+(`lowlight`, `highlight.js`). El stack **objetivo** (pipeline de Markdown, Electron) y el motivo
 de cada pieza están en [PLAN.md](PLAN.md); cada fase añade aquí lo que instala.
 
 ## Capas
@@ -52,6 +53,10 @@ explica, para que el documento no se quede atrás.
 | `react`, `react-dom` | La interfaz |
 | `lucide-react` | Iconos (el indicador de carga de `Button` y los botones del visor PDF, siempre con nombre accesible) |
 | `clsx`, `tailwind-merge` | La función `cn()` para combinar clases |
+| `react-markdown` | El renderer de Markdown (Fase 7). **Versión exacta** (10.1.0). Produce elementos React, no HTML: sin `innerHTML`. Sin `rehype-raw` (D6): el HTML crudo no se interpreta. Trae la cadena `unified`/`remark-parse`/`micromark`/`remark-rehype` ([PLAN.md](PLAN.md) §7.1) |
+| `remark-gfm` | GitHub Flavored Markdown: tablas, listas de tareas, tachado, autoenlaces y notas al pie. **Versión exacta** (4.0.1) |
+| `lowlight` | Resaltado de sintaxis de los bloques de código: highlight.js con salida en árbol (hast) en lugar de una cadena HTML, que se convierte a React con lista blanca (`src/markdown/resaltado.ts`). **Versión exacta** (3.3.0). Se usa directamente, **sin `rehype-highlight`**: ese plugin importa el paquete `common` (~37 gramáticas) aunque se le pasen otras y dificulta copiar el texto original |
+| `highlight.js` | Las gramáticas de los lenguajes que se resaltan (9: JavaScript/JSX, TypeScript/TSX, JSON, HTML/XML, CSS, Bash, Python, Markdown, SQL), importadas una a una. **Versión exacta** (11.11.1, no la 11.12: `lowlight` 3.3.0 pide `~11.11.0` y así hay una sola copia). Dependencia directa porque se importan sus gramáticas |
 | `pdfjs-dist` | El motor de PDF (pdf.js de Mozilla). **Versión exacta** (6.3.289): procesa contenido no confiable. Build **`legacy`** (D18). Se carga a demanda, con `useWasm: false` y sus recursos servidos desde el propio origen ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §3). El visor usa solo sus APIs núcleo y `TextLayer` (D17, [ARCHITECTURE.md](ARCHITECTURE.md) §4 quater) |
 
 ### `pdfjs-dist`: qué trae y qué implica
@@ -85,6 +90,19 @@ explica, para que el documento no se quede atrás.
   `prebuild`, sin los `.wasm`, el motor de JavaScript de PDF (`quickjs-eval`) ni el sandbox.
   `public/pdfjs/` no se versiona.
 
+### `react-markdown` y su cadena: qué trae y qué implica
+
+- **CSP.** Ninguna directiva nueva: no usa `eval`, WASM, estilos en línea (la alineación
+  de celdas va por CSSOM) ni recursos remotos. Los E2E dan cero violaciones.
+- **Rendimiento (medido en la Fase 7, [ARCHITECTURE.md](ARCHITECTURE.md) §4 quinquies).**
+  El parser es lineal salvo en un caso: **muchas listas cortas son cuadráticas** en
+  `mdast-util-from-markdown` 2.0.3 (la última publicada): `prepareList` inserta cada
+  elemento con `Array#splice` en el array de eventos del documento entero. 200 KB de listas
+  cortas tardan ~2,5 s y el tiempo se multiplica por ~3 al duplicar el tamaño. Pendiente en
+  TAREAS; no se parchea la dependencia.
+- **Versiones exactas** en las cuatro directas; las transitivas las fija el lockfile y las
+  vigila `npm audit`.
+
 Todo lo demás es de desarrollo: `vite` y `@tailwindcss/vite` (build), `tailwindcss`,
 Biome, TypeScript, Vitest y Testing Library, jest-axe, jsdom, Playwright, y `yaml` (lo usa
 el validador de `public_docs/`).
@@ -100,6 +118,18 @@ sustituido por `@tailwindcss/vite`).
 
 **Añadida en la Fase 4:** `pdfjs-dist` 6.3.289 (runtime). Ninguna librería de procesado de
 imagen: la transformación del modo oscuro usa solo Canvas y funciones propias.
+
+**Añadidas en la Fase 7** (runtime, versiones exactas): `react-markdown` 10.1.0,
+`remark-gfm` 4.0.1, `lowlight` 3.3.0 y `highlight.js` 11.11.1; en desarrollo, `@types/hast`
+y `@types/mdast` (el código importa esos tipos; antes llegaban de rebote). Traen 101
+paquetes transitivos (la cadena `unified`/`micromark`), sin scripts de instalación y con
+`npm audit` limpio. Todo va en el trozo del visor Markdown, que se carga al abrir el primer
+Markdown: **70 KB gzip** (228 KB sin comprimir) y 1,5 KB de CSS; el arranque no cambia (86,4 KB
+gzip, +0,9 KB de textos). Evaluadas y descartadas: `rehype-highlight` (arriba), `shiki`
+(motor de expresiones regulares en WASM, exigiría `'wasm-unsafe-eval'` en la CSP, y mucho
+más peso), un resaltador propio (peor calidad y más código que mantener para procesar
+contenido hostil) y `github-slugger` (16 KB para 20 líneas: los ids de encabezado son
+propios, `src/markdown/toc.ts`).
 
 **Fase 5: ninguna dependencia nueva.** El visor (virtualización, zoom, búsqueda,
 miniaturas, enlaces, worker del modo oscuro) es código propio sobre pdf.js y React: sin

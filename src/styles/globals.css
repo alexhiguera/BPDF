@@ -38,6 +38,20 @@
 
   /* Estados. */
   --rgb-danger: 248 113 113;
+
+  /* Enlaces de un documento (Markdown): texto sobre `page`, así que 4,5:1. El
+   * acento no llega (4,4:1 sobre `page`) y además es el color del foco. */
+  --rgb-link: 128 182 255;
+
+  /* Resaltado de código (Markdown), sobre el fondo de los bloques (`app`). */
+  --rgb-code-keyword: 198 146 234;
+  --rgb-code-string: 152 195 121;
+  --rgb-code-number: 229 192 123;
+  --rgb-code-comment: 150 150 150;
+  --rgb-code-function: 97 175 239;
+  --rgb-code-type: 86 182 194;
+  --rgb-code-tag: 239 124 132;
+  --rgb-code-attr: 209 154 102;
 }
 
 @theme inline {
@@ -53,6 +67,7 @@
   --color-primary: rgb(var(--rgb-primary));
   --color-primary-fg: rgb(var(--rgb-primary-fg));
   --color-danger: rgb(var(--rgb-danger));
+  --color-link: rgb(var(--rgb-link));
 }
 
 body {

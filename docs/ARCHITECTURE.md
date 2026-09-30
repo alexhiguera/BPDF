@@ -5,10 +5,10 @@ escribir código) están en [`CLAUDE.md`](../CLAUDE.md). La arquitectura **objet
 motores, plataforma) está en [PLAN.md](PLAN.md) §4; este documento describe principios que
 ya rigen hoy y se amplía cuando cada fase los materializa.
 
-**Estado del código (2026-09-30, tras la Fase 5):** una SPA estática de Vite + React (D1)
+**Estado del código (2026-09-30, tras la Fase 7):** una SPA estática de Vite + React (D1)
 que abre un PDF o un Markdown local (selector, `Ctrl/Cmd+O` o arrastre). Los PDF se leen
-en el visor propio (§4 quater); de un Markdown aún solo se muestran su nombre, tipo y
-tamaño. Sin backend, datos ni variables de entorno. La CSP estricta, los tokens de diseño,
+en el visor propio (§4 quater) y los Markdown en su lector (§4 quinquies), sin cargar
+imágenes todavía. Sin backend, datos ni variables de entorno. La CSP estricta, los tokens de diseño,
 los textos centralizados y la frontera de plataforma ya rigen.
 
 Varios principios vienen de la plantilla SaaS de R3ZON, que a su vez los destiló de
@@ -250,6 +250,121 @@ lienzo es `aria-hidden` y el texto accesible es el de la capa de texto.
 - «Página a página» no pinta de antemano la página siguiente.
 - pdf.js 6 carga su worker como módulo ES: el visor necesita Firefox 114 o posterior,
   aunque la app arranque en los navegadores mínimos de `build.target` (Firefox 111).
+
+### 4 quinquies. El visor Markdown (Fase 7)
+
+Lector de Markdown GFM sobre `react-markdown` + `remark-gfm`, con componentes propios
+para lo que toca la seguridad o la accesibilidad. Todo en [`src/markdown/`](../src/markdown/),
+cargado a demanda (`React.lazy`) al abrir el primer Markdown:
+
+| Pieza | Dónde | Qué hace | React |
+|---|---|---|---|
+| Pipeline | `pipeline.ts` | Plugins (GFM, quitar comentarios HTML, ids de encabezados), opciones de remark-rehype (prefijo de ids, textos de las notas al pie), **lista blanca de elementos** y `urlTransform`. Un solo sitio para todo lo que afecta a la seguridad; la Fase 8 amplía `pluginsRemark` | No |
+| Política de URLs | `url-policy.ts` | `clasificarEnlace` / `clasificarImagen` / `transformarUrl` (puras) | No |
+| Índice e ids | `toc.ts` | Slugs deterministas con prefijo `md-`, plugin de remark que los asigna, lectura del índice desde el DOM pintado | No |
+| Resaltado | `resaltado.ts` | lowlight con 9 gramáticas; su árbol a React con lista blanca (`span` + texto) | Solo `createElement` |
+| Componentes | `components/` | `Enlace`, `Imagen`, `BloqueCodigo`, `Indice`, encabezados, tabla, casilla; `acciones.ts` (contexto) | Sí |
+| Vista | `MarkdownView.tsx` | Barra (índice, nombre, cerrar), índice, `<article>` desplazable, avisos | Sí |
+| Estilos | [`src/styles/markdown.css`](../src/styles/markdown.css) | Todo colgado de `.md-contenido` o de clases `md-*` | — |
+
+**Datos.** Recibe `{ kind: "markdown", text }` de `DocumentProvider` (Fase 3) y no vuelve
+a leer el fichero. `Contenido` es un componente `memo` sobre el texto: abrir el índice o
+un aviso no vuelve a procesar el documento. Los componentes piden al visor lo que
+necesitan (abrir fuera, ir a una sección) por un contexto, para que el mapa de componentes
+sea fijo.
+
+**HTML crudo (D6).** No se interpreta: sin `rehype-raw`, react-markdown convierte cada
+nodo HTML en su texto literal. Un `<script>` se **ve** como texto (no se esconde: quien lee
+sabe que el documento traía HTML). Los comentarios `<!-- … -->` sí se quitan: nunca son
+para leerse y en los README abundan. Además, una lista blanca de elementos descarta
+cualquier etiqueta que no produzca Markdown + GFM.
+
+**URLs.** Solo llegan a un `href` dos casos, y los dos los construye BPDF:
+
+| Destino | Qué pasa |
+|---|---|
+| `http:`, `https:`, `mailto:` absolutas (política común de `src/lib/url-externa.ts`) | `<a target="_blank" rel="noopener noreferrer">`; el clic se intercepta y lo abre `Platform.openExternal` (web: pestaña nueva sin `opener` ni `Referer`; Electron, Fase 14: el navegador del sistema desde el main). El clic central se anula |
+| `#fragmento` | `href="#md-…"`; el clic desplaza dentro del documento y mueve el foco a la sección, sin cambiar la URL. Solo se buscan ids con prefijo y dentro del documento |
+| Ruta relativa (`otro.md`) | Texto con subrayado punteado y el motivo (información emergente y texto para lectores de pantalla). Abrir otro fichero enlazado espera a tener acceso a los hermanos (Electron, o varios ficheros en web) |
+| Todo lo demás (`javascript:`, `data:`, `file:`, `vbscript:`, `//host`, `/ruta`, `C:\…`, credenciales en la URL…) | Texto, igual que la anterior, con otro motivo |
+
+Antes de clasificar se quita lo que el navegador ignora al leer una URL (tabuladores y
+saltos en cualquier posición; controles y espacios en los extremos). Las entidades las
+decodifica el parser una sola vez: `java&#x73;cript:` llega como `javascript:` y se
+bloquea; una entidad que sobrevive es texto literal y la URL queda como ruta relativa, sin
+`href`. Dos capas: `urlTransform` vacía lo bloqueado en el pipeline y `Enlace`/`Imagen`
+vuelven a clasificar.
+
+**Imágenes.** En esta fase **no se carga ninguna**: no hay `<img>` en el DOM. Una remota
+(D7) es un marcador con su texto alternativo y un enlace para abrirla fuera; una local
+(`./logo.png`), un marcador que explica que aún no se cargan; el resto, bloqueada. En web,
+un `File` suelto no da acceso a sus hermanos: cargar imágenes locales exige abrir el `.md`
+junto con ellas (varios ficheros o una carpeta), un cambio en la apertura que se aplazó
+(TAREAS). La regla CSS de `img` ya existe (ancho máximo, sin filtros).
+
+**Índice.** Ids deterministas al estilo de GitHub (minúsculas, sin puntuación, espacios a
+guiones; repetidos con `-1`, `-2`…), siempre con prefijo `md-` (DOM clobbering: un
+`# location` no pisa `window.location`). Los asigna un plugin de remark en el árbol, no
+se escribe HTML con ellos. El índice (h1–h6) se **lee del DOM ya pintado** en un
+`useLayoutEffect`: enlaza exactamente lo que se ve, sin volver a parsear. Con menos de
+dos encabezados no hay índice. En pantalla ancha (≥ 64 rem) es una columna abierta; en
+estrecha, un panel encima del texto que se cierra al elegir. Lista plana sangrada por
+nivel: un documento puede saltar de `h1` a `h4`.
+
+**Código.** lowlight (highlight.js en árbol) con 9 gramáticas y alias habituales (`js`,
+`jsx`, `ts`, `tsx`, `html`, `svg`, `sh`, `shell`, `py`, `md`…). Sin detección automática:
+sin lenguaje o con uno desconocido, texto tal cual. El botón copia el texto del árbol
+(no lo pintado), con `navigator.clipboard.writeText` tras el clic, sin pedir permisos; dice
+«Copiado» 2 s (temporizador cancelado al desmontar) o «No se ha podido copiar», también en
+una región viva.
+
+**Estilos y tema.** `markdown.css` solo alcanza al documento, y el documento no puede
+traer estilos (ni `<style>` ni `style` ni clases: no hay HTML). Hoja en el plano `page`,
+~72 caracteres de ancho, colores de los tokens (`--rgb-link` y `--rgb-code-*` son nuevos,
+con su contraste en `tokens.test.ts`), sin `filter`. Tablas y bloques de código se
+desplazan en horizontal dentro de su contenedor (enfocable), la hoja nunca.
+
+**Ciclo de vida.** Se monta con `key={document.id}`: otro documento lo desmonta entero.
+No crea listeners globales, observers, workers ni URL de objeto (un test lo comprueba).
+Lo único temporal: los avisos de «Copiado» y, en documentos grandes, el paso diferido de
+abajo; los dos se cancelan al desmontar.
+
+**Rendimiento (medido, `npm run bench:markdown`, Chromium de Playwright, Ryzen 7 5800X).**
+Tiempo desde elegir el fichero hasta ver su primer encabezado (incluye unos 0,3 s del
+propio recorrido de Playwright); varía entre ejecuciones:
+
+| Documento | Tiempo | Elementos |
+|---|---|---|
+| 1 KB (`basico.md`) | 0,33 s | 57 |
+| 100 KB de texto mixto | 0,5–0,9 s | 7 300 |
+| 1 MB de texto mixto (pocas listas) | 3,3–7,3 s | 72 000 |
+| 5000 encabezados | 0,6–1,0 s | 5 000 |
+| 2000 bloques de código resaltados | 0,8–1,1 s | 26 700 |
+| Listas cortas: 50 / 100 / 200 KB | 0,5 / 1,0–1,3 / 2,3–2,8 s | hasta 19 800 |
+
+En Node, el pipeline completo es lineal (~2 s/MB) salvo las listas. Un perfil de 1 MB
+no muestra un punto caliente propio: el tiempo se reparte entre el tokenizador de
+micromark, el paso a árbol, React creando ~72 000 elementos y la primera maquetación. Por
+eso:
+
+- **Por encima de 100 KB**, el visor pinta primero la barra y «Preparando el documento…»
+  y el contenido un fotograma después (`requestAnimationFrame` + `setTimeout`): la pantalla
+  no se queda congelada sin señal. Por debajo, el aviso solo sería un parpadeo.
+- **No se virtualiza** ni se parsea en un worker: bajar de 1 s con 1 MB, como pedía la
+  Fase 7, exige uno de los dos, y es un cambio de arquitectura (TAREAS, Fase 13).
+- **Listas cortas y muchas: cuadrático** en `mdast-util-from-markdown` (STACK.md). Con el
+  límite de apertura de 20 MiB, un documento hecho a propósito puede bloquear la pestaña
+  mucho tiempo (TAREAS).
+
+**Búsqueda (futura).** El contenido es texto normal dentro de un `<article>` propio: una
+búsqueda podrá recorrer sus nodos de texto y resaltar sin tocar el pipeline.
+
+**Límites conocidos.**
+
+- Imágenes: ninguna se muestra (arriba).
+- Un enlace a otro fichero del documento no se abre.
+- Matemáticas y Mermaid se ven como bloques de código (Fase 8).
+- Rendimiento con documentos grandes y con muchas listas (arriba).
 
 ### 5. La menor complejidad que cumpla los requisitos
 

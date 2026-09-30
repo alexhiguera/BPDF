@@ -5,15 +5,16 @@ import { DocumentProvider, useDocument } from "@/documents/DocumentProvider";
 import { messages } from "@/i18n/messages";
 import type { Platform } from "@/platform";
 import { DocumentErrorAlert } from "./DocumentErrorAlert";
-import { DocumentSummary } from "./DocumentSummary";
 import { DropZone } from "./DropZone";
 import { EmptyState } from "./EmptyState";
 
 /**
- * El visor PDF se carga a demanda, al abrir el primer PDF: ni él ni pdf.js
- * entran en el arranque de la app (límite de `build:tamano`).
+ * Los visores se cargan a demanda, al abrir el primer documento de su tipo: ni
+ * pdf.js ni el pipeline de Markdown entran en el arranque de la app (límite de
+ * `build:tamano`).
  */
 const VisorPdf = lazy(() => import("./pdf/VisorPdf"));
+const MarkdownView = lazy(() => import("@/markdown/MarkdownView"));
 
 /**
  * La aplicación. Recibe la plataforma (web hoy, Electron en la Fase 14) desde
@@ -75,8 +76,15 @@ function Shell({ platform }: { platform: Platform }) {
               onOpenExternal={(url) => platform.openExternal(url)}
             />
           </Suspense>
-        ) : document ? (
-          <DocumentSummary key={document.id} document={document} onClose={cerrar} />
+        ) : document?.kind === "markdown" ? (
+          <Suspense fallback={<p className="p-6 text-fg-muted">{messages.markdown.loading}</p>}>
+            <MarkdownView
+              key={document.id}
+              documento={document}
+              onClose={cerrar}
+              onOpenExternal={(url) => platform.openExternal(url)}
+            />
+          </Suspense>
         ) : (
           <EmptyState onOpen={openWithPicker} />
         )}

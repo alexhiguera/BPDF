@@ -30,12 +30,6 @@ export const messages = {
   document: {
     /** Nombre que se muestra si el fichero no trae uno utilizable. */
     untitled: "Sin nombre",
-    kinds: { pdf: "PDF", markdown: "Markdown" },
-    kindLabel: "Tipo",
-    sizeLabel: "Tamaño",
-    pendingViewer:
-      "BPDF ya ha comprobado y cargado el documento. La vista de lectura llegará en una próxima versión.",
-    close: "Cerrar documento",
   },
   documentError: {
     title: (fileName: string) => `No se ha podido abrir «${fileName}»`,
@@ -113,6 +107,51 @@ export const messages = {
     link: {
       internal: (numero: number) => `Ir a la página ${numero}`,
       external: (url: string) => `Abrir ${url} en el navegador`,
+    },
+  },
+  /** Visor Markdown (Fase 7). Comportamiento en docs/ARCHITECTURE.md → visor Markdown. */
+  markdown: {
+    loading: "Preparando el documento…",
+    toolbar: "Herramientas del documento",
+    close: "Cerrar documento",
+    toc: "Índice",
+    showToc: "Mostrar el índice",
+    hideToc: "Ocultar el índice",
+    tocLabel: "Índice del documento",
+    footnotes: "Notas al pie",
+    footnoteBack: (numero: number, repeticion: number) =>
+      repeticion > 1
+        ? `Volver a la llamada ${numero} (${repeticion})`
+        : `Volver a la llamada ${numero}`,
+    code: {
+      copy: "Copiar código",
+      copied: "Copiado",
+      copyFailed: "No se ha podido copiar",
+      announceCopied: "Código copiado al portapapeles.",
+      announceFailed:
+        "No se ha podido copiar el código: este navegador no deja a BPDF usar el portapapeles.",
+      noLanguage: "Texto",
+    },
+    link: {
+      external: (url: string) => `Abrir ${url} en el navegador`,
+      local: "Enlace a otro archivo: BPDF no abre archivos enlazados desde un Markdown",
+      blocked: "Enlace bloqueado por seguridad",
+      announceExternal: (url: string) => `Abriendo ${url} fuera de BPDF`,
+    },
+    image: {
+      noAlt: "Imagen sin descripción",
+      remote: "imagen de internet no cargada",
+      remoteHint:
+        "BPDF no descarga imágenes de internet: la petición revelaría a un tercero que estás leyendo este documento.",
+      openRemote: "Abrir la imagen en el navegador",
+      local: "imagen local no disponible",
+      localHint:
+        "BPDF todavía no carga las imágenes que acompañan a un Markdown: solo recibe el archivo .md.",
+      blocked: "imagen bloqueada por seguridad",
+    },
+    task: {
+      done: "Tarea hecha",
+      pending: "Tarea pendiente",
     },
   },
   error: {

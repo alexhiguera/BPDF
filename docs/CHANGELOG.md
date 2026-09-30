@@ -10,6 +10,114 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 8 — *2026-09-30* — Fase 7: lector de Markdown
+
+Primera versión que **lee** un Markdown: GFM con `react-markdown` + `remark-gfm`, resaltado
+y copia de código, índice y una política de URLs propia. El encargo la llamó «Fase 6»; en
+el plan es la 7 (la 6 es el resto del visor PDF) y se registra como tal. D6 (HTML) y D7
+(imágenes remotas) se dan por confirmadas con el encargo, que pedía exactamente lo
+recomendado. Diseño completo en [ARCHITECTURE.md](ARCHITECTURE.md) §4 quinquies; aquí, el
+porqué y lo que salió mal.
+
+**Qué se hizo y por qué**
+
+- **Todo lo que toca la seguridad, en un sitio** (`src/markdown/pipeline.ts`): plugins,
+  `urlTransform`, lista blanca de elementos y prefijo de ids. El corpus de XSS comprueba
+  la configuración además del DOM, para que añadir `rehype-raw` o cambiar el
+  `urlTransform` rompa un test y no pase en una revisión.
+- **Dos capas para las URLs**: el `urlTransform` vacía lo bloqueado en el pipeline y
+  `Enlace`/`Imagen` vuelven a clasificar. Solo dos tipos llegan a un `href` (externas
+  validadas y `#md-…`), y los dos los construye BPDF. La clasificación trabaja sobre lo
+  que el navegador entendería (sin tabuladores ni saltos, sin controles en los extremos)
+  y **no vuelve a decodificar entidades**: micromark ya lo hizo una vez, y decodificar dos
+  veces cambiaría el significado (`&amp;#x73;`).
+- **Enlaces externos por `Platform.openExternal`**, igual que en el PDF (clic
+  interceptado, central anulado). `target="_blank"` y `rel="noopener noreferrer"` quedan
+  como red. En Electron no habrá que tocar el visor.
+- **HTML crudo como texto** y no ignorado: el encargo aceptaba las dos, y verlo dice a
+  quien lee que el documento traía algo. Los **comentarios sí se quitan**: al probar
+  README reales, un `<!-- nota para quien mantiene -->` aparecía como primer párrafo.
+  Pendiente de visto bueno (TAREAS).
+- **Ninguna imagen se carga** (aplazadas las locales, lo permitía el encargo). En web un
+  `File` suelto no da acceso a sus hermanos; resolverlo es abrir varios ficheros o una
+  carpeta, que cambia la apertura, la plataforma y la CSP (`img-src blob:`). Mejor una
+  tarea propia que media solución. Sin `<img>` en el DOM, ninguna imagen puede provocar
+  una petición.
+- **Resaltado con `lowlight` directamente**, sin `rehype-highlight`: el plugin importa
+  el paquete `common` (~37 gramáticas) aunque se le pasen otras, y en un plugin de rehype
+  el texto original del bloque se pierde (el botón de copiar tendría que reconstruirlo).
+  `BloqueCodigo` lee el código del árbol, lo resalta con 9 gramáticas y convierte el
+  resultado a React con lista blanca. `lowlight` declara `sideEffects: false`: el
+  empaquetador descarta `common` (comprobado en el bundle).
+- **Índice leído del DOM ya pintado**, no de un segundo parseo: con un plugin de remark
+  que escribiera las entradas fuera, el orden de render decidiría si el índice se ve
+  vacío; parsear dos veces duplica el coste. Leer los `h1`–`h6` con id `md-` en un
+  `useLayoutEffect` enlaza exactamente lo que se ve.
+- **Contexto para las acciones** (abrir fuera, ir a una sección): el mapa de componentes
+  es un módulo fijo y `Contenido` es `memo` sobre el texto. Si los componentes recibieran
+  callbacks por props, cada repintado del visor volvería a parsear el documento.
+- **Tokens nuevos** `--rgb-link` (el acento da 4,4:1 sobre la hoja: no llega) y
+  `--rgb-code-*`, con su contraste en `tokens.test.ts`.
+- **Retirada `DocumentSummary`** (la vista provisional de la Fase 3) y sus textos.
+- **Sin cambios en la CSP ni en las cabeceras.** `clipboard-write` ya vale `self` por
+  defecto; negar `clipboard-read` endurecería, pero se deja para la F12 en vez de tocar
+  cabeceras sin necesidad.
+
+**Rendimiento (medido, no supuesto)**
+
+`npm run bench:markdown` (nuevo) y un perfil de CPU de Chromium con la build sin
+minificar. En el mismo Ryzen 7 5800X: 1 KB en 0,33 s, 100 KB en 0,5–0,9 s, **1 MB en
+3,3–7,3 s**. El criterio de la fase (< 1 s con 1 MB) **no se cumple**, y no por un error
+arreglable: en Node el pipeline es lineal (~2 s/MB) y el perfil reparte el tiempo entre
+micromark, el paso a árbol, React creando ~72 000 elementos y la primera maquetación.
+Bajar de 1 s pide parsear en un worker o pintar por partes, un cambio de arquitectura que
+no se hace sin preguntar: queda para la F13. Lo necesario sí se hizo: por encima de
+100 KB se pinta primero la barra y «Preparando el documento…» (sin eso, la pantalla
+anterior se quedaba congelada sin señal). No se virtualiza: no hacía falta para
+5000 encabezados (0,6–1,0 s) ni para 2000 bloques de código (0,8–1,1 s).
+
+**Encontrado al medir: las listas son cuadráticas.** El primer E2E de 1 MB no terminaba en
+30 s. Midiendo construcción a construcción, solo las listas crecían de forma cuadrática, y
+no en micromark (lineal) sino en `mdast-util-from-markdown` 2.0.3, la última publicada:
+`prepareList` inserta cada elemento con `Array#splice` en el array de eventos del
+documento entero. No se parchea la dependencia; queda en TAREAS con opciones, porque un
+documento hecho a propósito bajo el límite de 20 MiB bloquea la pestaña.
+
+**Errores propios por el camino**
+
+- `Encabezado` descartaba todo id sin prefijo `md-`, también `footnote-label`, el que
+  remark-rehype pone al título de las notas y que citan las llamadas en
+  `aria-describedby`. Lo destapó un test de GFM; ahora ese id fijo pasa.
+- En los fixtures, `## __proto__` es «proto» en negrita, no el texto `__proto__`: el caso
+  de DOM clobbering no probaba lo que decía. Ahora escapado.
+- La «tabla ancha» de `gfm.md` no desbordaba: el texto largo llevaba guiones y el
+  navegador corta ahí. El CSS era correcto (celdas sin partir palabras); el fixture no.
+- El generador del corpus de XSS nació en una carpeta temporal; se movió al repo
+  (`tests/fixtures/markdown/xss/generar.mjs`) con un test que compara, como los de PDF.
+
+**Descartado**
+
+- `rehype-highlight` y `shiki` (arriba y [STACK.md](STACK.md)); un resaltador propio
+  (peor calidad y más código procesando contenido hostil); `github-slugger` (16 KB para 20
+  líneas).
+- Resaltar en el índice la sección visible: un `IntersectionObserver` por poco valor; el
+  encargo pedía un índice sencillo.
+- Parsear en un worker y virtualizar ya: cambios de arquitectura sin decidir (arriba).
+
+**Verificación.** Desde `npm ci`: lint, typecheck, 546 tests (34 ficheros), build,
+`build:tamano` (arranque 86,4 KB gzip; el lector, 70 KB a demanda), 54 E2E, `npm audit`
+(0), `docs:validar` y `docs:enlaces` (203 enlaces), todo en verde. `curl -I` contra la
+build servida: la CSP y las cabeceras llegan también al trozo del lector. Probado además
+con 14 Markdown reales (los de `docs/` y README de paquetes): sin errores de consola,
+violaciones de CSP, peticiones externas, `img` ni `href` fuera de la política. Capturas
+revisadas a 1280 y 390 px de ancho.
+
+**Para quien usa BPDF** (anuncio, CLAUDE.md §8): los Markdown ya se leen, con índice,
+código resaltado que se puede copiar y enlaces que se abren en otra pestaña; el HTML que
+traiga un Markdown se ve como texto y sus imágenes todavía no se muestran.
+
+---
+
 ### Iteración 7 — *2026-09-30* — Fase 5: visor PDF funcional
 
 Primera versión que **lee** un PDF: visor propio sobre las APIs núcleo de pdf.js (D17)

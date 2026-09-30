@@ -164,7 +164,8 @@ Cambios respecto al diseño de la Fase 0, y por qué:
 - **Id con un contador**, no `crypto.randomUUID()`: solo tiene que ser único y no
   derivar del nombre, y `randomUUID` no existe fuera de un contexto seguro.
 - **Sin `resources` ni `capabilities`**: las añaden las fases que los usan (imágenes de
-  Markdown, Fase 7; guardar, Fase 9). No se diseñan campos sin uso.
+  Markdown, aplazadas en la Fase 7; guardar, Fase 9). El visor de Markdown (Fase 7) usa
+  solo `text`. No se diseñan campos sin uso.
 
 Reglas:
 
@@ -327,19 +328,27 @@ Por defecto **no interpreta HTML crudo** y filtra URLs con `defaultUrlTransform`
 | CommonMark + render | Sí | `react-markdown` 10 | Bajo (sin HTML crudo) | pequeño | 7 |
 | GFM: tablas, tachado, listas de tareas, autolinks, notas al pie | Sí | `remark-gfm` 4 | Bajo | pequeño | 7 |
 | Bloques de código + copiar | No | Componente propio `CodeBlock` + `navigator.clipboard` | Nulo | — | 7 |
-| Resaltado de sintaxis | Sí | `rehype-highlight` 7 (lowlight/highlight.js, subconjunto `common`) — produce hast, no HTML | Bajo | medio (~37 lenguajes) | 7 |
+| Resaltado de sintaxis | Sí | `lowlight` 3 + `highlight.js` 11 con **9 gramáticas** registradas a mano, directamente en `BloqueCodigo` (sin `rehype-highlight`, que arrastra el subconjunto `common`) — produce hast, no HTML | Bajo | 70 KB gzip todo el visor, a demanda | ✅ 7 |
 | Enlaces | No | Componente `Link` + `url-policy.ts` propios | Medio (protocolos) | — | 7 |
-| Índice / TOC | No (o `github-slugger`, 16 KB) | Recorrido propio de los encabezados del árbol; ids con prefijo `md-` | Bajo (DOM clobbering: prefijo) | — | 7 |
-| Imágenes locales | No | Componente `Image` que resuelve contra `resources` → `blob:` | Medio (SVG, rutas) | — | 7 |
+| Índice / TOC | No | Ids propios al estilo de GitHub con prefijo `md-` (plugin de remark); el índice (h1–h6) se lee de los encabezados ya pintados | Bajo (DOM clobbering: prefijo) | — | ✅ 7 |
+| Imágenes locales | No | Componente `Imagen` que resolverá contra `resources` → `blob:`. **Aplazadas en la Fase 7** (§7.2): hoy, marcador | Medio (SVG, rutas) | — | pendiente |
 | Matemáticas | Sí | `remark-math` 6 + `rehype-katex` 7 + `katex` 0.18 (fuentes servidas en local) | Medio (histórico de CVE; `trust: false`) | grande: carga diferida | 8 |
 | Mermaid | Sí | `mermaid` 12, carga diferida, `securityLevel: "strict"`, salida como `<img src="blob:…svg">` | Alto (histórico de XSS) | muy grande: carga diferida | 8 |
-| HTML embebido | — | **No se interpreta** en v1 (D6) | — | — | — |
+| HTML embebido | — | **No se interpreta** en v1 (D6): se muestra como texto; los comentarios se quitan | — | — | ✅ 7 |
 
 Descartados: `marked` + `DOMPurify` (genera HTML y obliga a `innerHTML`: más superficie),
 `shiki` (mejor resaltado pero bastante más peso y un motor de regex en WASM/JS; se
-reevalúa si el resaltado de `highlight.js` se queda corto), `rehype-raw` (solo si D6 cambia).
+reevalúa si el resaltado de `highlight.js` se queda corto; además exigiría `'wasm-unsafe-eval'`),
+`rehype-raw` (solo si D6 cambia) y `rehype-highlight` (Fase 7: ver la fila del resaltado).
+Diseño implementado: [ARCHITECTURE.md](ARCHITECTURE.md) §4 quinquies.
 
 ### 7.2 Imágenes
+
+**Estado (Fase 7): no se carga ninguna imagen.** Cada una es un marcador con su texto
+alternativo; una remota añade un enlace para abrirla fuera de BPDF. Las locales se
+aplazaron: cargarlas exige abrir el `.md` junto con sus imágenes (lo de abajo), un cambio
+en la apertura, en la plataforma y en la CSP (`img-src blob:`) que la Fase 7 dejó fuera
+(TAREAS). El diseño sigue siendo este:
 
 - **Locales en web:** un fichero suelto no da acceso a sus hermanos. Se resuelven si el
   usuario **suelta o elige varios ficheros** (el `.md` y sus imágenes) o una carpeta
@@ -550,7 +559,7 @@ terceros sin licencia clara.
 
 ## 14. Decisiones
 
-### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3; D17 y D18 al empezar la Fase 5)
+### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3; D17 y D18 al empezar la Fase 5; D6 y D7 con la Fase 7)
 
 | ID | Decisión | Dónde se aplica |
 |---|---|---|
@@ -562,14 +571,14 @@ terceros sin licencia clara.
 | **D16** | **Un documento abierto a la vez**: sin pestañas, varios documentos, historial, recientes ni gestor de documentos. La arquitectura no lo impide más adelante | Fase 3: `DocumentProvider` guarda uno; abrir otro lo sustituye ([§4.2](#42-modelo-de-documento)) |
 | **D17** | **Visor PDF propio** sobre la API núcleo de pdf.js, sin `PDFViewer` ni `pdfjs-dist/web/pdf_viewer` (confirmada al empezar la Fase 5) | Fase 5: `src/pdf/visor/`, `src/app/pdf/` ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quater) |
 | **D18** | Build **`legacy`** de pdf.js en web (confirmada al empezar la Fase 5) | Fase 5: `engine.ts` y el worker copiado; revisable si solo se publica Electron ([STACK.md](STACK.md)) |
+| **D6** | HTML embebido en Markdown **no se interpreta** en v1: se **muestra como texto** (los comentarios `<!-- -->` se quitan). Confirmada con el encargo de la Fase 7, que pedía «contenido seguro o tratado como texto»; «mostrarlo como texto» en vez de «ignorarlo» está pendiente de visto bueno (TAREAS) | Fase 7: `src/markdown/pipeline.ts` |
+| **D7** | Imágenes remotas en Markdown **bloqueadas** en v1: marcador y enlace para abrirla fuera (confirmada con el encargo de la Fase 7) | Fase 7: `components/Imagen.tsx`; CSP `img-src 'self'` |
 
 ### 14.1 Pendientes de confirmación (usuario)
 
 | ID | Decisión | Recomendación | Afecta a |
 |---|---|---|---|
 | **D5** | Hosting web y dominio | Hosting estático que permita cabeceras (Vercel o Cloudflare Pages). GitHub Pages **no** permite cabeceras (CSP solo por `<meta>`, sin `frame-ancestors`) | Fases 12 y 15 |
-| **D6** | HTML embebido en Markdown | **No interpretarlo** en v1 (se ignora) | Fase 7 |
-| **D7** | Imágenes remotas en Markdown | **Bloqueadas** en v1 | Fases 7 y 12 (CSP) |
 | **D8** | Recordar página y zoom por documento | **Activado**, con huella (no nombre), máx. 50 y botón de olvidar | Fase 10 |
 | **D9** | Editor de Markdown | **CodeMirror 6** (frente a `<textarea>`) | Fase 9 |
 | **D10** | Tema claro de interfaz | **No en v1** (solo «página original» en PDF) | Fase 11 |

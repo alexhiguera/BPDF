@@ -1,6 +1,6 @@
 # Estructura del repositorio
 
-Estado tras la Fase 5 (*2026-09-30*). Cada fase actualiza este árbol con lo que crea; lo
+Estado tras la Fase 7 (*2026-09-30*). Cada fase actualiza este árbol con lo que crea; lo
 que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas vacías).
 
 ```text
@@ -9,15 +9,14 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 ├── LICENSE                   Apache-2.0
 ├── index.html                entrada de Vite; sin scripts en línea
 ├── vite.config.ts            build estática, workers como módulos ES, cabeceras de `preview`, plugin de BPDF
-├── playwright.bench.config.ts  benchmark del visor PDF (`npm run bench:pdf`, fuera de CI)
+├── playwright.bench.config.ts  benchmarks de los visores (`npm run bench:pdf` · `bench:markdown`, fuera de CI)
 ├── src/
 │   ├── main.tsx              arranque: crea la plataforma y monta <App/> en el ErrorBoundary
 │   ├── app/                  la aplicación: shell y vistas
 │   │   ├── App.tsx           proveedor del documento, enlace de salto, cabecera, <main>, Ctrl/Cmd+O;
-│   │   │                     monta el visor PDF (a demanda) o el resumen provisional (Markdown)
+│   │   │                     monta el visor del documento abierto (PDF o Markdown, a demanda)
 │   │   ├── DropZone.tsx      zona de soltar a pantalla completa (envuelve la app)
 │   │   ├── EmptyState.tsx    vista sin documento: «Abrir archivo», atajo, privacidad
-│   │   ├── DocumentSummary.tsx  vista PROVISIONAL de un Markdown abierto (la F7 la sustituye)
 │   │   ├── pdf/              interfaz del visor PDF (F5), cargada a demanda
 │   │   │   ├── VisorPdf.tsx  carga del PDF, estados cargando/error y ciclo de vida
 │   │   │   ├── Visor.tsx     área de lectura: disposición, desplazamiento, teclado, búsqueda
@@ -35,6 +34,7 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   ├── i18n/messages.ts      TODOS los textos visibles (D2)
 │   ├── styles/globals.css    Tailwind 4 + tokens de diseño
 │   ├── styles/visor-pdf.css  capa de texto de pdf.js (adaptada), enlaces y resaltado; con el visor
+│   ├── styles/markdown.css   estilos del CONTENIDO de un Markdown (todo bajo .md-contenido); con el visor
 │   ├── documents/            el documento abierto, sin UI ni plataforma
 │   │   ├── types.ts          OpenedDocument (PDF: Blob · Markdown: texto)
 │   │   ├── detect.ts         extensión, firma %PDF-, UTF-8 estricto, nombre saneado
@@ -56,7 +56,15 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   │                     transformadores) · trabajador.ts (worker) · transformador-worker.ts
 │   │   └── visor/            disposicion.ts · busqueda.ts · enlaces.ts (puros) · documento.ts ·
 │   │                         superficie.ts · capas.ts · controlador.ts (ARCHITECTURE §4 quater)
-│   ├── markdown/  editor/    llegan en F7–F9
+│   ├── markdown/             el lector de Markdown (F7), cargado a demanda (ARCHITECTURE §4 quinquies)
+│   │   ├── MarkdownView.tsx  la vista: barra, índice, <article>, aviso de documento grande
+│   │   ├── pipeline.ts       plugins, lista blanca de elementos, urlTransform (todo lo de seguridad)
+│   │   ├── url-policy.ts     clasificación de enlaces e imágenes (pura)
+│   │   ├── toc.ts            ids md-… de los encabezados y lectura del índice
+│   │   ├── resaltado.ts      lowlight con 9 gramáticas → React con lista blanca
+│   │   └── components/       Enlace · Imagen · BloqueCodigo · Indice · elementos (encabezados,
+│   │                         tabla, casilla) · acciones.ts (contexto visor ↔ elementos)
+│   ├── editor/               llega en F9
 │   └── preferences/          llega en F10
 ├── electron/                 llega en F14 (proceso main y preload; fuera de src/)
 ├── tests/
@@ -67,8 +75,9 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   ├── _fixtures/            proyecto ficticio autocontenido para probar validadores
 │   └── public-docs.test.ts   el validador de public_docs
 ├── e2e/                      Playwright contra la build de producción
-│   ├── specs/                app.spec.ts (base) · abrir.spec.ts (apertura) · visor-pdf.spec.ts (visor PDF)
-│   ├── bench/                benchmark del visor PDF (no es un test; `npm run bench:pdf`)
+│   ├── specs/                app.spec.ts (base) · abrir.spec.ts (apertura) · visor-pdf.spec.ts (visor PDF) ·
+│   │                         markdown.spec.ts (visor Markdown)
+│   ├── bench/                benchmarks de los visores (no son tests; `npm run bench:pdf` · `bench:markdown`)
 │   └── vigilancia.ts         consola, CSP y red vigiladas en cada carga
 ├── scripts/                  herramientas (.mjs, sin dependencias extra)
 │   ├── validar-public-docs.mjs · verificar-enlaces-docs.mjs · verificar-overrides.mjs

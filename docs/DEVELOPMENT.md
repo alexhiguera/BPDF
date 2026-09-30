@@ -68,6 +68,7 @@ protegido, sin texto y CJK).
 | `test` · `test:run` · `test:coverage` | Vitest (unitarios, componentes, a11y) |
 | `test:e2e` · `test:e2e:ui` | Playwright contra la build de producción (`vite preview`, puerto 3100) |
 | `bench:pdf` | Benchmark del visor PDF: render y modo oscuro por página con y sin worker, a DPR 1 y 2 y a varios zooms, y un documento de 300 páginas (apertura, recorrido, lienzos, memoria). Imprime tablas; no es un test y no corre en CI |
+| `bench:markdown` | Benchmark del visor Markdown: tiempo hasta ver documentos generados (1 KB, 100 KB, 1 MB, muchos encabezados, muchos bloques de código, muchas listas). Imprime una tabla; no es un test y no corre en CI |
 | `docs:validar` | Valida `public_docs/` contra el contrato y la identidad contra `project.ts` |
 | `docs:enlaces` | Enlaces rotos en `docs/`, `README.md` y `CLAUDE.md` |
 | `deps:overrides` | ¿Siguen haciendo falta los `overrides`? (hoy no hay ninguno) |
@@ -98,12 +99,19 @@ npm run test:e2e      # build de producción + Playwright (Chromium)
   `e2e/specs/visor-pdf.spec.ts`. El modo oscuro no compara capturas enteras: muestrea
   píxeles en el interior de superficies lisas de posición conocida (la geometría la exporta
   el generador del fixture).
+- **Visor Markdown**: la política de URLs, los ids y el resaltado en `tests/unit/markdown/`
+  (puros); la vista con jsdom y jest-axe en `tests/components/markdown/`, incluido el
+  **corpus de XSS** (`xss.test.tsx`: un caso por fichero de `tests/fixtures/markdown/xss/`;
+  un caso nuevo es un fichero nuevo, sin tocar el test); y el lector real, con la CSP y el
+  portapapeles de Chromium, en `e2e/specs/markdown.spec.ts`. El corpus lo genera el
+  script que se cita en `tests/fixtures/README.md`, porque lleva tabuladores y controles.
 - `tests/helpers/documentos.ts`: ficheros de prueba y una **plataforma en memoria** que
   sustituye el selector del sistema por una cola de respuestas y usa la validación real.
   Los componentes que abren documentos se prueban con ella (`<App platform={…} />`).
 - **Probar a mano la apertura:** `npm run build && npm run preview` y abre, arrastra o
-  pulsa `Ctrl/Cmd+O`. Un PDF se abre en el visor; un Markdown, en la vista provisional
-  (nombre, tipo y tamaño) hasta la Fase 7.
+  pulsa `Ctrl/Cmd+O`. Un PDF se abre en el visor PDF y un Markdown en el lector de
+  Markdown. Para probar el lector, los fixtures de `tests/fixtures/markdown/`
+  (`basico.md`, `gfm.md`, `codigo.md`, `indice.md`, `seguridad.md` y el corpus `xss/`).
 - Hay guardarraíles que no prueban una función sino una regla: contraste de los tokens
   (`tokens.test.ts`), invariantes de la CSP y prohibición de `innerHTML`
   (`seguridad.test.ts`), y textos centralizados (`textos.test.ts`).

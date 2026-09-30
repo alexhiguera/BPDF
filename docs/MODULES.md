@@ -16,10 +16,10 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 | Documentación interna y plan | ✅ | `docs/` |
 | Apertura de archivos (selector, `Ctrl/Cmd+O`, arrastre, validación) | ✅ F3 | `src/documents/`, `src/app/DropZone.tsx`, `src/app/DocumentErrorAlert.tsx` |
 | Capa de plataforma (web) | ✅ F3 (Electron en F14) | `src/platform/` |
-| Vista del documento abierto | 🚧 F3: nombre, tipo y tamaño; la sustituyen los visores (F5, F7) | `src/app/DocumentSummary.tsx` |
 | Preferencias | ⬜ F10 | |
-| Visor PDF | ⬜ F4–F6 | |
-| Markdown y editor | ⬜ F7–F9 | |
+| Visor PDF | ✅ F4–F5 (pantalla completa y búsqueda avanzada en F6) | `src/pdf/`, `src/app/pdf/` |
+| Lector de Markdown | ✅ F7 (imágenes locales aplazadas; KaTeX y Mermaid en F8) | `src/markdown/`, `src/styles/markdown.css` |
+| Editor de Markdown | ⬜ F9 | |
 | Escritorio (Electron) | ⬜ F14 | |
 
 ## Módulos de la plantilla

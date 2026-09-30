@@ -55,7 +55,7 @@ F0 ─► F1 ─► F2 ─┬─► F3 ─┬─► F5 ─► F6 ─────
 | 16 | Open source y documentación final | Igual; la licencia ya existe desde F1 |
 
 Paralelizables (si hay dos sesiones a la vez): **F7–F9** con **F5–F6**. Todas tocan
-`src/app/App.tsx` en un punto (montar el visor en lugar de `DocumentSummary`): conflicto
+`src/app/App.tsx` en un punto (montar el visor en lugar de `DocumentSummary`, ya hecho en F5 y F7): conflicto
 pequeño y conocido.
 
 ---
@@ -304,74 +304,54 @@ anotaciones.
 
 ---
 
-## Fase 7 — Markdown: lectura
+## Fase 7 — Markdown: lectura ✅
 
-**Objetivo.** Mostrar Markdown (GFM completo) de forma segura y agradable: tablas,
-código con resaltado y copiar, enlaces, índice e imágenes locales.
+Cerrada el 2026-09-30. Bitácora: iteración 8. Diseño completo (pipeline, URLs, HTML,
+imágenes, índice, código, estilos, ciclo de vida, rendimiento, límites):
+[ARCHITECTURE.md](ARCHITECTURE.md) §4 quinquies. El encargo la llamó «Fase 6»; es esta.
 
-**Dependencias.** F3. **D6** (HTML embebido) y **D7** (imágenes remotas) confirmadas.
+**Hecho.** Lector de Markdown GFM en [`src/markdown/`](../src/markdown/), cargado a
+demanda: `react-markdown` + `remark-gfm` (encabezados, párrafos, énfasis, tachado, listas
+anidadas, citas, enlaces, código en línea y en bloque, tablas con alineación, listas de
+tareas de solo lectura, autoenlaces, notas al pie, separadores); HTML crudo como texto
+(D6); política de URLs propia con dos capas (`url-policy.ts`); enlaces externos por
+`Platform.openExternal` y anclas con foco; imágenes como marcadores (remotas bloqueadas,
+D7); resaltado con lowlight (9 gramáticas) y botón de copiar; índice h1–h6 con ids
+`md-…` deterministas; estilos propios con los tokens; aviso «Preparando…» en documentos
+grandes. `DocumentSummary` (la vista provisional de la Fase 3) está borrada.
 
-**Decisiones ya tomadas.** `react-markdown` + `remark-gfm` + `rehype-highlight`
-(subconjunto `common`), sin `rehype-raw`; componentes propios para `a`, `img`,
-`code`/`pre` y encabezados; ids con prefijo `md-`; `url-policy.ts` propio; sin
-`innerHTML` (PLAN §7, SEGURIDAD §3).
+**Desviaciones respecto a la especificación anterior:**
 
-**Alcance**
+- **Imágenes locales aplazadas** (lo permitía el encargo). En web, un `File` suelto no
+  da acceso a sus hermanos: abrir el `.md` con sus imágenes (varios ficheros o una
+  carpeta, `resources`, normalización de rutas, `blob:`, `img-src blob:`) es un cambio en
+  la apertura, la plataforma y la CSP. Hoy **no se carga ninguna imagen**: cada una es un
+  marcador. Pasa a TAREAS como tarea propia, con el diseño de esta sección intacto
+  (PLAN §7.2, SEGURIDAD §3.1).
+- **Sin `rehype-highlight`**: `lowlight` directamente con 9 gramáticas. El plugin arrastra
+  el subconjunto `common` (~37) y complica copiar el texto original.
+- **Índice h1–h6 (no h1–h3), sin resaltar la sección visible**: el encargo pedía h1–h6 y
+  un panel sencillo; resaltar exigiría un `IntersectionObserver` que no aporta lo bastante.
+- **HTML crudo como texto, no «ignorado»** (D6 decía «se ignora»): el encargo aceptaba
+  las dos y verlo es más honesto; los comentarios sí se quitan. Pendiente de visto bueno.
+- **Tamaño de letra fijo** (17 px): la preferencia llega con la Fase 10.
+- **1 MB no se muestra en < 1 s**: medido, 3,3–7,3 s (ARCHITECTURE §4 quinquies). Como
+  preveía el criterio, queda anotado para la F13 (worker o render incremental). Además,
+  **muchas listas cortas son cuadráticas** en el parser (`mdast-util-from-markdown`):
+  pendiente en TAREAS.
 
-- `src/markdown/pipeline.ts`: configuración de plugins; exporta la lista para que F8 la
-  amplíe.
-- **Recursos locales** (aplazados desde la Fase 3): abrir un `.md` con sus imágenes
-  hermanas eligiendo o soltando **varios ficheros** (y carpetas con
-  `webkitGetAsEntry`), sin dejar de ser un documento (D16): el `.md` es el documento y
-  el resto, su mapa `resources` (ruta relativa normalizada → `File`). Normalización con
-  tests: `./img/a.png`, `img/../a.png`, `../a.png` rechazado, `/abs.png` rechazado,
-  `C:\x.png` rechazado. Amplía `Platform` (`pickDocument`/`openDroppedFile` con varios
-  ficheros) y sustituye el error `multiple` para ese caso.
-- `src/markdown/url-policy.ts`: `sanitizeHref(url)` y `resolveImage(url, resources)`
-  (funciones puras; decodifican entidades, quitan espacios y controles, comparan
-  protocolos en minúsculas).
-- `src/markdown/MarkdownView.tsx` con componentes en `src/markdown/components/`:
-  `Link` (externos con `noopener noreferrer` y `platform.openExternal`; anclas internas
-  con desplazamiento; relativos a `.md` sin navegación y con aviso), `Image` (local →
-  `blob:` desde `resources` con `URL.createObjectURL` y revocación al desmontar; remota →
-  texto alternativo + enlace; SVG solo como `<img>`), `CodeBlock` (resaltado + botón
-  copiar con confirmación en `aria-live`), `Heading` (id `md-…` y enlace ancla).
-- `src/markdown/toc.ts` + `Toc.tsx`: índice desde los encabezados (h1–h3), panel lateral,
-  resalta la sección visible.
-- Estilos de lectura: hoja `--rgb-page`, ancho ~72ch, tamaño de letra de la preferencia,
-  tablas con desplazamiento horizontal, tema de highlight.js hecho con tokens `--code-*`.
+**Tests.** Unitarios: `url-policy`, `toc`, `resaltado`. Componentes con jest-axe:
+`MarkdownView` (Markdown básico, GFM, mal formado, HTML, enlaces, imágenes, índice,
+código y copiar, ciclo de vida, documento grande) y el **corpus de XSS** (22 casos +
+`seguridad.md`). E2E (`markdown.spec.ts`, 10): contenido, GFM, código y copiar con el
+portapapeles real, índice, enlace externo, Markdown malicioso, PDF ↔ Markdown, ventana
+estrecha, tema y 1 MB; todos con cero errores de consola, cero violaciones de CSP y
+ninguna petición externa. Benchmark: `npm run bench:markdown`. Probado además con 14
+Markdown reales (los de `docs/` y README de paquetes con HTML, insignias remotas y tablas).
 
-**Fuera de alcance.** Matemáticas y Mermaid (F8): sus bloques se muestran como código;
-edición (F9).
-
-**Archivos esperados.** `src/markdown/*`, `src/markdown/components/*`,
-`src/styles/markdown.css`, `src/app/App.tsx`, `src/documents/*` (`resources`),
-`src/platform/*`, `src/i18n/messages.ts`, `package.json`,
-`tests/unit/markdown/*`, `tests/components/markdown/*`,
-`tests/fixtures/markdown/` (incluido `xss/`), `e2e/specs/markdown.spec.ts`.
-
-**Seguridad.** SEGURIDAD §3 entera (salvo KaTeX/Mermaid). El **corpus de XSS** de §3.3 es
-obligatorio y debe fallar si alguien añade `rehype-raw` o cambia el `urlTransform`.
-
-**Tests**
-
-- Unitarios: `url-policy` (todos los casos de §3.3), `toc` (slugs, duplicados, prefijo),
-  resolución de imágenes con `resources`.
-- Componentes + jest-axe: `MarkdownView` con un documento de muestra que incluye todo
-  GFM; **corpus de XSS** (cada fichero: sin nodos ni atributos prohibidos); `CodeBlock`
-  copia (portapapeles simulado).
-- E2E: abrir `.md` con imagen hermana (dos ficheros por `setInputFiles`) → la imagen se
-  ve; el índice navega; copiar un bloque; enlace externo abre pestaña nueva; **cero
-  violaciones de CSP** y **cero peticiones de red** tras cargar la app (Playwright
-  `page.on("request")`).
-
-**Criterios de aceptación.** Definición de hecho común; el corpus de XSS pasa; un `.md` de
-1 MB se muestra en < 1 s (medido; si no, anotarlo para F13).
-
-**Documentación.** PLAN §7, SEGURIDAD §3 (implementado), STACK (cada dependencia con su
-motivo), bitácora, TAREAS.
-
-**Resultado esperado.** Lector de Markdown GFM completo y seguro.
+**Pendiente de la fase**: nada bloqueante. Lo que sale (imágenes locales, rendimiento,
+listas cuadráticas, visto bueno de D6 como texto) está en
+[TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md).
 
 ---
 
@@ -395,6 +375,19 @@ aislados.
   tokens; `mermaid.render()` → cadena SVG → `Blob` `image/svg+xml` → `<img>` con
   `alt`/`aria-label`; error de sintaxis → código fuente con aviso. Render solo al entrar
   en pantalla.
+
+**Lo que dejó la Fase 7 y cambia esta** (ARCHITECTURE §4 quinquies):
+
+- El pipeline tiene **lista blanca de elementos** (`ELEMENTOS_PERMITIDOS`): KaTeX emite
+  `span`, `math`, `semantics`, `mrow`… y hay que añadir exactamente los que use, o se
+  descartarán en silencio. El corpus de XSS (`xss.test.tsx`) prohíbe hoy `math` y
+  `svg`: ajustarlo a lo que se permita, sin abrir más.
+- `Imagen` no crea ningún `<img>` todavía: el `<img src="blob:…">` de Mermaid sería el
+  primero, con `img-src blob:` en la CSP (SEGURIDAD §2.1) y revocación al desmontar.
+- Los bloques `math`/`mermaid` hoy pasan por `BloqueCodigo` (sin resaltar: no son
+  lenguajes registrados).
+- Rendimiento: el pipeline ya cuesta segundos por MB; KaTeX y Mermaid deben medirse con
+  `npm run bench:markdown`.
 
 **Fuera de alcance.** Otros diagramas (PlantUML, etc.), edición visual.
 

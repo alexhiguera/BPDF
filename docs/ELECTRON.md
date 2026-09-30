@@ -102,6 +102,17 @@ propia. Lo que la Fase 14 tiene que cuidar:
   desaparecer el texto CJK.
 - **Enlaces externos** por `openExternal` (arriba). Los internos no salen del renderer.
 
+### 3.2 El lector de Markdown en Electron (Fase 7)
+
+También es la misma build. Sus enlaces externos ya pasan por `Platform.openExternal`
+(el `<a>` lleva `target="_blank"` y `rel="noopener noreferrer"` solo como red): en
+Electron llegarán al main sin cambiar el visor, y `setWindowOpenHandler` denegará
+cualquier otro intento de abrir ventana. Un enlace a otro fichero (`otro.md`) hoy no se
+sigue; abrirlo en BPDF, dentro de la raíz del documento, es posterior a v1. Las imágenes
+locales llegarán por `bpdf-res://` (§5); la Fase 7 aún no carga ninguna. El portapapeles
+(copiar código) necesita el permiso de escritura que `setPermissionRequestHandler` ya
+prevé.
+
 ## 4. API del preload (`window.bpdf`)
 
 Solo esto, y cada función con un único propósito:

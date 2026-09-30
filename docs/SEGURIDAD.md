@@ -1,8 +1,8 @@
 # BPDF — Seguridad y privacidad (diseño)
 
 > **Estado: diseño objetivo** (Fase 0, *2026-09-29*); implementados los controles de las
-> Fases 2 (CSP, cabeceras, DOM), 3 (apertura de ficheros, §2.6), 4 (motor de PDF) y 5
-> (visor PDF, §4; *2026-09-30*). Cada control indica la
+> Fases 2 (CSP, cabeceras, DOM), 3 (apertura de ficheros, §2.6), 4 (motor de PDF), 5
+> (visor PDF, §4) y 7 (Markdown, §3; *2026-09-30*). Cada control indica la
 > fase que lo implementa ([FASES.md](FASES.md)). Cuando un control exista, esa fase lo marca aquí como
 > implementado y enlaza su test. Las auditorías realizadas van a
 > [auditoria.md](auditoria.md).
@@ -109,7 +109,7 @@ aprobación antes de añadirlo.
 
 | Directiva | Fase | Motivo |
 |---|---|---|
-| `img-src blob:` | 7–8 | Imágenes locales de Markdown y diagramas Mermaid convertidos en `<img>` |
+| `img-src blob:` | 8 y la de las imágenes locales de Markdown | Imágenes locales de Markdown y diagramas Mermaid convertidos en `<img>`. **La Fase 7 no la añadió**: aún no carga ninguna imagen (§3.1) |
 | `img-src data:` | 8, solo si KaTeX lo exige | Se prueba antes de añadirlo |
 
 **Nunca** `https:` ni otro origen en ningún `*-src`: ningún documento puede provocar una
@@ -129,8 +129,11 @@ antiguos), `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy: same-ori
 `Cross-Origin-Resource-Policy: same-origin`, HSTS sin `preload` (decisión del dominio) y
 `Permissions-Policy` negando `camera`, `microphone`, `geolocation`, `payment`,
 `usb` y `display-capture`. Solo se listan características que Chrome reconoce: una
-desconocida produce un error en consola. `fullscreen` y `clipboard-write` se declaran
-en las fases que los usen (6 y 7).
+desconocida produce un error en consola. `fullscreen` se declarará en la fase que lo use
+(6). **`clipboard-write` (Fase 7, copiar código) no necesitó cambio**: su valor por defecto
+ya es el propio origen, y la escritura solo ocurre tras un clic. No se niega
+`clipboard-read` (BPDF nunca lee el portapapeles) para no tocar las cabeceras sin
+necesidad; se revisa en la Fase 12.
 
 ### 2.3 DOM e inyección
 
@@ -190,7 +193,7 @@ del documento.
 | Nombre que finge otra extensión con marcas bidireccionales (`U+202E`) o lleva controles | `displayName` los quita y la extensión se valida sobre el nombre resultante, el mismo que se ve | `detect.test.ts`, `read.test.ts` |
 | Rutas de disco en el estado | El documento guarda un nombre sin ruta, nunca una ruta ni un `FileSystemHandle` (en web el navegador no las da; en Electron, el mapa `id → ruta` vive solo en el main) | `detect.test.ts` («quita cualquier ruta») |
 | Agotamiento de memoria | Límites por tipo con su justificación en `src/documents/limits.ts` (PDF 512 MiB, Markdown 20 MiB), comprobados **antes** de leer; un PDF solo se lee en sus primeros 1024 bytes; Markdown se queda solo con el texto | `read.test.ts` (justo en el límite y 1 byte por encima; «solo lee la cabecera»); prueba manual con un PDF disperso de 513 MiB (rechazo en ~60 ms sin leerlo) |
-| Contenido que se ejecute al abrir | Nada se interpreta: un Markdown con `<script>`, `<img onerror>`, `<iframe>` remoto y enlaces `javascript:` es solo texto en memoria | `read.test.ts`, `App.test.tsx`, `abrir.spec.ts` (`html-y-script.md`: nada se ejecuta ni se pide a la red) |
+| Contenido que se ejecute al abrir | Nada se interpreta: un Markdown con `<script>`, `<img onerror>`, `<iframe>` remoto y enlaces `javascript:` es solo texto en memoria (desde la Fase 7 se renderiza, con los controles de §3) | `read.test.ts`, `App.test.tsx`, `markdown.spec.ts` (`seguridad.md`: nada se ejecuta ni se pide a la red) |
 | Peticiones de red o URL que sobrevivan al documento | Lectura con `Blob.arrayBuffer()`; sin `fetch`, subida ni URL de objeto (`blob:`), así que no hay nada que revocar. Los visores futuros que las creen (imágenes de Markdown, Fase 7) las revocan al desmontarse, y se montan con `key={document.id}` | `tests/unit/platform/web.test.ts`, `tests/components/DocumentProvider.test.tsx` (ni `fetch` ni `createObjectURL`); `abrir.spec.ts` (ninguna petición fuera del origen) |
 | Soltar un fichero fuera de la app lo abre el navegador en la pestaña | La zona de soltar cubre la ventana entera y cancela el comportamiento por defecto solo en arrastres de ficheros | `tests/components/DropZone.test.tsx` |
 | Resultado tardío de una apertura anterior | Solo aplica su resultado la última apertura (turnos); cerrar descarta la que esté en curso | `DocumentProvider.test.tsx` |
@@ -204,50 +207,65 @@ La CSP no cambia en esta fase: leer ficheros locales no necesita ninguna directi
 
 | Vector | Control | Fase |
 |---|---|---|
-| `<script>`, `<iframe>`, `<img onerror>`, `<svg onload>`, cualquier HTML crudo | `react-markdown` **no interpreta HTML** (sin `rehype-raw`, D6). El HTML se ignora | 7 |
-| Atributos de evento, `style` inyectado | No hay HTML crudo; los componentes propios solo emiten atributos conocidos | 7 |
-| `javascript:`, `vbscript:`, `data:text/html`, `file:`, variantes con mayúsculas, entidades (`jav&#x61;script:`), espacios y caracteres de control | `url-policy.ts` propio sobre la URL ya decodificada: enlaces solo `http:`, `https:`, `mailto:` y anclas `#…`; imágenes solo rutas relativas resueltas contra `resources` → `blob:`. Todo lo demás se renderiza como texto | 7 |
-| Imágenes remotas (píxeles espía, fuga de IP) | Bloqueadas (D7) por `url-policy.ts` **y** por la CSP | 7, 12 |
-| SVG con scripts | Solo como `<img>` (el navegador no ejecuta scripts ni carga recursos en SVG como imagen) | 7 |
-| Rutas relativas con `..` | Normalización; nunca fuera del conjunto de ficheros entregado (web) ni de la raíz del documento (Electron) | 7, 14 |
-| DOM clobbering con ids | Prefijo `md-` | 7 |
+| `<script>`, `<iframe>`, `<img onerror>`, `<svg onload>`, `<style>`, `<form>`, cualquier HTML crudo | `react-markdown` **no interpreta HTML** (sin `rehype-raw`, D6): cada nodo HTML se pinta como su **texto literal**; los comentarios `<!-- -->` se quitan. Además, **lista blanca de elementos** (`ELEMENTOS_PERMITIDOS` en `pipeline.ts`): lo que no produce Markdown + GFM se descarta | ✅ 7 (corpus §3.3; `xss.test.tsx` también exige que no haya `rehypePlugins` y que `urlTransform` sea el propio) |
+| Atributos de evento, `style` inyectado | No hay HTML crudo; los componentes propios solo emiten atributos conocidos. El único `style` es la alineación de celdas de GFM, por CSSOM | ✅ 7 (el corpus lo comprueba atributo a atributo) |
+| `javascript:`, `vbscript:`, `data:`, `file:`, `blob:`, mayúsculas, entidades (`jav&#x61;script:`), tabuladores, saltos, controles, `//host`, rutas absolutas, credenciales | [`url-policy.ts`](../src/markdown/url-policy.ts) propio sobre la URL ya decodificada por el parser, tras quitar lo que el navegador ignora: solo `http:`, `https:` y `mailto:` absolutas (política común de `url-externa.ts`) y anclas `#…` llegan a un `href`; todo lo demás se pinta como texto. Dos capas: `urlTransform` en el pipeline y los componentes | ✅ 7 (`tests/unit/markdown/url-policy.test.ts`, corpus, E2E) |
+| Imágenes remotas (píxeles espía, fuga de IP) | Bloqueadas (D7): **no se crea ningún `<img>`**; marcador con el texto alternativo y un enlace para abrirla fuera si se quiere. La CSP (`img-src 'self'`) es la segunda red | ✅ 7 (E2E: el píxel nunca se pide) · 12 |
+| Imágenes locales | **Aplazadas**: la Fase 7 no carga ninguna (marcador). Cuando se carguen: rutas normalizadas contra el conjunto de ficheros entregado → `blob:` revocada al desmontar | 7 (aplazado, TAREAS) |
+| SVG con scripts | Solo como `<img>` cuando se carguen imágenes; hoy ninguno llega al DOM | 7 (aplazado) |
+| Rutas relativas con `..` | Hoy no se sigue ninguna ruta relativa (enlace inerte, imagen como marcador). Al cargar imágenes: normalización, nunca fuera del conjunto entregado (web) ni de la raíz del documento (Electron) | 7 (aplazado), 14 |
+| DOM clobbering con ids | Prefijo `md-` en los encabezados y en las notas al pie (`clobberPrefix`); un ancla del documento solo busca ids con prefijo dentro del documento | ✅ 7 (`toc.test.ts`, corpus `encabezados-clobbering.md`) |
 | KaTeX: `\href`, `\url`, `\includegraphics`, `\htmlClass`/`\htmlData` | `trust: false` (por defecto), `strict: "warn"`, `maxSize` y `maxExpand` acotados (KaTeX ha tenido avisos de seguridad en 2024 por protocolos y expansiones sin límite). Versión exacta | 8 |
 | Mermaid: etiquetas HTML, `click` con `javascript:`, directivas `%%{init}%%` que cambian `securityLevel` | `securityLevel: "strict"`, `htmlLabels: false`, directivas de seguridad ignoradas (`secure`), y el SVG resultante **se muestra como `<img src="blob:…">`**: aunque Mermaid dejara pasar algo, en una imagen no se ejecuta | 8 |
-| Resaltado de sintaxis | `rehype-highlight` produce nodos hast (clases), sin HTML | 7 |
-| Denegación de servicio (anidamiento extremo, tablas enormes, fórmulas recursivas) | Límite de tamaño de fichero; `maxExpand` de KaTeX; `maxTextSize` de Mermaid; medir en Fase 13 | 7, 8, 13 |
+| Resaltado de sintaxis | `lowlight` produce un árbol hast; `resaltado.ts` lo convierte a React con lista blanca (`span` con clases `hljs-*` y texto). Sin `innerHTML`, 9 gramáticas, sin detección automática | ✅ 7 (`resaltado.test.ts`) |
+| Portapapeles | Solo escritura (`writeText`) tras un clic, del texto del documento; sin pedir permisos ni leer | ✅ 7 |
+| Denegación de servicio (anidamiento extremo, tablas enormes, fórmulas recursivas) | Límite de tamaño de fichero (20 MiB); recorridos propios iterativos (sin recursión que dependa del contenido); `maxExpand` de KaTeX y `maxTextSize` de Mermaid (F8). **Conocido (Fase 7): muchas listas cortas son cuadráticas** en `mdast-util-from-markdown`: un documento hecho a propósito bajo el límite puede bloquear la pestaña mucho tiempo (solo esa pestaña; nada sale del equipo). Medido en [ARCHITECTURE.md](ARCHITECTURE.md) §4 quinquies; pendiente en TAREAS | 7 (medido), 8, 13 |
 
-### 3.2 Enlaces
+### 3.2 Enlaces ✅ (Fase 7)
 
-- Externos: nueva pestaña con `noopener noreferrer`. En Electron: nunca navegan la
+- Externos: `target="_blank"` y `rel="noopener noreferrer"` como red, pero el clic se
+  intercepta y lo abre `Platform.openExternal`, que revalida la URL (web: pestaña nueva
+  sin `opener` ni `Referer`). El clic central se anula. En Electron: nunca navegan la
   ventana; el main los abre con `shell.openExternal` tras validar el protocolo
-  ([ELECTRON.md](ELECTRON.md) §4).
-- Anclas internas (`#seccion`): desplazamiento dentro de la hoja, resolviendo al id con
-  prefijo.
-- Relativos a otros `.md`: en web se muestran como enlace no navegable con aviso; en
-  Electron se podrán abrir en BPDF si están dentro de la raíz del documento (después de
-  v1).
+  ([ELECTRON.md](ELECTRON.md) §4). Tests: `MarkdownView.test.tsx`, `markdown.spec.ts`
+  (con `window.open` interceptado).
+- Anclas internas (`#seccion`): desplazamiento dentro de la hoja y foco en la sección,
+  resolviendo al id con prefijo; la URL de la app no cambia.
+- Relativos a otros ficheros: texto con aviso, sin `href`. En Electron se podrán abrir en
+  BPDF si están dentro de la raíz del documento (después de v1).
 
-### 3.3 Corpus de XSS (test obligatorio, Fase 7)
+### 3.3 Corpus de XSS ✅ (Fase 7)
 
-`tests/fixtures/markdown/xss/` con un caso por fichero y un test que renderiza cada uno y
-comprueba el DOM: sin `script`, `iframe`, `object`, `embed`, `svg` en línea, atributos
-`on*`, ni `href`/`src` fuera de lo permitido. Casos mínimos:
+`tests/fixtures/markdown/xss/` con un caso por fichero (22) y el documento hostil
+completo `seguridad.md`. `tests/components/markdown/xss.test.tsx` renderiza cada uno con
+el pipeline real y comprueba el DOM: sin `script`, `iframe`, `object`, `embed`, `style`,
+`link`, `meta`, `base`, `form`, `details`, `img` ni `svg` que no sea un icono de BPDF; sin
+atributos `on*`, `src`, `srcdoc`, `action`…; `href` solo `http(s)`, `mailto:` o `#md-…`;
+ids solo con prefijo; nada escribe en `window.__bpdfXss` ni llama a `alert`. Falla si la
+carpeta se queda casi vacía. `e2e/specs/markdown.spec.ts` abre `seguridad.md` en Chromium
+con la CSP real: nada se ejecuta, ningún diálogo, ninguna petición externa y pulsar cada
+enlace bloqueado no hace nada. Casos:
 
-- HTML crudo: `<script>`, `<img src=x onerror=…>`, `<svg onload=…>`, `<iframe>`,
-  `<a href="javascript:…">`, `<details open ontoggle=…>`.
-- Enlaces en línea cuyo destino es `javascript:alert(1)`, `JaVaScRiPt:…`,
-  `jav&#x61;script:…`, `java\tscript:…`, `data:text/html;base64,…`, `vbscript:…` o
-  `file:///etc/passwd`; autolink `<javascript:alert(1)>`; definición de referencia
-  `[x]: javascript:…`.
-- Imágenes cuyo destino es `javascript:…`, `https://tracker.example/p.gif` o
-  `../../x.png`; SVG local con `<script>`.
+- HTML crudo: `<script>`, `<img src=x onerror=…>`, `<svg onload=…>`, `<iframe>` (remoto
+  y `srcdoc`), `<object>`, `<embed>`, `<a href="javascript:…">`, `<details open ontoggle=…>`,
+  `<style>`, `<div style>`, `<link>`, `<base>`, `<meta http-equiv="refresh">`, `<form>`.
+- Enlaces cuyo destino es `javascript:alert(1)`, `JAVASCRIPT:…`, `JaVaScRiPt:…`,
+  `jav&#x61;script:…`, `&#106;avascript:…`, `javascript&#58;…`, `%6Aavascript:…`,
+  `java\tscript:…`, un control inicial, un espacio de no separación, `data:text/html…`,
+  `vbscript:…`, `file:///etc/passwd`, `ftp:`, `blob:`, `intent:`, credenciales en la URL,
+  `//host`, `/ruta`, una ruta UNC y `C:\…`; autolinks `<javascript:…>` y `<data:…>`;
+  definiciones de referencia `[x]: javascript:…`.
+- Imágenes cuyo destino es `javascript:…`, `data:image/svg+xml…`,
+  `https://tracker.example/p.gif` (también dentro de un enlace), `../../x.png`,
+  `/etc/x.png`, `C:\x.png` y un SVG local.
 
 (Los ficheros del corpus usan la sintaxis literal; aquí se describe sin ella porque
 `npm run docs:enlaces` trataría cada ejemplo como un enlace roto.)
 - KaTeX (Fase 8): `\href{javascript:alert(1)}{x}`, `\url{javascript:…}`, macro recursiva.
 - Mermaid (Fase 8): `click A "javascript:alert(1)"`, etiqueta con `<img onerror>`,
   `%%{init: {"securityLevel": "loose"}}%%`.
-- Encabezados: `# location`, `# __proto__` (ids con prefijo).
+- Encabezados: `# location`, `# __proto__`, `# contenido`, `# titulo-documento` (ids
+  con prefijo; ninguno coincide con un id de la app).
 
 ## 4. PDF
 

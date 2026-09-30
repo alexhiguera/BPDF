@@ -10,8 +10,6 @@ import { messages } from "@/i18n/messages";
 import { PdfNoLegibleError, PdfProtegidoError } from "@/pdf/engine";
 import { BYTES_PNG, fichero, PDF_VALIDO, PlataformaEnMemoria } from "../helpers/documentos";
 
-const t = messages.document;
-
 /**
  * pdf.js no corre en jsdom (sin worker ni lienzo): aquí se sustituye la carga y
  * se prueba lo que hace la app con cada resultado. Por defecto la apertura no
@@ -96,7 +94,7 @@ describe("App: abrir documentos", () => {
     montar(
       new PlataformaEnMemoria()
         .elegira(fichero("lento.pdf", PDF_VALIDO))
-        .elegira(fichero("otro.md", "# o")),
+        .elegira(fichero("otro.md", "texto o")),
     );
     await abrir();
     await screen.findByRole("heading", { level: 1, name: "lento.pdf" });
@@ -105,17 +103,17 @@ describe("App: abrir documentos", () => {
     await act(async () =>
       fireEvent.click(enCabecera.getByRole("button", { name: messages.open.button })),
     );
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("otro.md");
+    expect(await screen.findByRole("heading", { level: 1, name: "otro.md" })).toBeInTheDocument();
     expect(senal?.aborted).toBe(true);
   });
 
-  it("abre un Markdown sin mostrar ni interpretar su contenido", async () => {
-    const hostil = "# Título\n<script>window.__x = 1</script><img src=x onerror=alert(1)>";
+  it("abre un Markdown y lo muestra sin interpretar su HTML", async () => {
+    const hostil = "# Título\n\n<script>window.__x = 1</script><img src=x onerror=alert(1)>";
     const { container } = montar(new PlataformaEnMemoria().elegira(fichero("notas.md", hostil)));
     await abrir();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("notas.md");
-    expect(screen.getByText(t.kinds.markdown)).toBeInTheDocument();
-    expect(screen.queryByText(/Título/)).toBeNull();
+    expect(await screen.findByRole("heading", { level: 1, name: "notas.md" })).toHaveFocus();
+    expect(screen.getByRole("heading", { level: 1, name: "Título" })).toBeInTheDocument();
+    expect(screen.getByRole("main")).toHaveTextContent("<script>window.__x = 1</script>");
     expect(container.querySelector("script, img")).toBeNull();
   });
 
@@ -123,14 +121,16 @@ describe("App: abrir documentos", () => {
     montar(
       new PlataformaEnMemoria()
         .elegira(fichero("primero.pdf", PDF_VALIDO))
-        .elegira(fichero("segundo.md", "# 2")),
+        .elegira(fichero("segundo.md", "texto 2")),
     );
     await abrir();
     const enCabecera = within(screen.getByRole("banner"));
     await act(async () =>
       fireEvent.click(enCabecera.getByRole("button", { name: messages.open.button })),
     );
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("segundo.md");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "segundo.md" }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("primero.pdf")).toBeNull();
   });
 
@@ -152,9 +152,9 @@ describe("App: abrir documentos", () => {
   });
 
   it("cerrar el documento vuelve al estado vacío y deja el foco en el contenido", async () => {
-    montar(new PlataformaEnMemoria().elegira(fichero("a.md", "# a")));
+    montar(new PlataformaEnMemoria().elegira(fichero("a.md", "texto a")));
     await abrir();
-    fireEvent.click(screen.getByRole("button", { name: t.close }));
+    fireEvent.click(await screen.findByRole("button", { name: messages.markdown.close }));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(messages.emptyState.title);
     expect(screen.getByRole("main")).toHaveFocus();
   });
@@ -162,7 +162,7 @@ describe("App: abrir documentos", () => {
   it("un fichero rechazado muestra el aviso y no toca el documento abierto", async () => {
     montar(
       new PlataformaEnMemoria()
-        .elegira(fichero("bueno.md", "# a"))
+        .elegira(fichero("bueno.md", "texto a"))
         .elegira(fichero("falso.pdf", BYTES_PNG)),
     );
     await abrir();
@@ -170,18 +170,20 @@ describe("App: abrir documentos", () => {
       fireEvent.click(screen.getByRole("button", { name: messages.open.button })),
     );
     expect(screen.getByRole("alert")).toHaveTextContent(messages.documentError.notPdf);
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("bueno.md");
+    expect(await screen.findByRole("heading", { level: 1, name: "bueno.md" })).toBeInTheDocument();
   });
 
   it("abre un fichero soltado en cualquier parte de la ventana", async () => {
     montar();
-    const f = fichero("soltado.md", "# s");
+    const f = fichero("soltado.md", "texto s");
     await act(async () =>
       fireEvent.drop(screen.getByRole("banner"), {
         dataTransfer: { types: ["Files"], files: [f] },
       }),
     );
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("soltado.md");
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "soltado.md" }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -195,11 +197,12 @@ describe("App: nombres de fichero hostiles", () => {
   ];
 
   it.each(NOMBRES)("muestra «%s» como texto y nunca como HTML", async (nombre) => {
-    const contenido = nombre.endsWith(".pdf") ? PDF_VALIDO : "# x";
+    const contenido = nombre.endsWith(".pdf") ? PDF_VALIDO : "texto x";
     const { container } = montar(new PlataformaEnMemoria().elegira(fichero(nombre, contenido)));
     await abrir();
     expect((await screen.findByRole("heading", { level: 1 })).textContent).toBe(nombre.trim());
-    expect(container.querySelector("main img, main script, main svg")).toBeNull();
+    // Los únicos SVG permitidos son los iconos de BPDF (lucide).
+    expect(container.querySelector("main img, main script, main svg:not(.lucide)")).toBeNull();
   });
 
   it("también en el aviso de error", async () => {

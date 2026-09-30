@@ -42,6 +42,12 @@ const PARES: [string, string, number][] = [
   ["fg-subtle", "reading", 4.5],
   ["primary-fg", "primary", 4.5],
   ["border", "reading", 1.2],
+  // Markdown: enlaces sobre la hoja; código sobre el fondo de sus bloques.
+  ["link", "page", 4.5],
+  ["link", "elevated", 4.5],
+  ...["keyword", "string", "number", "comment", "function", "type", "tag", "attr"].map(
+    (c): [string, string, number] => [`code-${c}`, "app", 4.5],
+  ),
 ];
 
 describe("tokens de diseño", () => {

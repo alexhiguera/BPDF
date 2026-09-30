@@ -1,0 +1,348 @@
+/*
+ * Estilos del CONTENIDO de un Markdown (docs/ARCHITECTURE.md → visor Markdown).
+ * Se cargan con el visor, no en el arranque.
+ *
+ * Frontera con la interfaz: todas las reglas cuelgan de `.md-contenido` (o de
+ * las clases `md-*` de los componentes del documento). El documento no puede
+ * traer estilos propios —ni `<style>`, ni atributos `style`, ni clases
+ * arbitrarias: el HTML crudo no se interpreta (D6)—, así que no puede tocar
+ * la interfaz de BPDF; y estas reglas, por su selector, solo alcanzan al
+ * documento.
+ *
+ * Colores solo desde los tokens de globals.css. Nada de `filter: invert()`: el
+ * texto usa los colores del tema directamente, y las imágenes (cuando se
+ * carguen) conservan los suyos.
+ *
+ * Sin capa (`@layer`) a propósito: estas reglas deben ganar al reset de
+ * Tailwind (preflight), que quita márgenes, tamaños y viñetas.
+ */
+
+.md-contenido {
+  max-width: 72ch;
+  margin-inline: auto;
+  padding: 2rem 1.5rem 4rem;
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--color-fg);
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 40rem) {
+  .md-contenido {
+    padding: 1.25rem 1rem 3rem;
+    font-size: 1rem;
+  }
+}
+
+/* Flujo vertical: cada bloque separa del anterior, no del siguiente. */
+.md-contenido > * + *,
+.md-contenido blockquote > * + *,
+.md-contenido li > * + * {
+  margin-top: 1em;
+}
+
+/* Encabezados */
+.md-contenido :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-fg);
+  /* Al saltar a una sección, que no quede pegada al borde. */
+  scroll-margin-top: 1rem;
+}
+.md-contenido * + :is(h1, h2, h3, h4, h5, h6) {
+  margin-top: 1.75em;
+}
+.md-contenido h1 {
+  font-size: 2em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--color-border);
+}
+.md-contenido h2 {
+  font-size: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--color-border);
+}
+.md-contenido h3 {
+  font-size: 1.25em;
+}
+.md-contenido h4 {
+  font-size: 1.05em;
+}
+.md-contenido :is(h5, h6) {
+  font-size: 0.95em;
+}
+.md-contenido h6 {
+  color: var(--color-fg-muted);
+}
+/* El foco de un encabezado solo se mueve por programa (índice, anclas): sin anillo. */
+.md-contenido :is(h1, h2, h3, h4, h5, h6):focus {
+  outline: none;
+}
+
+/* Texto en línea */
+.md-contenido strong {
+  font-weight: 600;
+}
+.md-contenido em {
+  font-style: italic;
+}
+.md-contenido del {
+  text-decoration: line-through;
+  color: var(--color-fg-muted);
+}
+
+/* Enlaces: color propio y subrayado (no se distinguen solo por el color). */
+.md-contenido a {
+  color: var(--color-link);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+.md-contenido a:hover {
+  text-decoration-thickness: 2px;
+}
+/* Enlace que BPDF no sigue (otro fichero, protocolo bloqueado): texto con subrayado punteado. */
+.md-enlace-inerte {
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+  color: var(--color-fg-muted);
+  cursor: help;
+}
+
+/* Listas */
+.md-contenido :is(ul, ol) {
+  padding-left: 1.75em;
+}
+.md-contenido ul {
+  list-style: disc;
+}
+.md-contenido ol {
+  list-style: decimal;
+}
+.md-contenido li + li {
+  margin-top: 0.25em;
+}
+.md-contenido li > :is(ul, ol) {
+  margin-top: 0.25em;
+}
+.md-contenido ul ul {
+  list-style: circle;
+}
+.md-contenido ul ul ul {
+  list-style: square;
+}
+/* Listas de tareas (GFM): la casilla sustituye a la viñeta. */
+.md-contenido .contains-task-list {
+  list-style: none;
+  padding-left: 0.5em;
+}
+.md-contenido .task-list-item input {
+  margin: 0 0.5em 0 0;
+  vertical-align: -0.1em;
+  accent-color: var(--color-accent);
+}
+
+/* Citas */
+.md-contenido blockquote {
+  padding: 0.25em 1em;
+  border-left: 0.25em solid var(--color-border);
+  color: var(--color-fg-muted);
+}
+
+/* Separador */
+.md-contenido hr {
+  height: 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  margin-block: 2em;
+}
+
+/* Código en línea */
+.md-contenido :not(pre) > code {
+  padding: 0.15em 0.35em;
+  border-radius: 0.3rem;
+  background-color: var(--color-elevated);
+  font-size: 0.875em;
+}
+.md-contenido code,
+.md-contenido pre {
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* Bloques de código */
+.md-codigo {
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background-color: var(--color-app);
+  overflow: hidden;
+}
+.md-codigo-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--color-fg-muted);
+}
+.md-codigo-copiar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  color: var(--color-fg);
+  cursor: pointer;
+}
+.md-codigo-copiar:hover {
+  background-color: var(--color-elevated);
+}
+.md-codigo pre {
+  margin: 0;
+  padding: 0.875rem 1rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  tab-size: 4;
+}
+.md-codigo pre:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Resaltado (clases `hljs-*` de highlight.js, tema propio con los tokens `--rgb-code-*`). */
+.md-codigo .hljs-keyword,
+.md-codigo .hljs-selector-tag,
+.md-codigo .hljs-literal,
+.md-codigo .hljs-doctag,
+.md-codigo .hljs-meta .hljs-keyword {
+  color: rgb(var(--rgb-code-keyword));
+}
+.md-codigo .hljs-string,
+.md-codigo .hljs-regexp,
+.md-codigo .hljs-addition,
+.md-codigo .hljs-meta .hljs-string,
+.md-codigo .hljs-code {
+  color: rgb(var(--rgb-code-string));
+}
+.md-codigo .hljs-number,
+.md-codigo .hljs-symbol,
+.md-codigo .hljs-bullet,
+.md-codigo .hljs-variable,
+.md-codigo .hljs-template-variable {
+  color: rgb(var(--rgb-code-number));
+}
+.md-codigo .hljs-comment,
+.md-codigo .hljs-quote {
+  color: rgb(var(--rgb-code-comment));
+  font-style: italic;
+}
+.md-codigo .hljs-title,
+.md-codigo .hljs-section,
+.md-codigo .hljs-title.function_ {
+  color: rgb(var(--rgb-code-function));
+}
+.md-codigo .hljs-type,
+.md-codigo .hljs-built_in,
+.md-codigo .hljs-title.class_,
+.md-codigo .hljs-params {
+  color: rgb(var(--rgb-code-type));
+}
+.md-codigo .hljs-name,
+.md-codigo .hljs-tag,
+.md-codigo .hljs-selector-id,
+.md-codigo .hljs-selector-class,
+.md-codigo .hljs-deletion {
+  color: rgb(var(--rgb-code-tag));
+}
+.md-codigo .hljs-attr,
+.md-codigo .hljs-attribute,
+.md-codigo .hljs-property,
+.md-codigo .hljs-meta {
+  color: rgb(var(--rgb-code-attr));
+}
+.md-codigo .hljs-params,
+.md-codigo .hljs-subst {
+  color: var(--color-fg);
+}
+.md-codigo .hljs-emphasis {
+  font-style: italic;
+}
+.md-codigo .hljs-strong {
+  font-weight: 600;
+}
+
+/* Tablas: desplazamiento horizontal propio; la página no se ensancha. */
+.md-tabla {
+  overflow-x: auto;
+}
+.md-contenido table {
+  border-collapse: collapse;
+  font-size: 0.9375em;
+  font-variant-numeric: tabular-nums;
+}
+.md-contenido :is(th, td) {
+  padding: 0.4em 0.8em;
+  border: 1px solid var(--color-border);
+  /* Una palabra larga no se parte letra a letra: la tabla se desplaza (.md-tabla). */
+  overflow-wrap: normal;
+}
+.md-contenido th {
+  font-weight: 600;
+  background-color: var(--color-elevated);
+}
+.md-contenido tbody tr:nth-child(even) {
+  background-color: rgb(var(--rgb-app) / 0.35);
+}
+
+/* Imágenes: de momento ninguna se carga (ARCHITECTURE → visor Markdown); el
+ * marcador que las sustituye. La regla de `img` ya está para cuando se carguen:
+ * nunca más anchas que la columna y sin filtros (conservan sus colores). */
+.md-contenido img {
+  max-width: 100%;
+  height: auto;
+}
+.md-imagen-ausente {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  padding: 0.25em 0.6em;
+  border: 1px dashed var(--color-border);
+  border-radius: 0.375rem;
+  color: var(--color-fg-muted);
+  font-size: 0.9em;
+}
+
+/* Notas al pie (GFM) */
+.md-contenido .footnotes {
+  margin-top: 3em;
+  padding-top: 1em;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.9em;
+  color: var(--color-fg-muted);
+}
+.md-contenido sup {
+  font-size: 0.75em;
+  line-height: 0;
+}
+
+/* Botones de la barra del visor Markdown. */
+.md-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2rem;
+  min-width: 2rem;
+  justify-content: center;
+  padding-inline: 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: var(--color-fg);
+  cursor: pointer;
+}
+.md-boton:hover,
+.md-boton[aria-expanded="true"] {
+  background-color: var(--color-elevated);
+}

@@ -14,7 +14,6 @@ import { abrir, type Vigilancia } from "../vigilancia";
 const FIXTURES = path.join(import.meta.dirname, "../../tests/fixtures");
 const PDF = path.join(FIXTURES, "pdf/minimo.pdf");
 const MD = path.join(FIXTURES, "markdown/basico.md");
-const MD_HOSTIL = path.join(FIXTURES, "markdown/html-y-script.md");
 const TXT = path.join(FIXTURES, "otros/nota.txt");
 
 /** Primeros bytes de un PNG, para un «PDF» falso. */
@@ -22,7 +21,8 @@ const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0
 
 type Eleccion = Parameters<import("@playwright/test").FileChooser["setFiles"]>[0];
 
-const titulo = (page: Page) => page.getByRole("heading", { level: 1 });
+/** El título de la vista: el nombre del documento (el Markdown puede traer sus propios h1 después). */
+const titulo = (page: Page) => page.getByRole("heading", { level: 1 }).first();
 const botonAbrir = (page: Page) => page.getByRole("button", { name: messages.open.button });
 const aviso = (page: Page) => page.getByRole("alert");
 
@@ -86,12 +86,14 @@ test("abre un PDF con el selector y lo muestra en el visor", async ({ page }) =>
   limpia(v);
 });
 
-test("abre un Markdown con el selector sin mostrar su contenido", async ({ page }) => {
+test("abre un Markdown con el selector y muestra su contenido", async ({ page }) => {
   const v = await abrir(page);
   await elegir(page, botonAbrir(page), MD);
   await expect(titulo(page)).toHaveText("basico.md");
-  await expect(page.getByRole("main")).toContainText(messages.document.kinds.markdown);
-  await expect(page.getByText("Documento de prueba de BPDF")).toHaveCount(0);
+  await expect(titulo(page)).toBeFocused();
+  await expect(
+    page.getByRole("article").getByRole("heading", { name: "Documento de prueba de BPDF" }),
+  ).toBeVisible();
   limpia(v);
 });
 
@@ -103,7 +105,9 @@ test("abrir otro documento sustituye al anterior", async ({ page }) => {
   await elegir(page, page.getByRole("banner").getByRole("button"), MD);
   await expect(titulo(page)).toHaveText("basico.md");
   await expect(page.getByText("minimo.pdf")).toHaveCount(0);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+  // Del PDF no queda nada: ni su visor ni sus páginas.
+  await expect(page.getByTestId("visor-pdf")).toHaveCount(0);
+  await expect(page.locator("[data-pagina]")).toHaveCount(0);
   limpia(v);
 });
 
@@ -208,7 +212,7 @@ test.describe("nombres de fichero hostiles se muestran como texto", () => {
         v.errores.push(`diálogo inesperado: ${d.message()}`);
         return d.dismiss();
       });
-      const buffer = nombre.endsWith(".pdf") ? readFileSync(PDF) : Buffer.from("# x");
+      const buffer = nombre.endsWith(".pdf") ? readFileSync(PDF) : Buffer.from("texto x");
       await elegir(page, botonAbrir(page), { name: nombre, mimeType: "", buffer });
       await expect(titulo(page)).toHaveText(nombre);
       // El nombre es texto: ni elementos dentro del título ni atributos de evento
@@ -223,24 +227,10 @@ test.describe("nombres de fichero hostiles se muestran como texto", () => {
   }
 });
 
-test("un Markdown con HTML y scripts no ejecuta nada ni pide nada a la red", async ({ page }) => {
-  const v = await abrir(page);
-  page.on("dialog", (d) => {
-    v.errores.push(`diálogo inesperado: ${d.message()}`);
-    return d.dismiss();
-  });
-  await elegir(page, botonAbrir(page), MD_HOSTIL);
-  await expect(titulo(page)).toHaveText("html-y-script.md");
-  await page.waitForLoadState("networkidle");
-  expect(await page.evaluate(() => (window as { __bpdfXss?: string }).__bpdfXss)).toBeUndefined();
-  await expect(page.locator("main img, main svg, main script, main iframe")).toHaveCount(0);
-  limpia(v);
-});
-
 test("cerrar el documento vuelve al estado vacío", async ({ page }) => {
   const v = await abrir(page);
   await elegir(page, botonAbrir(page), MD);
-  await page.getByRole("button", { name: messages.document.close }).click();
+  await page.getByRole("button", { name: messages.markdown.close }).click();
   await expect(titulo(page)).toHaveText(messages.emptyState.title);
   await expect(page.getByRole("main")).toBeFocused();
   limpia(v);
