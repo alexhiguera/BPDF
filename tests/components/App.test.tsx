@@ -2,7 +2,7 @@
 
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { axe } from "jest-axe";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { App } from "@/app/App";
 import { ErrorBoundary } from "@/app/ErrorBoundary";
 import { project } from "@/config/project";
@@ -27,6 +27,20 @@ vi.mock("@/pdf/engine", async (original) => ({
   cargarPdfjs: vi.fn(async () => ({})),
   abrirPdf: motor.abrirPdf,
 }));
+
+/**
+ * Precarga de los visores que `App` carga con `React.lazy`. El primer
+ * `import()` de cada uno obliga a Vitest a transformar todo su árbol de módulos
+ * (~330 ms; más de 1 s con la máquina cargada), y los tests lo esperaban con el
+ * tiempo por defecto de `findByRole`: fallaban de forma intermitente midiendo
+ * el transformador, no la app. Con los módulos ya en caché, `React.lazy` y
+ * `Suspense` siguen actuando igual. La carga de los trozos reales de la build
+ * se prueba en Playwright.
+ */
+beforeAll(async () => {
+  await import("@/app/pdf/VisorPdf");
+  await import("@/markdown/MarkdownView");
+});
 
 function montar(plataforma = new PlataformaEnMemoria()) {
   const utils = render(<App platform={plataforma} />);

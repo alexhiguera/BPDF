@@ -38,9 +38,11 @@ type Carga =
  *
  * Contraseña (Fase 6, D13): si pdf.js la pide, se muestra el diálogo; cada
  * «Abrir» es un intento nuevo (`intento`) que vuelve a abrir el PDF con ella.
- * La contraseña solo pasa por `contrasena` (una referencia) hasta que el
- * intento termina, y se borra también al desmontar. Abrir otro documento
- * desmonta el visor: cancela el intento en curso.
+ * BPDF solo la tiene en `contrasena` (una referencia) y en `clave` hasta que el
+ * intento termina, bien, mal o cancelado, y la referencia se borra también al
+ * desmontar. pdf.js la envía a su propio worker y puede conservarla allí
+ * mientras el documento está abierto (se libera al destruirlo). Abrir otro
+ * documento desmonta el visor: cancela el intento en curso.
  */
 export default function VisorPdf({
   documento,
@@ -75,9 +77,14 @@ export default function VisorPdf({
     const abortar = new AbortController();
     let doc: DocumentoVisor | null = null;
     let controlador: ControladorVisor | null = null;
-    const clave = contrasena.current;
+    // `let`, no `const`: la función de limpieza de este efecto comparte ámbito y
+    // sigue viva mientras el documento está abierto; al terminar el intento
+    // (bien, mal o cancelado) la contraseña se suelta para no retenerla aquí.
+    let clave = contrasena.current;
+    const conClave = clave !== undefined;
     const olvidar = () => {
       if (contrasena.current === clave) contrasena.current = undefined;
+      clave = undefined;
     };
     (async () => {
       try {
@@ -101,14 +108,15 @@ export default function VisorPdf({
       } catch (error) {
         void doc?.destruir();
         if (abortar.signal.aborted || error instanceof AperturaCanceladaError) return;
-        olvidar();
         if (error instanceof PdfProtegidoError) {
           // Con una contraseña dada, cualquier rechazo es «no es correcta».
-          const incorrecta = clave !== undefined || error.motivo === "incorrecta";
+          const incorrecta = conClave || error.motivo === "incorrecta";
           setCarga({ fase: "contrasena", incorrecta, comprobando: false });
           return;
         }
         setCarga({ fase: "error", motivo: "unreadable" });
+      } finally {
+        olvidar();
       }
     })();
     return () => {

@@ -80,13 +80,38 @@ CSP ni de cabeceras (así que tampoco de `vercel.json`).
   pantalla.
 - Un `\n` se perdió al escribir el generador de fixtures por el shell.
 
-**Encontrado, no arreglado (fuera de alcance)**: tres tests de `App` fallan de forma
-intermitente cuando la máquina está cargada.
-- La causa es que esperan un visor cargado con `React.lazy` usando el tiempo por defecto de
-  `findByRole` (1 s).
-- Ya pasaba antes de la F6: sobre `HEAD`, con dos suites a la vez, fallan 7 de 10.
-- En ejecuciones normales pasan 10 de 10.
-- Queda como tarea 🟠 en TAREAS.
+**Tests de `App` intermitentes (anteriores a la F6), encontrados y corregidos al revisar el
+cierre.**
+- **Qué fallaba.** Sobre todo «abrir otro documento mientras un PDF carga cancela su
+  apertura», el primer test del fichero que abre un Markdown. Alguna vez también «abre un
+  PDF con el botón…» (el primero que abre un PDF) y «abre un Markdown…».
+- **Por qué.**
+  - `App` carga los visores con `React.lazy`. El primer `import()` obliga a Vitest a
+    transformar todo su árbol de módulos: unos 330 ms en condiciones normales y más de 1 s
+    con la máquina cargada.
+  - Los tests lo esperaban con el tiempo por defecto de `findByRole` (1 s). Medían el
+    transformador de Vitest, no la app.
+- **Frecuencia real.**
+  - Con dos suites a la vez: 7 de 10 suites con fallos sobre `HEAD` (sin la F6) y 9 de 10
+    con la F6.
+  - Suites completas de una en una: 2 fallos en unas 15.
+  - `App.test.tsx` solo: sin fallos.
+  - Las duraciones de esos tests son iguales con y sin la F6, así que la F6 no encareció la
+    carga.
+- **Corrección.** `App.test.tsx` precarga los dos visores en un `beforeAll`, sin tocar
+  tiempos de espera. `React.lazy` y `Suspense` siguen actuando igual, y la carga de los
+  trozos reales la prueban los E2E.
+- **Después de la corrección.** 0 de 10 suites con fallos con dos a la vez, y 5 de 5 suites
+  normales en verde.
+
+**Contraseña retenida en un cierre (encontrado en la misma revisión).**
+- El problema: `const clave` quedaba capturada en el ámbito del efecto de `VisorPdf`, cuya
+  función de limpieza sigue viva mientras el documento está abierto.
+- La corrección: ahora es `let clave` y se suelta en un `finally` al terminar el intento, sea
+  cual sea el resultado.
+- Lo que no depende de BPDF: pdf.js envía la contraseña a su propio worker y puede
+  conservarla allí mientras el documento esté abierto. Ahora lo dicen SEGURIDAD §4 y
+  ARCHITECTURE.
 
 **Anuncio al usuario (CLAUDE.md §8)**: pantalla completa, atajos de una tecla con su ayuda
 e interruptor, girar a la izquierda, búsqueda con «Distinguir mayúsculas» y «Palabra

@@ -81,12 +81,6 @@ fase no empieza con una decisión que necesita sin confirmar.
   `type="password"` con `autocomplete="off"` y el formulario nunca se envía, pero algún
   navegador podría ofrecer guardarla (BPDF no la guarda). Probarlo a mano en Chrome, Firefox
   y Safari; si alguno la ofrece, valorar otro tipo de campo
-- [ ] 🟠 **Tests de `App` intermitentes con la máquina cargada** (visto al cerrar la F6, y
-  ya presente antes: sobre `HEAD` sin la F6, con dos suites a la vez, fallan 7 de 10). «abrir
-  otro documento mientras un PDF carga…», «abre un Markdown…» y «abre un PDF…» esperan con
-  el tiempo por defecto de `findByRole` (1 s) a un visor que se carga con `React.lazy`; con
-  carga, el `import()` tarda más. En ejecuciones normales, 10 de 10 en verde. Arreglo
-  probable: esperar al visor con un tiempo mayor o precargar los módulos en esos tests
 - [ ] 🟢 **Probar la búsqueda de la Fase 6 con PDF reales con guiones de corte** (LaTeX,
   ofimática): comprobada con el fixture, con un PDF generado por Chromium y con el único PDF
   real del equipo (sin guiones); faltan documentos «de verdad» con palabras partidas

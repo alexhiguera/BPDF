@@ -249,10 +249,14 @@ cambiaron: el valor por defecto de `fullscreen` en `Permissions-Policy` ya es `s
 **Contraseña (Fase 6, D13).** Si pdf.js lanza `PasswordException`, `VisorPdf` muestra un
 `<dialog>` modal (`DialogoContrasena`). Cada «Abrir» es un intento nuevo: vuelve a abrir el
 PDF con `getDocument({ password })` y una copia nueva de los bytes (la anterior se
-transfirió al worker con la tarea fallida, que se destruye). La contraseña vive en el campo
-hasta el envío, que lo vacía, y en una referencia hasta que el intento termina (también se
-borra al desmontar); `PdfProtegidoError` dice si faltaba o era incorrecta, sin llevarla ni
-llevar el error de pdf.js. Reintentos sin límite; «Cancelar» o `Esc` cierran el documento;
+transfirió al worker con la tarea fallida, que se destruye). En BPDF, la contraseña vive en
+el campo hasta el envío, que lo vacía, y durante el intento en una referencia y en una
+variable del efecto (`let clave`), que se sueltan al terminar el intento, bien, mal o
+cancelado; la referencia se borra también al desmontar. La variable es `let` a propósito: la
+función de limpieza del efecto comparte su ámbito y sigue viva mientras el documento está
+abierto. **pdf.js la envía a su propio worker y puede conservarla allí mientras el documento
+protegido esté abierto**; se libera al destruir el documento. `PdfProtegidoError` dice si
+faltaba o era incorrecta, sin llevarla ni llevar el error de pdf.js. Reintentos sin límite; «Cancelar» o `Esc` cierran el documento;
 abrir otro lo cancela (el visor se desmonta y la señal aborta). Se descartó `onPassword`:
 deja la tarea de carga viva mientras el usuario escribe y complica la cancelación.
 
