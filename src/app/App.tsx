@@ -4,6 +4,7 @@ import { project } from "@/config/project";
 import { DocumentProvider, useDocument } from "@/documents/DocumentProvider";
 import { messages } from "@/i18n/messages";
 import type { Platform } from "@/platform";
+import { ConfirmarDescarte } from "./ConfirmarDescarte";
 import { DocumentErrorAlert } from "./DocumentErrorAlert";
 import { DropZone } from "./DropZone";
 import { ElegirMarkdown } from "./ElegirMarkdown";
@@ -45,14 +46,17 @@ function Shell({ platform }: { platform: Platform }) {
     cancelChoice,
     close,
     dismissError,
+    setModified,
+    pendingDiscard,
+    respondDiscard,
   } = useDocument();
   const main = useRef<HTMLElement>(null);
 
   useOpenShortcut(openWithPicker);
 
-  const cerrar = () => {
-    close();
-    main.current?.focus(); // el botón pulsado desaparece con el documento
+  const cerrar = async () => {
+    // El botón pulsado desaparece con el documento: el foco pasa a <main>.
+    if (await close()) main.current?.focus();
   };
 
   return (
@@ -101,10 +105,15 @@ function Shell({ platform }: { platform: Platform }) {
               documento={document}
               onClose={cerrar}
               onOpenExternal={(url) => platform.openExternal(url)}
+              onModificado={setModified}
+              onGuardar={(texto) => platform.saveText(document, texto)}
             />
           </Suspense>
         ) : (
           !choice && <EmptyState onOpen={openWithPicker} onOpenFolder={openFolder} />
+        )}
+        {pendingDiscard && document && (
+          <ConfirmarDescarte nombre={document.name} onResponder={respondDiscard} />
         )}
       </main>
     </DropZone>

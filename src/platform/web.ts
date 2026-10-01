@@ -8,6 +8,7 @@ import {
 import { EXTENSIONES_IMAGEN, tipoImagen } from "@/documents/recursos";
 import { abrirSeleccion, type Seleccion } from "@/documents/seleccion";
 import { urlPermitida } from "@/lib/url-externa";
+import { crearGuardadoWeb } from "./guardar-web";
 import type { Platform, Soltado } from "./types";
 
 /**
@@ -24,7 +25,9 @@ import type { Platform, Soltado } from "./types";
  */
 export function createWebPlatform(doc: Document = document): Platform {
   const ventana = doc.defaultView;
+  const guardar = crearGuardadoWeb(ventana);
   return {
+    saveText: guardar,
     async pickDocument() {
       const files = await elegir(doc, "ficheros");
       return files ? abrirSeleccion(deFicheros(files)) : null;

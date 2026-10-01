@@ -45,7 +45,7 @@ F0 ─► F1 ─► F2 ─┬─► F3 ─┬─► F5 ─► F6 ─────
 | 6 | Visor PDF: pantalla completa, atajos de una tecla, búsqueda avanzada y contraseña | Lo que queda del visor tras la F5, más D13. Se ejecuta **después** de las 7, 7 bis y 8 (así lo pidió el usuario); conserva su número |
 | 7 | Markdown: lectura | Igual; incluye su parte de seguridad (sanitización, URLs) |
 | 8 | Markdown: matemáticas y Mermaid | **Separada** de la 7: son las dos dependencias más pesadas y con más historial de vulnerabilidades |
-| 9 | Editor Markdown + vista previa + dividido | Igual |
+| 9 | Editor Markdown + vista previa + dividido | Igual (D9: CodeMirror 6). La vista previa de un documento grande se pausa en dividido (medido) |
 | 10 | Preferencias | Infraestructura, panel, memoria por documento y borrado. La infraestructura estaba prevista en la F2 y se aplazó aquí, a su primer uso real |
 | 11 | UI/UX final | Igual |
 | 12 | Seguridad: endurecimiento y auditoría | Ya no «añade» seguridad: cada fase implementa la suya. Aquí se verifica, se endurece (CSP final, Trusted Types) y se audita |
@@ -622,7 +622,59 @@ dentro, KaTeX y Mermaid hostiles, documento sin fórmulas ni diagramas sin desca
 
 ---
 
-## Fase 9 — Editor Markdown, vista previa y modo dividido
+## Fase 9 — Editor Markdown, vista previa y modo dividido ✅
+
+Cerrada el 2026-10-01. Bitácora: iteración 14. Diseño completo:
+[ARCHITECTURE.md](ARCHITECTURE.md) §4 octies. D9 confirmada al empezar: **CodeMirror 6**.
+
+**Hecho.** Modos Lectura / Edición / Dividido (`ModeSwitch`); editor CodeMirror 6 a demanda
+(98 KB gzip, trozo propio) con Markdown (GFM), historial, teclado e indentación; vista
+previa con el mismo lector, 200 ms después de la última tecla; `SplitView` con separador
+accesible (teclado, 20–80 %) que se apila en pantallas estrechas; desplazamiento
+sincronizado por encabezados; «modificado» en `DocumentProvider`, confirmación antes de
+sustituir o cerrar (`ConfirmarDescarte`) y `beforeunload`; `Platform.saveText` en web
+(`showSaveFilePicker` o descarga) y `Ctrl/⌘+S`. **CSP sin cambios.**
+
+**Desviaciones y decisiones, y por qué:**
+
+- **Editor en un Shadow DOM** (no en la página): con el `document` como raíz, CodeMirror
+  pone sus estilos en una `<style>` que la CSP bloquea; en un `ShadowRoot` usa hojas
+  construibles. Así no hizo falta ni `'unsafe-inline'` ni nonces.
+- **Escribir sobre una selección lo aplica CodeMirror, no el navegador**: la edición nativa
+  de Chrome creaba `<span style>` (dos violaciones de CSP por pulsación, medido); un
+  manejador de `beforeinput` lo evita.
+- **Vista previa en pausa en documentos grandes** (decisión del usuario durante la fase): si
+  pintarla costó > 250 ms, en Dividido no se refresca sola; avisa y se actualiza a mano o al
+  cambiar de modo. Con 1 MB, cada refresco bloqueaba la escritura 1,4–3,4 s.
+- **La confirmación de «cambios sin guardar» va DESPUÉS de elegir** el fichero (y de
+  validarlo), no antes de abrir el selector como decía esta especificación: así cancelar el
+  selector o elegir algo que no vale no pregunta nada, y todas las vías de apertura (también
+  carpeta, soltar y la elección de Markdown, que la especificación no cubría por ser
+  anterior a la Fase 7 bis) y cerrar pasan por el mismo punto.
+- **En Edición la vista previa no está montada**; Lectura ↔ Dividido sí la comparten sin
+  volver a montarla. Mantenerla montada y oculta daba picos de casi 1 s al teclear con
+  1 MB + KaTeX (medido).
+- **Diagramas recordados**: `MarcoMermaid` guarda los SVG por fuente y colores (64), y un
+  diagrama sin cambios no vuelve al marco al refrescar.
+- **Nombres de fichero**: `EditorMarkdown.tsx` (no `MarkdownEditor.tsx`); `tipos.ts` y
+  `sincronia.ts` aparte; `src/platform/guardar-web.ts` para el guardado web.
+- Sin `capabilities` en el modelo: todo Markdown se puede editar y guardar.
+
+**Tests.** Unitarios: `sincronia` (encabezados del texto, anclas, interpolación),
+`guardar-web` (selector, reutilización del destino, cancelar, errores, descarga), caché de
+`MarcoMermaid`. Componentes con jest-axe: edición en `MarkdownView` (modos, espera de
+200 ms, pausa, cambios, guardar y sus fallos, seguridad y recursos en la vista previa),
+`ModeSwitch`, `SplitView`, `DocumentProvider` (confirmación por todas las vías,
+`beforeunload`) y `App` (diálogo de descarte, `Ctrl+S`). E2E (`editor.spec.ts`, 16): CSP
+real con CodeMirror, modos, espera de la vista previa (reloj controlado), recursos, KaTeX y
+Mermaid hostiles, Markdown hostil, escribir y pegar sobre una selección, guardar (descarga
+y `showSaveFilePicker`), confirmación, `beforeunload`, 1 MB, sincronía, separador y
+pantalla estrecha. Benchmark: `npm run bench:editor`.
+
+**Pendiente de la fase**: nada bloqueante. Lo que sale está en
+[TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md).
+
+La especificación anterior, que sigue, se conserva como referencia.
 
 **Objetivo.** Editar Markdown con vista previa en vivo y guardar localmente.
 
@@ -843,9 +895,9 @@ distribución).
 
 **Alcance.** ELECTRON §2–§7: `electron/main.ts`, `preload.ts`, `protocol.ts` (`app://` y
 `bpdf-res://`), `ipc.ts`, `validation.ts` (esquemas `zod` compartidos); instancia única,
-argv y `open-file`; `src/platform/electron.ts` completo (implementa `pickDocument` y
-`openDroppedFile` terminando en `readDocument(file, id)` con el id del main, más
-`onExternalOpen`; ELECTRON §3); imágenes locales de Markdown por
+argv y `open-file`; `src/platform/electron.ts` completo (implementa `pickDocument`,
+`pickFolder`, `openDropped` y `saveText`, terminando en `abrirSeleccion`/`readDocument`
+con el id del main, más `onExternalOpen`; ELECTRON §3); imágenes locales de Markdown por
 `bpdf-res://`; guardar en el mismo fichero; CSP de escritorio (fuente única +
 `bpdf-res:`); scripts `electron:dev` y `electron:build` (sin instaladores); `allowScripts`
 de `electron`.

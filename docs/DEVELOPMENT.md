@@ -68,6 +68,7 @@ protegido, sin texto y CJK).
 | `test` · `test:run` · `test:coverage` | Vitest (unitarios, componentes, a11y) |
 | `test:e2e` · `test:e2e:ui` | Playwright contra la build de producción (`vite preview`, puerto 3100) |
 | `bench:pdf` | Benchmark del visor PDF: render y modo oscuro por página con y sin worker, a DPR 1 y 2 y a varios zooms, y un documento de 300 páginas (apertura, recorrido, lienzos, memoria). Imprime tablas; no es un test y no corre en CI |
+| `bench:editor` | Benchmark del editor (Fase 9): duración de cada tecla (Event Timing API: de la tecla al pintado) escribiendo a 50 ms por tecla al principio, en medio y al final de documentos de 2 KB, 200 KB y 1 MB (también con KaTeX, Mermaid y muchos encabezados), en «Edición» y «Dividido». Imprime una línea JSON por medida; no es un test y no corre en CI |
 | `bench:markdown` | Benchmark del visor Markdown: tiempo hasta ver documentos generados (1 KB, 100 KB, 1 MB, muchos encabezados, muchos bloques de código, muchas listas) un Markdown con 50 imágenes de 6 Mpx (URL creadas, decodificación, heap) y fórmulas y diagramas (pocos, muchos, documento grande, hostiles: tiempos hasta texto, fórmulas y diagramas, descargas y heap). Imprime tablas; no es un test y no corre en CI |
 | `docs:validar` | Valida `public_docs/` contra el contrato y la identidad contra `project.ts` |
 | `docs:enlaces` | Enlaces rotos en `docs/`, `README.md` y `CLAUDE.md` |

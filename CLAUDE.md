@@ -14,7 +14,7 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   objetivo en [`docs/PLAN.md`](docs/PLAN.md).
 - **Principio rector:** los documentos del usuario **no salen del dispositivo**. Sin
   backend, API, base de datos, cuentas, sincronización ni telemetría.
-- **Estado:** Fases 0–8 cerradas, 7 bis incluida (la 6 se hizo después de la 8 y conserva
+- **Estado:** Fases 0–9 cerradas, 7 bis incluida (la 6 se hizo después de la 8 y conserva
   su número). La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
@@ -22,8 +22,10 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   desactivables y contraseña de apertura ([`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §4 quater);
   los Markdown, en un lector GFM que no interpreta HTML y muestra las imágenes que el
   usuario entrega con el `.md` (varios ficheros o una carpeta), fórmulas (KaTeX) y
-  diagramas (Mermaid, en un iframe aislado con su propia CSP) (§4 quinquies a septies).
-  Siguiente en el plan: la Fase 9 (editor), que necesita D9. Plan y estado:
+  diagramas (Mermaid, en un iframe aislado con su propia CSP) (§4 quinquies a septies), y se
+  editan con CodeMirror 6 (D9; en un Shadow DOM, sin tocar la CSP), con vista previa,
+  modo dividido y guardado local (§4 octies). Siguiente en el plan: la Fase 10
+  (preferencias), que necesita D8. Plan y estado:
   [`docs/FASES.md`](docs/FASES.md) y [`docs/TAREAS_PENDIENTES.md`](docs/TAREAS_PENDIENTES.md).
 - **Estática, siempre:** la build (`dist/`) son ficheros. Nada de servidor, SSR, API ni
   funciones serverless, ni variables de entorno.

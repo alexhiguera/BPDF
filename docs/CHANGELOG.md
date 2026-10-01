@@ -10,6 +10,88 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 14 — *2026-10-01* — Fase 9: editor de Markdown, vista previa y modo dividido
+
+La Fase 9 añade la edición de Markdown con D9 confirmada al empezar: **CodeMirror 6**. Tres
+modos (Lectura, Edición, Dividido), vista previa con el mismo lector, desplazamiento
+sincronizado, cambios sin guardar con confirmación y guardado local. **La CSP no cambia.**
+Seis dependencias de runtime nuevas (`@codemirror/*` y `@lezer/highlight`, versiones
+exactas), solo en un trozo a demanda.
+
+**Qué se hizo y por qué**
+
+- **CodeMirror en un Shadow DOM, por la CSP.** Antes de construir encima se miró cómo
+  inyecta estilos: `style-mod` pone una `<style>` si la raíz es el `document` (bloqueada por
+  `style-src 'self'`) y hojas construibles si es un `ShadowRoot`. El editor se monta en su
+  propio Shadow DOM: cero violaciones, cabecera idéntica (E2E). Los tokens de color cruzan
+  la frontera (son propiedades personalizadas).
+- **Escribir sobre una selección provocaba violaciones de CSP** (encontrado con E2E): la
+  edición nativa de Chrome crea `<span style>` al sustituir texto seleccionado (dos
+  violaciones por pulsación; teclear normal y Retroceso no). Un manejador de `beforeinput`
+  aplica esos cambios como transacción de CodeMirror. Una sonda de seis escenarios lo
+  confirmó antes y después; queda un E2E permanente (escribir y pegar sobre una selección).
+- **Mínimo de CodeMirror**: sin el paquete `codemirror` (autocompletado, lint, búsqueda) y
+  solo `markdownLanguage` + `markdownKeymap` de `lang-markdown`, así `lang-html`, CSS y
+  JavaScript no entran en la build (comprobado). Trozo del editor: 98 KB gzip.
+- **Vista previa = el mismo lector** con el texto editado, 200 ms después de la última
+  tecla. Cada tecla hace O(1) fuera del editor; el texto (O(tamaño)) solo se saca al
+  refrescar, guardar o cambiar de modo.
+- **Pausa de la vista previa en documentos grandes (decisión del usuario).** Medido: con
+  1 MB, cada refresco bloqueaba la escritura 1,4–3,4 s (tecla más lenta hasta 2,4 s). Con
+  el lector actual, «200 ms» y «no bloquear» no se pueden cumplir a la vez; se le
+  plantearon cuatro opciones (pausa, espera adaptativa, 200 ms siempre, cambiar la
+  arquitectura) y eligió la pausa: si pintar la vista previa costó > 250 ms, en Dividido no
+  se refresca sola, avisa y se actualiza a mano o al cambiar de modo.
+- **Vista previa desmontada en Edición.** Se probó mantenerla montada y oculta (para no
+  volver a pintarla al cambiar de modo): con 1 MB + KaTeX, teclear tenía picos de casi 1 s.
+  Se desmonta en Edición; Lectura ↔ Dividido sí la comparten sin volver a montarla, y el
+  editor se queda una vez cargado. Paneles con `contain: strict`.
+- **Sincronía por encabezados**, sin bucles (manda el panel con el que se interactúa) y con
+  las posiciones de los encabezados medidas solo cuando cambian (medirlas en cada fotograma
+  bloqueaba con 1 MB de encabezados).
+- **Diagramas recordados** en `MarcoMermaid` (por fuente y colores, 64): un diagrama sin
+  cambios no vuelve al marco al refrescar.
+- **Confirmación antes de perder cambios** en todas las vías de apertura y al cerrar,
+  **después** de validar lo elegido y antes de aplicarlo (la especificación decía «antes de
+  abrir el selector», anterior a la 7 bis): cancelar o elegir algo no válido no pregunta.
+  `beforeunload` solo con cambios. `close()` pasa a ser asíncrono (devuelve si cerró).
+- **Guardar**: `Platform.saveText` en web, con `showSaveFilePicker` (destino elegido la
+  primera vez, `FileSystemFileHandle` en memoria y olvidado si falla) o descarga. Nunca se
+  sobrescribe en silencio el fichero abierto. `Ctrl/⌘+S` y botón; error con aviso y el
+  documento sigue modificado.
+- **Documentación desactualizada corregida**: ELECTRON §3 (la interfaz `Platform` de la
+  F7 bis y la F9; ya no existe `openDroppedFile`), FASES F14 y MODULES (la F6, en pasado).
+
+**Descartado**: el paquete `codemirror`; `@codemirror/language-data`; un `<textarea>`;
+`'unsafe-inline'` o un nonce fijo para CodeMirror (equivale a `'unsafe-inline'`); refrescar
+la vista previa siempre a los 200 ms (bloquea con 1 MB); mantener la vista previa oculta en
+Edición (picos de casi 1 s).
+
+**Rendimiento** (`npm run bench:editor`, Ryzen 7 5800X, Event Timing API, 50 ms entre
+teclas):
+
+@@CIFRAS@@
+
+**Errores propios por el camino**:
+
+- El primer benchmark tecleaba en ráfaga (sin pausas): cada tecla medía la cola de las
+  anteriores, no lo que se percibe. Se pasó a 50 ms entre teclas. También cronometraba el
+  cambio de modo con el hilo aún ocupado por la apertura (cifras de hasta 20 s que no eran
+  del cambio de modo): ahora espera a que la página esté quieta.
+- La pausa medía también el primer pintado de cualquier documento; en una página recién
+  cargada eso pasa de 250 ms aunque el documento sea pequeño, y la vista previa se pausaba
+  sin motivo (lo cazaron los E2E). Ahora el primer pintado solo cuenta en documentos
+  grandes (los que se pintan en diferido).
+- Tests con la cola de la plataforma falsa en el orden equivocado, una promesa devuelta
+  desde una función asíncrona (que la esperaba), y `findByRole` con temporizadores falsos.
+
+**Anuncio al usuario (CLAUDE.md §8)**: los Markdown se pueden editar (Edición y Dividido),
+con vista previa, y guardar (`Ctrl/⌘+S`); BPDF avisa antes de perder cambios sin guardar.
+
+**Verificación.** @@VERIF@@
+
+---
+
 ### Iteración 13 — *2026-09-30* — Fase 6: pantalla completa, atajos, búsqueda avanzada y contraseña
 
 La Fase 6, especificada y aprobada en la iteración 12, completa el visor PDF. Se hizo

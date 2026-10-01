@@ -162,7 +162,7 @@ describe("DocumentProvider: carreras y liberación", () => {
     act(() => {
       enCurso = v().openDropped(soltado(lento.file as File));
     });
-    act(() => v().close());
+    await act(() => v().close());
     expect(v().document).toBeNull();
     lento.liberar();
     await act(() => enCurso);
@@ -181,7 +181,7 @@ describe("DocumentProvider: carreras y liberación", () => {
       const v = montar(plataforma);
       await act(() => v().openWithPicker());
       await act(() => v().openWithPicker());
-      act(() => v().close());
+      await act(() => v().close());
       expect(crearUrl).not.toHaveBeenCalled();
     } finally {
       URL.createObjectURL = original;
@@ -195,6 +195,7 @@ describe("DocumentProvider: carreras y liberación", () => {
       pickFolder: () => Promise.reject(new TypeError("fallo interno")),
       openDropped: () => Promise.reject(new TypeError("fallo interno")),
       openExternal: () => {},
+      saveText: () => Promise.reject(new TypeError("fallo interno")),
     };
     const v = montar(rota);
     await act(() => v().openWithPicker());
@@ -209,5 +210,141 @@ describe("DocumentProvider: carreras y liberación", () => {
       return null;
     }
     expect(() => render(<Suelta />)).toThrow(/DocumentProvider/);
+  });
+});
+
+describe("DocumentProvider: cambios sin guardar (Fase 9)", () => {
+  /**
+   * Abre `a.md` y lo marca como modificado. `despues`: lo que «elegirá» el
+   * usuario en las siguientes aperturas (`null` = cancelar).
+   */
+  async function conCambios(...despues: (File | null)[]) {
+    const plataforma = new PlataformaEnMemoria().elegira(fichero("a.md", "# a"));
+    for (const f of despues) plataforma.elegira(f);
+    const v = montar(plataforma);
+    await act(() => v().openWithPicker());
+    act(() => v().setModified(true));
+    return { v, plataforma };
+  }
+
+  /**
+   * Empieza una operación que pedirá confirmación y espera, dentro de `act`, a
+   * que la pida (la lectura del fichero es asíncrona).
+   */
+  async function pedir(v: () => DocumentContextValue, operacion: () => Promise<unknown>) {
+    let promesa: Promise<unknown> = Promise.resolve();
+    await act(async () => {
+      promesa = operacion();
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(v().pendingDiscard).toBe(true);
+    // En un objeto: devolver la promesa tal cual haría que `await pedir()` la esperase.
+    return { promesa };
+  }
+
+  const responder = (v: () => DocumentContextValue, descartar: boolean, p: Promise<unknown>) =>
+    act(async () => {
+      v().respondDiscard(descartar);
+      await p;
+    });
+
+  it("abrir otro empieza limpio y no pide nada si no hay cambios", async () => {
+    const v = montar(
+      new PlataformaEnMemoria().elegira(fichero("a.md", "# a")).elegira(fichero("b.md", "# b")),
+    );
+    await act(() => v().openWithPicker());
+    expect(v().modified).toBe(false);
+    await act(() => v().openWithPicker());
+    expect(v().pendingDiscard).toBe(false);
+    expect(v().document).toMatchObject({ name: "b.md" });
+  });
+
+  it("con cambios, pide confirmar DESPUÉS de elegir: «seguir editando» no toca nada", async () => {
+    const { v } = await conCambios(fichero("b.md", "# b"));
+    const { promesa: abrir } = await pedir(v, () => v().openWithPicker());
+    expect(v().document).toMatchObject({ name: "a.md" });
+    await responder(v, false, abrir);
+    expect(v().document).toMatchObject({ name: "a.md" });
+    expect(v().modified).toBe(true);
+    expect(v().pendingDiscard).toBe(false);
+  });
+
+  it("«descartar» abre el nuevo, limpio", async () => {
+    const { v } = await conCambios(fichero("b.md", "# b"));
+    const { promesa: abrir } = await pedir(v, () => v().openWithPicker());
+    await responder(v, true, abrir);
+    expect(v().document).toMatchObject({ name: "b.md" });
+    expect(v().modified).toBe(false);
+  });
+
+  it("cancelar el selector o elegir algo no válido no pregunta ni pierde nada", async () => {
+    const { v } = await conCambios(null, fichero("x.txt", "hola"));
+    await act(() => v().openWithPicker());
+    expect(v().pendingDiscard).toBe(false);
+    await act(() => v().openWithPicker());
+    expect(v().pendingDiscard).toBe(false);
+    expect(v().error?.code).toBe("unsupported");
+    expect(v().document).toMatchObject({ name: "a.md" });
+    expect(v().modified).toBe(true);
+  });
+
+  it("también al soltar, al abrir una carpeta y al elegir el Markdown de una carpeta", async () => {
+    const { v, plataforma } = await conCambios();
+    plataforma.elegiraCarpeta([
+      { ruta: "uno.md", file: fichero("uno.md", "# 1") },
+      { ruta: "dos.md", file: fichero("dos.md", "# 2") },
+    ]);
+    // Soltar: pregunta.
+    const { promesa: soltar } = await pedir(v, () =>
+      v().openDropped(soltado(fichero("c.md", "# c"))),
+    );
+    await responder(v, false, soltar);
+    expect(v().document).toMatchObject({ name: "a.md" });
+    // Carpeta con varios: la elección no sustituye nada, así que no pregunta…
+    await act(() => v().openFolder());
+    expect(v().choice).not.toBeNull();
+    expect(v().pendingDiscard).toBe(false);
+    // …elegir uno sí.
+    const elegido = v().choice?.candidates[1];
+    const { promesa: elegir } = await pedir(v, () => v().choose(1));
+    await responder(v, true, elegir);
+    expect(v().document).toMatchObject({ name: elegido });
+    expect(v().choice).toBeNull();
+  });
+
+  it("cerrar con cambios pregunta; «seguir editando» no cierra", async () => {
+    const { v } = await conCambios();
+    const { promesa: cerrar } = await pedir(v, () => v().close());
+    await responder(v, false, cerrar);
+    expect(await cerrar).toBe(false);
+    expect(v().document).not.toBeNull();
+    const { promesa: otra } = await pedir(v, () => v().close());
+    await responder(v, true, otra);
+    expect(await otra).toBe(true);
+    expect(v().document).toBeNull();
+    expect(v().modified).toBe(false);
+  });
+
+  it("beforeunload solo avisa con cambios", async () => {
+    const v = montar(new PlataformaEnMemoria().elegira(fichero("a.md", "# a")));
+    await act(() => v().openWithPicker());
+    const limpio = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(limpio);
+    expect(limpio.defaultPrevented).toBe(false);
+    act(() => v().setModified(true));
+    const sucio = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(sucio);
+    expect(sucio.defaultPrevented).toBe(true);
+    act(() => v().setModified(false));
+    const otraVez = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(otraVez);
+    expect(otraVez.defaultPrevented).toBe(false);
+  });
+
+  it("no guarda nada en el almacenamiento", async () => {
+    const { v } = await conCambios();
+    expect(v().modified).toBe(true);
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.length).toBe(0);
   });
 });

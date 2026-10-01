@@ -1,6 +1,6 @@
 # Stack tecnológico
 
-Estado tras la Fase 8 (*2026-09-30*; la Fase 8 añadió `remark-math`, `katex` y `mermaid`): la Fase 4 añadió `pdfjs-dist` (el motor de PDF) y la
+Estado tras la Fase 9 (*2026-10-01*; la Fase 9 añadió el editor, CodeMirror 6: `@codemirror/*` y `@lezer/highlight`; la Fase 8, `remark-math`, `katex` y `mermaid`): la Fase 4 añadió `pdfjs-dist` (el motor de PDF) y la
 Fase 7 el pipeline de Markdown (`react-markdown`, `remark-gfm`) y el resaltado de código
 (`lowlight`, `highlight.js`). El stack **objetivo** (pipeline de Markdown, Electron) y el motivo
 de cada pieza están en [PLAN.md](PLAN.md); cada fase añade aquí lo que instala.
@@ -60,6 +60,9 @@ explica, para que el documento no se quede atrás.
 | `remark-math` | Fase 8: la sintaxis de fórmulas (`$…$`, `$$…$$`) en el árbol de Markdown. **Versión exacta** (6.0.0). Solo sintaxis: no pinta nada ni importa KaTeX en el navegador (su dependencia `micromark-extension-math` trae un `katex` 0.16 para su salida HTML, que BPDF no usa ni empaqueta). Sin `rehype-katex`: parsea el HTML de KaTeX con `innerHTML` en el navegador |
 | `katex` | Fase 8: pinta las fórmulas. **Versión exacta** (0.18.9; sin dependencias de runtime). Se carga a demanda con su hoja de estilos y sus fuentes, servidas desde el propio origen. BPDF pide su árbol (`__renderToDomTree`, API interna, estable dentro de la versión fijada) y crea los nodos con `toNode()`: nada de `innerHTML`. `trust: false`, `maxExpand`, `maxSize`, macros aisladas por fórmula ([ARCHITECTURE.md](ARCHITECTURE.md) §4 septies) |
 | `mermaid` | Fase 8: los diagramas. **Versión exacta** (11.17.2, la última de la rama 11; la 12.0.0 era un major de tres semanas). **Nunca corre en la app**: solo en el marco aislado `mermaid.html` (iframe con `sandbox`), con `securityLevel: "strict"` y su propia CSP. Arrastra `d3`, `dagre-d3-es`, `cytoscape`, `elkjs`, `dompurify`, `marked`, `katex` 0.16 y más (122 paquetes nuevos con los anteriores; `npm audit` limpio). Se descarga por trozos, solo el tipo de diagrama que se dibuja |
+| `@codemirror/state`, `@codemirror/view`, `@codemirror/commands`, `@codemirror/language` | Fase 9 (D9): el editor de Markdown, CodeMirror 6. **Versiones exactas** (6.7.6, 6.43.13, 6.11.1, 6.12.4): trabaja con texto no confiable. Lo mínimo: estado y vista, historial y teclado (`commands`) y resaltado (`language`). **Sin** el paquete `codemirror` (su `basicSetup` trae autocompletado, lint y búsqueda). Se carga a demanda al entrar en «Edición» o «Dividido»; montado en un Shadow DOM por la CSP (abajo) |
+| `@codemirror/lang-markdown` | Fase 9: la gramática de Markdown del editor (con GFM). **Versión exacta** (6.5.2). Se importan solo `markdownLanguage` y `markdownKeymap` (continuar listas y citas con Intro): así no entra en el trozo `lang-html` con CSS y JavaScript, que arrastra como dependencia para el HTML incrustado (comprobado en la build) |
+| `@lezer/highlight` | Fase 9: las etiquetas de sintaxis (`tags`) del tema del editor. **Versión exacta** (1.2.5). Ya llegaba de rebote; es directa porque se importa |
 | `pdfjs-dist` | El motor de PDF (pdf.js de Mozilla). **Versión exacta** (6.3.289): procesa contenido no confiable. Build **`legacy`** (D18). Se carga a demanda, con `useWasm: false` y sus recursos servidos desde el propio origen ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §3). El visor usa solo sus APIs núcleo y `TextLayer` (D17, [ARCHITECTURE.md](ARCHITECTURE.md) §4 quater) |
 
 ### `pdfjs-dist`: qué trae y qué implica
@@ -92,6 +95,24 @@ explica, para que el documento no se quede atrás.
   en JavaScript): los copia `scripts/copiar-pdfjs.mjs` a `public/pdfjs/` en `predev` y
   `prebuild`, sin los `.wasm`, el motor de JavaScript de PDF (`quickjs-eval`) ni el sandbox.
   `public/pdfjs/` no se versiona.
+
+### CodeMirror 6: qué trae y qué implica (Fase 9)
+
+- **CSP sin cambios, gracias a un Shadow DOM.** CodeMirror inyecta sus estilos con
+  `style-mod`: si la raíz del editor es el `document` (que tiene `<head>`), con una etiqueta
+  `<style>`, que `style-src 'self'` bloquea. En una raíz sin `<head>` (un `ShadowRoot`),
+  con hojas construibles (`adoptedStyleSheets`), que no son estilos en línea y la CSP no
+  bloquea. Los atributos `style` los pone por CSSOM (`style.cssText`), que tampoco. BPDF
+  monta el editor en un Shadow DOM propio: ni `'unsafe-inline'` ni nonce (una CSP estática
+  no puede generar nonces, y uno fijo equivaldría a `'unsafe-inline'`). Comprobado en
+  Chromium (`e2e/specs/editor.spec.ts`: cabecera idéntica, cero violaciones, hojas
+  construibles en el Shadow DOM y ninguna `<style>` en el documento).
+- **Peso.** Un trozo propio, `EditorMarkdown-*.js`: **98 KB gzip** (312 KB sin comprimir),
+  solo al entrar en «Edición» o «Dividido». El arranque no lo incluye.
+- **Transitivas.** 21 paquetes nuevos (`@codemirror/*`, `@lezer/*`, `style-mod`, `crelt`,
+  `w3c-keyname`, `@marijn/find-cluster-break`); `lang-markdown` instala también
+  `lang-html`, `lang-css`, `lang-javascript` y `autocomplete`, que no llegan a la build.
+  Todos MIT, sin scripts de instalación; `npm audit` limpio.
 
 ### `katex` y `mermaid`: qué traen y qué implican (Fase 8)
 
@@ -158,6 +179,14 @@ componentes); KaTeX son 77 KB de JavaScript y 4 KB de CSS, y cada fórmula nueva
 fuentes woff2 que usa; Mermaid, ~50 KB de entrada más ~870 KB en un centenar de trozos, de
 los que se piden solo los del tipo de diagrama. Un Markdown sin fórmulas ni diagramas no
 descarga nada de esto (E2E).
+
+**Añadidas en la Fase 9** (runtime, versiones exactas): `@codemirror/state` 6.7.6,
+`@codemirror/view` 6.43.13, `@codemirror/commands` 6.11.1, `@codemirror/language` 6.12.4,
+`@codemirror/lang-markdown` 6.5.2 y `@lezer/highlight` 1.2.5 (D9: CodeMirror 6). Descartados:
+el paquete `codemirror` (su configuración básica trae autocompletado, lint y búsqueda, que no
+hacen falta), `@codemirror/language-data` (gramáticas de todos los lenguajes para los bloques
+de código: peso sin uso en un editor de Markdown) y un `<textarea>` (con 1 MB no mantiene la
+fluidez, no resalta ni tiene historial propio).
 
 Evaluadas y descartadas:
 

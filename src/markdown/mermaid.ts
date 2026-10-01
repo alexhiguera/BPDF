@@ -30,6 +30,9 @@ export class DiagramaConImagenesError extends Error {}
 /** Si el marco no responde en este tiempo, el diagrama se da por fallido. */
 export const ESPERA_MAXIMA_MS = 20_000;
 
+/** SVG dibujados que se recuerdan por visor (Fase 9). */
+export const MAX_CACHE = 64;
+
 type Pendiente = {
   resolver: (svg: string) => void;
   rechazar: (e: Error) => void;
@@ -43,6 +46,13 @@ export class MarcoMermaid {
   private readonly pendientes = new Map<number, Pendiente>();
   private siguiente = 0;
   private destruido = false;
+  /**
+   * Fase 9: los SVG ya dibujados, por fuente y colores. Al editar, la vista
+   * previa vuelve a pintar el documento y un diagrama que no ha cambiado (o que
+   * solo ha cambiado de sitio) no vuelve al marco. Solo los que salieron bien;
+   * como mucho `MAX_CACHE`, los más recientes.
+   */
+  private readonly cache = new Map<string, Promise<string>>();
 
   constructor(private readonly doc: Document = document) {}
 
@@ -50,6 +60,24 @@ export class MarcoMermaid {
   dibujar(fuente: string, colores: ColoresDiagrama): Promise<string> {
     if (this.destruido) return Promise.reject(new DiagramaInvalidoError());
     if (fuente.length > MAX_DIAGRAMA) return Promise.reject(new DiagramaGrandeError());
+    const clave = `${JSON.stringify(colores)}\u0000${fuente}`;
+    const hecho = this.cache.get(clave);
+    if (hecho) {
+      // Reinsertar: el más reciente queda al final (el primero es el que sale).
+      this.cache.delete(clave);
+      this.cache.set(clave, hecho);
+      return hecho;
+    }
+    const svg = this.pedir(fuente, colores);
+    this.cache.set(clave, svg);
+    if (this.cache.size > MAX_CACHE) this.cache.delete(this.cache.keys().next().value as string);
+    svg.catch(() => {
+      if (this.cache.get(clave) === svg) this.cache.delete(clave);
+    });
+    return svg;
+  }
+
+  private pedir(fuente: string, colores: ColoresDiagrama): Promise<string> {
     const id = ++this.siguiente;
     return new Promise<string>((resolver, rechazar) => {
       const temporizador = setTimeout(() => {
@@ -72,6 +100,7 @@ export class MarcoMermaid {
     this.doc.defaultView?.removeEventListener("message", this.alMensaje);
     this.iframe?.remove();
     this.iframe = null;
+    this.cache.clear();
     for (const p of this.pendientes.values()) {
       clearTimeout(p.temporizador);
       p.rechazar(new DiagramaInvalidoError());

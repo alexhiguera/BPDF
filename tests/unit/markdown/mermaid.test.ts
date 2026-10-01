@@ -7,6 +7,7 @@ import {
   DiagramaGrandeError,
   DiagramaInvalidoError,
   ESPERA_MAXIMA_MS,
+  MAX_CACHE,
   MarcoMermaid,
 } from "@/markdown/mermaid";
 import {
@@ -202,6 +203,46 @@ describe("MarcoMermaid (la app)", () => {
     const promesa = marco.dibujar("graph TD", COLORES);
     vi.advanceTimersByTime(ESPERA_MAXIMA_MS);
     await expect(promesa).rejects.toBeInstanceOf(DiagramaGrandeError);
+  });
+
+  it("recuerda los SVG ya dibujados: el mismo diagrama no vuelve al marco (Fase 9)", async () => {
+    const primera = listo();
+    await vi.waitFor(() => expect(enviados).toHaveLength(1));
+    delMarco({ tipo: "bpdf-svg", id: 1, svg: SVG });
+    await expect(primera).resolves.toBe(SVG);
+    await expect(marco.dibujar("graph TD; A-->B", COLORES)).resolves.toBe(SVG);
+    expect(enviados).toHaveLength(1);
+    // Otra fuente u otros colores sí van al marco.
+    void marco.dibujar("graph TD; A-->C", COLORES).catch(() => {});
+    void marco.dibujar("graph TD; A-->B", { ...COLORES, fondo: "#000000" }).catch(() => {});
+    await vi.waitFor(() => expect(enviados).toHaveLength(3));
+  });
+
+  it("un diagrama que falló no se recuerda: se vuelve a intentar", async () => {
+    const primera = listo();
+    await vi.waitFor(() => expect(enviados).toHaveLength(1));
+    delMarco({ tipo: "bpdf-error", id: 1, motivo: "invalid" });
+    await expect(primera).rejects.toBeInstanceOf(DiagramaInvalidoError);
+    void marco.dibujar("graph TD; A-->B", COLORES).catch(() => {});
+    await vi.waitFor(() => expect(enviados).toHaveLength(2));
+  });
+
+  it("recuerda como mucho MAX_CACHE diagramas (los más recientes)", async () => {
+    const primera = listo();
+    await vi.waitFor(() => expect(enviados).toHaveLength(1));
+    delMarco({ tipo: "bpdf-svg", id: 1, svg: SVG });
+    await primera;
+    for (let i = 0; i < MAX_CACHE + 5; i++) {
+      const p = marco.dibujar(`graph TD; N${i}`, COLORES);
+      await vi.waitFor(() => expect(enviados).toHaveLength(i + 2));
+      delMarco({ tipo: "bpdf-svg", id: i + 2, svg: SVG });
+      await p;
+    }
+    const antes = enviados.length;
+    await marco.dibujar(`graph TD; N${MAX_CACHE + 4}`, COLORES); // reciente: en caché
+    expect(enviados).toHaveLength(antes);
+    void marco.dibujar("graph TD; N0", COLORES).catch(() => {}); // el más antiguo salió
+    await vi.waitFor(() => expect(enviados).toHaveLength(antes + 1));
   });
 
   it("destruir quita el iframe y el listener y rechaza lo pendiente", async () => {

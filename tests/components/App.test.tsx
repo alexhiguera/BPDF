@@ -27,6 +27,8 @@ vi.mock("@/pdf/engine", async (original) => ({
   cargarPdfjs: vi.fn(async () => ({})),
   abrirPdf: motor.abrirPdf,
 }));
+// El editor de verdad (CodeMirror) necesita medir y pintar: se prueba en Playwright.
+vi.mock("@/editor/EditorMarkdown", async () => import("../helpers/editor-falso"));
 
 /**
  * Precarga de los visores que `App` carga con `React.lazy`. El primer
@@ -98,7 +100,10 @@ describe("App: abrir documentos", () => {
     montar(new PlataformaEnMemoria().elegira(fichero("roto.pdf", PDF_VALIDO)));
     await abrir();
     expect(await screen.findByRole("alert")).toHaveTextContent(messages.pdf.errors.unreadable);
-    fireEvent.click(screen.getByRole("button", { name: messages.pdf.close }));
+    // Cerrar es asíncrono desde la Fase 9 (puede pedir confirmación).
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: messages.pdf.close })),
+    );
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(messages.emptyState.title);
   });
 
@@ -166,7 +171,8 @@ describe("App: abrir documentos", () => {
   it("cerrar el documento vuelve al estado vacío y deja el foco en el contenido", async () => {
     montar(new PlataformaEnMemoria().elegira(fichero("a.md", "texto a")));
     await abrir();
-    fireEvent.click(await screen.findByRole("button", { name: messages.markdown.close }));
+    const cerrar = await screen.findByRole("button", { name: messages.markdown.close });
+    await act(async () => fireEvent.click(cerrar));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(messages.emptyState.title);
     expect(screen.getByRole("main")).toHaveFocus();
   });
@@ -308,7 +314,7 @@ describe("App: PDF con contraseña (Fase 6, D13)", () => {
 
   it("Cancelar cierra el documento", async () => {
     const { dialogo } = await abrirProtegido();
-    fireEvent.click(within(dialogo).getByRole("button", { name: p.cancel }));
+    await act(async () => fireEvent.click(within(dialogo).getByRole("button", { name: p.cancel })));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(messages.emptyState.title);
   });
@@ -435,5 +441,101 @@ describe("App: Markdown con recursos y carpetas (Fase 7 bis)", () => {
     await abrir();
     expect(screen.getByRole("alert")).toHaveTextContent(messages.documentError.severalMarkdown);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(messages.emptyState.title);
+  });
+});
+
+describe("App: editar un Markdown (Fase 9)", () => {
+  const e = messages.markdown;
+  const d = messages.discard;
+
+  /** Abre `uno.md`, entra en edición y lo cambia. `despues`: lo que se elegirá luego. */
+  async function editarUno(...despues: File[]) {
+    const plataforma = new PlataformaEnMemoria().elegira(fichero("uno.md", "# Uno"));
+    for (const f of despues) plataforma.elegira(f);
+    const utils = montar(plataforma);
+    await abrir();
+    await screen.findByRole("heading", { level: 1, name: "uno.md" });
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: e.mode.edicion })));
+    const editor = await screen.findByRole("textbox", { name: e.editor.label });
+    act(() => {
+      fireEvent.change(editor, { target: { value: "# Uno cambiado" } });
+    });
+    return { ...utils, plataforma };
+  }
+
+  const abrirDesdeCabecera = () =>
+    act(async () =>
+      fireEvent.click(
+        within(screen.getByRole("banner")).getByRole("button", { name: messages.open.button }),
+      ),
+    );
+
+  it("con cambios, abrir otro pregunta; «Seguir editando» los conserva", async () => {
+    const { container } = await editarUno(fichero("dos.md", "# Dos"));
+    await abrirDesdeCabecera();
+    const dialogo = await screen.findByRole("dialog", { name: d.title });
+    expect(within(dialogo).getByRole("button", { name: d.cancel })).toHaveFocus();
+    expect(dialogo).toHaveTextContent("uno.md");
+    expect(await axe(container)).toHaveNoViolations();
+    await act(async () => fireEvent.click(within(dialogo).getByRole("button", { name: d.cancel })));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "uno.md" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: e.editor.label })).toHaveValue("# Uno cambiado");
+  });
+
+  it("«Descartar los cambios» abre el nuevo, limpio", async () => {
+    await editarUno(fichero("dos.md", "# Dos"));
+    await abrirDesdeCabecera();
+    const dialogo = await screen.findByRole("dialog", { name: d.title });
+    await act(async () =>
+      fireEvent.click(within(dialogo).getByRole("button", { name: d.confirm })),
+    );
+    expect(await screen.findByRole("heading", { level: 1, name: "dos.md" })).toBeInTheDocument();
+    expect(screen.queryByText(e.modified)).toBeNull();
+  });
+
+  it("Esc en el diálogo es «seguir editando»", async () => {
+    await editarUno(fichero("dos.md", "# Dos"));
+    await abrirDesdeCabecera();
+    const dialogo = await screen.findByRole("dialog", { name: d.title });
+    await act(async () => fireEvent(dialogo, new Event("cancel", { cancelable: true })));
+    expect(screen.getByRole("heading", { level: 1, name: "uno.md" })).toBeInTheDocument();
+  });
+
+  it("cerrar con cambios pregunta antes", async () => {
+    await editarUno();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: e.close })));
+    expect(await screen.findByRole("dialog", { name: d.title })).toBeInTheDocument();
+  });
+
+  it("Ctrl+S guarda por la plataforma, con el texto editado y el documento", async () => {
+    const { plataforma } = await editarUno();
+    await act(async () => fireEvent.keyDown(window, { key: "s", ctrlKey: true }));
+    expect(plataforma.guardados).toHaveLength(1);
+    expect(plataforma.guardados[0]?.texto).toBe("# Uno cambiado");
+    expect(plataforma.guardados[0]?.documento.name).toBe("uno.md");
+    expect(screen.queryByText(e.modified)).toBeNull();
+    // Ya guardado: abrir otro no pregunta.
+    plataforma.elegira(fichero("dos.md", "# Dos"));
+    await abrirDesdeCabecera();
+    expect(await screen.findByRole("heading", { level: 1, name: "dos.md" })).toBeInTheDocument();
+  });
+
+  it("si guardar falla, se avisa y abrir otro sigue preguntando", async () => {
+    const { plataforma } = await editarUno();
+    plataforma.guardara(new Error("sin permiso"));
+    await act(async () => fireEvent.keyDown(window, { key: "s", ctrlKey: true }));
+    expect(screen.getByRole("alert")).toHaveTextContent(e.saveFailed);
+    plataforma.elegira(fichero("dos.md", "# Dos"));
+    await abrirDesdeCabecera();
+    expect(await screen.findByRole("dialog", { name: d.title })).toBeInTheDocument();
+  });
+
+  it("un PDF no ofrece guardar ni modos de edición", async () => {
+    montar(new PlataformaEnMemoria().elegira(fichero("a.pdf", PDF_VALIDO)));
+    await abrir();
+    await screen.findByRole("heading", { level: 1, name: "a.pdf" });
+    expect(screen.queryByRole("button", { name: e.save })).toBeNull();
+    expect(screen.queryByRole("button", { name: e.mode.edicion })).toBeNull();
   });
 });

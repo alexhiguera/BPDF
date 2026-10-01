@@ -677,6 +677,119 @@ de Chrome está cuantizado y da siempre ~10 MiB de heap de JavaScript.
 - Un segundo KaTeX (0.16, el de Mermaid) está en la build; solo se cargaría, en el marco,
   si una etiqueta de diagrama usa `$$…$$`.
 
+### 4 octies. El editor de Markdown (Fase 9)
+
+Editar un Markdown con vista previa y guardarlo en local. **D9: CodeMirror 6.** Tres modos
+en la barra del lector (`ModeSwitch`): **Lectura** (el lector de siempre), **Edición** (solo
+el editor) y **Dividido** (editor y vista previa, `SplitView`).
+
+| Pieza | Dónde | Qué hace |
+|---|---|---|
+| Editor | [`src/editor/EditorMarkdown.tsx`](../src/editor/EditorMarkdown.tsx) | CodeMirror 6 con la gramática Markdown (GFM), historial, teclado e indentación. Trozo propio, a demanda |
+| Contrato | [`src/editor/tipos.ts`](../src/editor/tipos.ts) | `ManejadorEditor` y `EstadoGuardado`, sin tipos de CodeMirror: quien los importa no arrastra el editor |
+| Modos y paneles | `ModeSwitch.tsx`, `SplitView.tsx` | Botones con `aria-pressed`; separador «window splitter» (teclado, 20–80 %) |
+| Sincronía | [`src/editor/sincronia.ts`](../src/editor/sincronia.ts) | Desplazamiento emparejado por encabezados (funciones puras + gancho) |
+| Orquestación | [`src/markdown/MarkdownView.tsx`](../src/markdown/MarkdownView.tsx) | Modo, vista previa, cambios, guardar, pausa |
+| Cambios y confirmación | [`DocumentProvider`](../src/documents/DocumentProvider.tsx), [`ConfirmarDescarte`](../src/app/ConfirmarDescarte.tsx) | `modified`, confirmar antes de sustituir o cerrar, `beforeunload` |
+| Guardar | `Platform.saveText`, [`src/platform/guardar-web.ts`](../src/platform/guardar-web.ts) | `showSaveFilePicker` o descarga |
+
+**Carga y montaje.** Leer no descarga el editor: `React.lazy` al entrar por primera vez en
+Edición o Dividido. Desde entonces se queda montado (oculto en Lectura). Una sola
+estructura para los tres modos (`SplitView` con `mostrar`): Lectura ↔ Dividido comparten
+la vista previa sin volver a montarla (pintar 1 MB cuesta segundos). En **Edición la vista
+previa no está montada**: oculta pero montada, con 1 MB + KaTeX teclear tenía picos de casi
+1 s (medido; probablemente la recolección de basura sobre un árbol enorme); volver a
+Lectura o Dividido la pinta otra vez. Editor y vista previa llevan `contain: strict`: lo
+que pasa en uno no obliga a maquetar ni pintar el otro.
+
+**CSP: el editor vive en un Shadow DOM.** CodeMirror inyecta sus estilos con `style-mod`:
+con el `document` como raíz, en una etiqueta `<style>` que `style-src 'self'` bloquea; con un
+`ShadowRoot`, en hojas construibles (`adoptedStyleSheets`), que no son estilos en línea. Sus
+atributos `style` van por CSSOM. **Escribir encima de una selección** lo aplica el propio
+CodeMirror (`beforeinput` interceptado): la edición nativa de Chrome, al sustituir texto
+seleccionado, creaba `<span style="…">` y la CSP los bloqueaba (dos violaciones por
+pulsación, medido); teclear normal, borrar, Intro, pegar y soltar ya los resolvía
+CodeMirror sin tocar el navegador. Resultado: **la CSP no cambia** (E2E: cabecera idéntica,
+cero violaciones, ninguna `<style>`, escribir y pegar sobre una selección). Los tokens de
+color son propiedades personalizadas, que cruzan la frontera del Shadow DOM: el tema del
+editor los usa.
+
+**El texto.** Vive en el `EditorState` de CodeMirror (una cuerda: teclear no copia el
+documento). Cada tecla hace O(1) fuera del editor: marca «modificado» la primera vez y
+reprograma la vista previa. El texto se saca del editor (O(tamaño)) solo al refrescar la
+vista previa, al guardar y al cambiar de modo. `documento` no cambia: sus `resources`
+(`base`, `ficheros`, `ambiguas`) son los que se entregaron al abrir.
+
+**Vista previa.** Es el mismo lector (`Contenido`: mismo pipeline, política de URL,
+recursos, KaTeX, Mermaid, índice) con el texto editado. En Dividido se refresca **200 ms
+después de la última tecla**, nunca en cada una. Pintar la vista previa bloquea el hilo
+principal (el lector: segundos por MB, §4 quinquies), así que **si pintar la de ese
+documento costó más de 250 ms** (medido en cada refresco, y al abrir en los documentos que
+se pintan en diferido, > 100 KB: en uno pequeño, el primer pintado de la página incluye el
+arranque en frío y daría una pausa falsa), en Dividido deja de refrescarse
+sola: avisa («Vista previa en pausa…») y se actualiza con su botón o al cambiar de modo.
+Decisión del usuario en la Fase 9, con estas cifras: con 1 MB, cada refresco bloqueaba
+1,4–3,4 s y una tecla en ese momento esperaba hasta 2,4 s. Con documentos normales, 200 ms
+como siempre.
+
+- **Diagramas:** `MarcoMermaid` recuerda los SVG ya dibujados por fuente y colores (64, los
+  más recientes; solo los que salieron bien): al refrescar, un diagrama sin cambios no
+  vuelve al marco. Los que se añaden o cambian, sí, con las mismas garantías de la Fase 8.
+- **Fórmulas:** las mismas de la Fase 8 (KaTeX a demanda, mismas opciones).
+- **Recursos:** los entregados al abrir. Editar no da acceso a nada más: una ruta nueva que
+  no se entregó es «imagen local no incluida», y `../fuera.png` sigue fuera
+  (`resolverRecurso`, sin cambios).
+
+**Sincronía del desplazamiento (Dividido).** Por encabezados: el i-ésimo del texto
+(`encabezadosFuente`, ATX y setext, fuera de código con valla y de fórmulas `$$`) con el
+i-ésimo de la vista previa (sin el título oculto de las notas al pie); entre dos, se
+interpola. Si los dos lados no coinciden (un caso raro de CommonMark), se emparejan los que
+hay y se descarta la pareja que no avance: la correspondencia es siempre creciente. **Sin
+bucles:** manda el panel con el que el usuario interactúa (puntero encima, foco dentro,
+rueda); el desplazamiento que BPDF provoca en el otro no se reenvía. Las posiciones de los
+encabezados se miden solo cuando cambian el texto, el alto o el ancho (medirlas en cada
+fotograma bloqueaba con 1 MB de encabezados).
+
+**Cambios sin guardar.** El primer cambio marca `modified` en `DocumentProvider` («Sin
+guardar» en la barra). Cualquier sustitución (selector, carpeta, soltar, elegir el Markdown
+de una carpeta) y cerrar piden confirmación (`ConfirmarDescarte`, `<dialog>` modal, foco en
+«Seguir editando», Esc = seguir) **después de leer y validar lo nuevo y antes de aplicarlo**:
+cancelar el selector o elegir algo que no vale no pregunta ni toca el documento abierto.
+Con cambios, `beforeunload` avisa al cerrar o recargar la pestaña (el texto es del
+navegador). Nada se guarda por su cuenta: ni autoguardado ni borradores (PLAN §8).
+
+**Guardar** (`Ctrl/⌘+S` o el botón; no con un diálogo modal abierto). `Platform.saveText`:
+
+- Con `showSaveFilePicker` (Chromium): la primera vez el usuario elige el destino; las
+  siguientes, mientras siga abierto ese documento, se escribe ahí. El `FileSystemFileHandle`
+  vive en memoria (solo el del documento actual) y se olvida si escribir falla.
+- Sin él: una descarga (`<a download>` con una URL `blob:` propia, revocada a los 30 s).
+- **Nunca se sobrescribe en silencio el fichero abierto**: en web BPDF no tiene acceso a él.
+- Guardado o descargado → limpio (salvo que se escribiera mientras se guardaba); cancelado →
+  sigue igual; error → aviso (`role="alert"`) y sigue modificado.
+
+**Accesibilidad.** El editor es un `textbox` con nombre («Texto Markdown. Esc y después Tab
+para salir del editor»: Tab indenta). El modo se ve y se anuncia (`aria-pressed`, grupo con
+nombre). El separador es enfocable, con valor y límites. El diálogo de descarte es modal y
+devuelve el foco. jest-axe en todo lo nuevo.
+
+**Rendimiento** (`npm run bench:editor`, Ryzen 7 5800X, Chromium; Event Timing API: de la
+tecla al pintado; 50 ms entre teclas):
+
+@@CIFRAS@@
+
+**Límites conocidos.**
+
+- En Dividido, un documento grande tiene la vista previa en pausa (arriba): se ve al día al
+  pulsar «Actualizar» o al volver a Lectura, que bloquea lo que cueste pintarlo una vez.
+- La búsqueda del navegador (`Ctrl+F`) no encuentra el texto del editor que está fuera de la
+  pantalla (CodeMirror solo pinta lo visible) y el editor no trae búsqueda propia (el paquete
+  `@codemirror/search` no se incluyó).
+- Guardar en web siempre pide destino la primera vez de cada documento (el navegador no da
+  acceso al fichero abierto). Firefox y Safari no tienen `showSaveFilePicker`: descargan.
+- Probado en Chromium. El Shadow DOM con hojas construibles funciona en Firefox y Safari
+  16.4+, pero no se ha comprobado.
+
 ### 5. La menor complejidad que cumpla los requisitos
 
 Ante dos soluciones válidas: menos código, menos dependencias, menos superficie de ataque,

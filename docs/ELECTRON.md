@@ -44,40 +44,54 @@ Server Actions ni rutas de servidor (ver D1 en [PLAN.md](PLAN.md) §3).
 
 ## 3. Contrato `Platform`
 
-**Vigente desde la Fase 3**, con `openExternal` desde la Fase 5
-([`src/platform/types.ts`](../src/platform/types.ts)), solo con lo que la app usa hoy (un
-documento a la vez, D16):
+**Vigente** ([`src/platform/types.ts`](../src/platform/types.ts); actualizado el
+*2026-10-01*): Fase 3 (abrir), Fase 5 (`openExternal`), Fase 7 bis (varios ficheros y
+carpetas) y Fase 9 (`saveText`). Solo lo que la app usa hoy (un documento a la vez, D16):
 
 ```ts
 interface Platform {
-  /** Selector del sistema; `null` si se cancela; rechaza con DocumentError si no vale. */
-  pickDocument(): Promise<OpenedDocument | null>;
-  /** Un fichero soltado en la ventana (el DOM da un `File` en web y en Electron). */
-  openDroppedFile(file: File): Promise<OpenedDocument>;
+  /** Selector del sistema, con selección múltiple (un documento, o un .md con sus imágenes). */
+  pickDocument(): Promise<Apertura | null>;
+  /** Selector de carpeta: el Markdown que contenga y sus imágenes (o una elección si hay varios). */
+  pickFolder(): Promise<Apertura | null>;
+  /** Lo soltado en la ventana (ficheros o una carpeta), ya capturado dentro del evento. */
+  openDropped(soltado: Soltado): Promise<Apertura | null>;
   /** Un enlace de un documento, fuera de BPDF. Solo http:, https: y mailto:; se revalida. */
   openExternal(url: string): void;
+  /** Guarda el texto de un documento; el usuario elige siempre el destino (Fase 9). */
+  saveText(documento: { id: string; name: string }, texto: string): Promise<"guardado" | "descargado" | "cancelado">;
 }
 ```
 
-Devuelve documentos y no `File` porque en Electron el diálogo lo abre el main, que lee
-el fichero y asigna un id ligado a su ruta. Las dos implementaciones terminan en
-`readDocument(file, id?)` ([`src/documents/read.ts`](../src/documents/read.ts)): misma
-validación (extensión, tamaño, contenido) y mismo modelo, y la de Electron pasa el id del
-main. Cómo encaja la Fase 14:
+`Apertura` es un documento (`OpenedDocument`) o una elección entre varios Markdown de una
+carpeta. `null`: el usuario canceló. Rechaza con `DocumentError` si lo elegido no vale.
 
-- `pickDocument()` → `window.bpdf.openDialog()` → `{ id, name, bytes }` →
-  `readDocument(new File([bytes], name), id)`. El main valida antes (§7), y el renderer
-  vuelve a validar: no se fía de nadie.
-- `openDroppedFile(file)` → `window.bpdf.registerDropped(file)` → `{ id }` →
-  `readDocument(file, id)`.
+Devuelve documentos y no `File` porque en Electron el diálogo lo abre el main, que lee
+los ficheros y asigna un id ligado a su ruta. Las dos implementaciones terminan en
+`abrirSeleccion` → `readDocument(file, id?)` ([`src/documents/seleccion.ts`](../src/documents/seleccion.ts),
+[`src/documents/read.ts`](../src/documents/read.ts)): misma validación (extensión, tamaño,
+contenido, recursos) y mismo modelo, y la de Electron pasa el id del main. Cómo encaja la
+Fase 14:
+
+- `pickDocument()` / `pickFolder()` → `window.bpdf.openDialog({ carpeta })` → `{ id, name,
+  bytes }` (y las imágenes con rutas relativas a la carpeta, nunca absolutas) →
+  `abrirSeleccion(…)`. El main valida antes (§7), y el renderer vuelve a validar: no se fía
+  de nadie.
+- `openDropped(soltado)` → `window.bpdf.registerDropped(ficheros)` → `{ id }` → la misma
+  validación.
 - `openExternal(url)` → `window.bpdf.openExternal(url)` → el main revalida la URL con la
   misma política (`http:`, `https:`, `mailto:`) y llama a `shell.openExternal`. En web es
   `window.open(url, "_blank", "noopener,noreferrer")`; en Electron **nunca** una ventana
   nueva de la app (`setWindowOpenHandler` → `deny`, §6).
+- `saveText(documento, texto)` → `window.bpdf.saveDocument(id, texto)`: el main solo
+  escribe en el fichero que el usuario abrió (por su id) o en el que elija con «Guardar
+  como»; el renderer nunca ve ni manda una ruta. En web (Fase 9): `showSaveFilePicker`
+  (el usuario elige destino la primera vez; el `FileSystemFileHandle` vive en memoria) o
+  una descarga; **nunca** se sobrescribe en silencio ([ARCHITECTURE.md](ARCHITECTURE.md)
+  §4 octies).
 
-**Lo que añadirá cada fase** (y solo entonces): `saveText(doc, text, { saveAs })` (Fase 9), `onExternalOpen(cb)`
-(«Abrir con…» y argv, Fase 14). Si la Fase 7 admite soltar un `.md` con sus imágenes,
-`openDroppedFile` pasará a recibir varios ficheros.
+**Lo que añadirá cada fase** (y solo entonces): `onExternalOpen(cb)` («Abrir con…» y argv,
+Fase 14).
 
 `src/platform/index.ts` (`createPlatform()`) devuelve hoy la web; la Fase 14 añade la
 rama de Electron según exista `window.bpdf`. No se simula antes: no hay preload que

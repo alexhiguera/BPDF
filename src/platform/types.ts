@@ -22,8 +22,8 @@ export type Soltado = {
  * plataforma.
  *
  * Contiene solo lo que la app usa hoy. Cada fase añade el método que necesite
- * cuando lo necesite: guardar (`saveText`, Fase 9) y «Abrir con…» del sistema
- * (`onExternalOpen`, Fase 14).
+ * cuando lo necesite: guardar (`saveText`, Fase 9, ya aquí) y «Abrir con…» del
+ * sistema (`onExternalOpen`, Fase 14).
  *
  * Por qué devuelve documentos y no `File`: en Electron el diálogo lo abre el
  * proceso main, que lee los ficheros y asigna un id ligado a su ruta (para
@@ -56,4 +56,26 @@ export interface Platform {
    * `Referer`; en Electron (Fase 14), `shell.openExternal` desde el main.
    */
   openExternal(url: string): void;
+
+  /**
+   * Guarda el texto de un documento (Fase 9, el editor de Markdown). **El
+   * usuario elige siempre el destino**: nunca se sobrescribe en silencio el
+   * fichero que se abrió (en web, BPDF ni siquiera tiene acceso a él).
+   *
+   * - Web con `showSaveFilePicker` (Chromium): la primera vez pide el destino;
+   *   las siguientes vuelven a escribir en el que eligió, mientras la sesión
+   *   dure (el `FileSystemFileHandle` vive en memoria, nunca se guarda).
+   * - Web sin él: una descarga con el nombre del documento (siempre una copia).
+   * - Electron (Fase 14): el proceso main, por su id, sin que el renderer vea
+   *   rutas.
+   *
+   * `"cancelado"` si el usuario cierra el diálogo sin elegir. Rechaza si no se
+   * pudo escribir (sin permiso, disco lleno…): el texto sigue sin guardar.
+   */
+  saveText(documento: DocumentoAGuardar, texto: string): Promise<ResultadoGuardado>;
 }
+
+/** Lo que la plataforma necesita saber del documento para guardarlo: nada más. */
+export type DocumentoAGuardar = { readonly id: string; readonly name: string };
+
+export type ResultadoGuardado = "guardado" | "descargado" | "cancelado";

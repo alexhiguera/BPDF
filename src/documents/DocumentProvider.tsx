@@ -3,6 +3,7 @@ import {
   type ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -20,6 +21,9 @@ type DocumentState = {
   choice: EleccionMarkdown | null;
 };
 
+/** Una sustitución esperando a que el usuario confirme que descarta sus cambios. */
+type Confirmacion = { resolver: (descartar: boolean) => void };
+
 export type DocumentContextValue = DocumentState & {
   /** Selector de archivos del sistema (uno, o un Markdown con sus imágenes). Cancelar no cambia nada. */
   openWithPicker(): Promise<void>;
@@ -31,9 +35,19 @@ export type DocumentContextValue = DocumentState & {
   choose(index: number): Promise<void>;
   /** Descarta la elección pendiente: el documento abierto sigue como estaba. */
   cancelChoice(): void;
-  /** Cierra el documento y vuelve al estado vacío. */
-  close(): void;
+  /** Cierra el documento y vuelve al estado vacío (con cambios, tras confirmar). `false` si no se cerró. */
+  close(): Promise<boolean>;
   dismissError(): void;
+  /**
+   * Fase 9: el documento abierto tiene cambios sin guardar. Lo marca el editor;
+   * abrir otro documento siempre empieza limpio.
+   */
+  modified: boolean;
+  setModified(modified: boolean): void;
+  /** Hay una sustitución esperando a que el usuario confirme (`respondDiscard`). */
+  pendingDiscard: boolean;
+  /** Respuesta del usuario: `true` descarta los cambios y sigue; `false` no toca nada. */
+  respondDiscard(discard: boolean): void;
 };
 
 const DocumentContext = createContext<DocumentContextValue | null>(null);
@@ -56,8 +70,13 @@ const DocumentContext = createContext<DocumentContextValue | null>(null);
  * resultado. Si un Markdown grande termina de leerse después de que se haya
  * soltado otro fichero, se descarta.
  *
- * La confirmación de «cambios sin guardar» antes de sustituir llega con el
- * editor (Fase 9), que es quien puede tener cambios.
+ * **Cambios sin guardar (Fase 9).** El editor marca `modified`. Si hay cambios,
+ * cualquier sustitución (selector, carpeta, soltar, elegir el Markdown de una
+ * carpeta) y cerrar piden confirmación **después** de leer y validar lo nuevo y
+ * **antes** de aplicarlo: cancelar el selector o elegir algo que no vale no
+ * pregunta nada ni toca el documento abierto, y todas las vías pasan por aquí
+ * (`load`). Con cambios, `beforeunload` avisa al cerrar o recargar la
+ * pestaña. Nada de esto guarda nada: los cambios solo existen en memoria.
  */
 export function DocumentProvider({
   platform,
@@ -68,24 +87,68 @@ export function DocumentProvider({
 }) {
   const [state, setState] = useState<DocumentState>({ document: null, error: null, choice: null });
   const turn = useRef(0);
+  const [modified, setModifiedState] = useState(false);
+  const modifiedRef = useRef(false);
+  const setModified = useCallback((m: boolean) => {
+    modifiedRef.current = m;
+    setModifiedState(m);
+  }, []);
+
+  // Confirmar antes de perder cambios. Una petición nueva cancela la anterior.
+  const [pendingDiscard, setPendingDiscard] = useState(false);
+  const pendiente = useRef<Confirmacion | null>(null);
+  const confirmDiscard = useCallback((): Promise<boolean> => {
+    if (!modifiedRef.current) return Promise.resolve(true);
+    pendiente.current?.resolver(false);
+    return new Promise<boolean>((resolver) => {
+      pendiente.current = { resolver };
+      setPendingDiscard(true);
+    });
+  }, []);
+  const respondDiscard = useCallback((discard: boolean) => {
+    const p = pendiente.current;
+    pendiente.current = null;
+    setPendingDiscard(false);
+    p?.resolver(discard);
+  }, []);
+
+  useEffect(() => {
+    if (!modified) return;
+    // El texto del aviso lo pone el navegador; basta con cancelar el evento.
+    const avisar = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [modified]);
 
   // `read` se llama en el acto (sin `await` antes): `openDropped` depende de ello
   // para que la plataforma lea lo soltado dentro del evento.
-  const load = useCallback(async (read: () => Promise<Apertura | null>) => {
-    const mine = ++turn.current;
-    try {
-      const result = await read();
-      if (mine !== turn.current || !result) return;
-      if (result.kind === "choose-markdown") {
-        setState((s) => ({ document: s.document, error: null, choice: result }));
-      } else {
-        setState({ document: result, error: null, choice: null });
+  const load = useCallback(
+    async (read: () => Promise<Apertura | null>) => {
+      const mine = ++turn.current;
+      try {
+        const result = await read();
+        if (mine !== turn.current || !result) return;
+        if (result.kind === "choose-markdown") {
+          setState((s) => ({ document: s.document, error: null, choice: result }));
+        } else {
+          if (!(await confirmDiscard())) {
+            if (mine === turn.current) setState((s) => ({ ...s, choice: null }));
+            return;
+          }
+          if (mine !== turn.current) return;
+          setModified(false);
+          setState({ document: result, error: null, choice: null });
+        }
+      } catch (e) {
+        if (mine !== turn.current) return;
+        setState((s) => ({ document: s.document, error: asDocumentError(e), choice: null }));
       }
-    } catch (e) {
-      if (mine !== turn.current) return;
-      setState((s) => ({ document: s.document, error: asDocumentError(e), choice: null }));
-    }
-  }, []);
+    },
+    [confirmDiscard, setModified],
+  );
 
   const openWithPicker = useCallback(() => load(() => platform.pickDocument()), [load, platform]);
   const openFolder = useCallback(() => load(() => platform.pickFolder()), [load, platform]);
@@ -101,10 +164,13 @@ export function DocumentProvider({
   );
   const cancelChoice = useCallback(() => setState((s) => ({ ...s, choice: null })), []);
 
-  const close = useCallback(() => {
+  const close = useCallback(async () => {
+    if (!(await confirmDiscard())) return false;
     turn.current++; // una apertura en curso ya no debe aplicarse
+    setModified(false);
     setState({ document: null, error: null, choice: null });
-  }, []);
+    return true;
+  }, [confirmDiscard, setModified]);
 
   const dismissError = useCallback(() => setState((s) => ({ ...s, error: null })), []);
 
@@ -118,8 +184,25 @@ export function DocumentProvider({
       cancelChoice,
       close,
       dismissError,
+      modified,
+      setModified,
+      pendingDiscard,
+      respondDiscard,
     }),
-    [state, openWithPicker, openFolder, openDropped, choose, cancelChoice, close, dismissError],
+    [
+      state,
+      openWithPicker,
+      openFolder,
+      openDropped,
+      choose,
+      cancelChoice,
+      close,
+      dismissError,
+      modified,
+      setModified,
+      pendingDiscard,
+      respondDiscard,
+    ],
   );
   return <DocumentContext value={value}>{children}</DocumentContext>;
 }

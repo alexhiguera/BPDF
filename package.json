@@ -23,6 +23,7 @@
     "test:e2e:ui": "playwright test --ui",
     "bench:pdf": "playwright test --config playwright.bench.config.ts visor-pdf",
     "bench:markdown": "playwright test --config playwright.bench.config.ts markdown",
+    "bench:editor": "playwright test --config playwright.bench.config.ts editor",
     "docs:validar": "node scripts/validar-public-docs.mjs",
     "docs:enlaces": "node scripts/verificar-enlaces-docs.mjs",
     "deps:overrides": "node scripts/verificar-overrides.mjs",
@@ -33,6 +34,12 @@
     "node": ">=24.0.0 <25"
   },
   "dependencies": {
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/lang-markdown": "6.5.2",
+    "@codemirror/language": "6.12.4",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.13",
+    "@lezer/highlight": "1.2.5",
     "clsx": "^2.1.1",
     "highlight.js": "11.11.1",
     "katex": "0.18.9",

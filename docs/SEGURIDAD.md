@@ -66,7 +66,7 @@ y solo abre lo que la app usa hoy. Vive en **un único fichero fuente**,
 En `vite dev` **no hay CSP**: Vite inyecta scripts y estilos en línea para desarrollar.
 Nada se da por bueno por funcionar en `dev`.
 
-**Vigente** ✅ (Fase 2; la Fase 4 añadió `worker-src` y `font-src`; la Fase 5, `connect-src`; la Fase 7 bis, `blob:` en `img-src`; la Fase 8, `frame-src`):
+**Vigente** ✅ (Fase 2; la Fase 4 añadió `worker-src` y `font-src`; la Fase 5, `connect-src`; la Fase 7 bis, `blob:` en `img-src`; la Fase 8, `frame-src`; la Fase 9, nada: el editor CodeMirror va en un Shadow DOM, abajo):
 
 ```text
 default-src 'none';
@@ -114,6 +114,7 @@ aprobación antes de añadirlo.
 
 | Directiva | Motivo |
 |---|---|
+| *(Fase 9: ninguna)* | El editor (CodeMirror 6) inyecta sus estilos con `style-mod`: con el `document` como raíz, en una `<style>` que esta CSP bloquea. Se monta en un **Shadow DOM**, donde usa hojas construibles (`adoptedStyleSheets`), que no son estilos en línea; sus atributos `style` van por CSSOM. Al escribir sobre una selección, la edición nativa de Chrome creaba `<span style>` (bloqueados: dos violaciones por pulsación); el editor intercepta `beforeinput` y aplica el cambio él mismo. Ni `'unsafe-inline'` ni nonces | `e2e/specs/editor.spec.ts` (cabecera idéntica, cero violaciones, hojas construibles, escribir y pegar sobre una selección) |
 | `frame-src 'self'` | El marco aislado de Mermaid (`/mermaid.html`, en un iframe con `sandbox="allow-scripts"`). Mermaid dibuja con `<style>` y atributos `style` en línea; con la CSP de la app eran 250 violaciones en cinco diagramas (medido). En vez de añadir `'unsafe-inline'` a la app, Mermaid corre en esa página, con **su propia política** (`CSP_MARCO_MERMAID`, abajo). `tests/unit/seguridad.test.ts`, `e2e/specs/formulas-diagramas.spec.ts` |
 
 **La política del marco** (`/mermaid.html`, cabecera y `<meta>`; Fase 8):
@@ -266,7 +267,9 @@ La CSP no cambia en esta fase: leer ficheros locales no necesita ninguna directi
 | KaTeX: `\href`, `\url`, `\includegraphics`, `\htmlClass`, `\htmlId`, `\htmlStyle`, `\htmlData`, macros, `\rule` gigante, colores inyectados | `trust: false` (se pintan como texto, sin enlace ni atributo), `maxExpand: 1000`, `maxSize: 20`, macros nuevas por fórmula (un `\gdef` no pasa a otra), `throwOnError` (lo inválido se ve como código). **Sin HTML**: nodos creados con el `toNode()` de KaTeX, nunca `innerHTML` ni `rehype-katex`; el atributo `style` que KaTeX pone por `setAttribute` se quita (la CSP lo bloquearía). Versión exacta | ✅ 8 (`matematicas.test.ts`, `formulas-diagramas.test.tsx`, E2E con `katex-hostil.md`) |
 | Mermaid: etiquetas HTML, `click`/`callback`/`link` con `javascript:`, `%%{init}%%` que relaja la seguridad o inyecta `themeCSS`, `<foreignObject>`, imágenes en nodos, ids hostiles, diagramas enormes | Corre **fuera de la app**, en el marco aislado (iframe `sandbox` sin `allow-same-origin`, CSP sin red). `securityLevel: "strict"`, `htmlLabels: false`, `secure` con todas las claves de seguridad y aspecto, `maxTextSize`/`maxEdges`, nodos con imagen rechazados antes de dibujar. SVG saneado en el marco (`sanearSvg`, lista blanca) y **verificado en la app** sin DOM (`verificarSvg`, rechaza lo que no cumpla); se muestra como `<img src="blob:…">` | ✅ 8 (`svg-seguro.test.ts`, `mermaid.test.ts`, E2E con `mermaid-hostil.md`, aislamiento del marco comprobado desde dentro) |
 | Resaltado de sintaxis | `lowlight` produce un árbol hast; `resaltado.ts` lo convierte a React con lista blanca (`span` con clases `hljs-*` y texto). Sin `innerHTML`, 9 gramáticas, sin detección automática | ✅ 7 (`resaltado.test.ts`) |
-| Portapapeles | Solo escritura (`writeText`) tras un clic, del texto del documento; sin pedir permisos ni leer | ✅ 7 |
+| Portapapeles | Solo escritura (`writeText`) tras un clic, del texto del documento; sin pedir permisos ni leer. En el editor (F9), pegar lo resuelve CodeMirror con el evento `paste` del usuario: BPDF no lee el portapapeles por su cuenta | ✅ 7 · ✅ 9 |
+| Texto escrito en el editor (F9) | El editor trabaja sobre texto: no lo interpreta ni lo convierte a HTML. La vista previa es el MISMO lector (`Contenido`, mismo pipeline, lista blanca, `url-policy`, recursos, KaTeX y Mermaid): lo escrito pasa por todos los controles de esta tabla. Editar no cambia los recursos (los entregados al abrir): `../fuera.png` sigue fuera y una imagen nueva no se carga | ✅ 9 (`edicion.test.tsx`, E2E con HTML, `javascript:`, SVG, KaTeX y Mermaid hostiles escritos en el editor) |
+| Guardar (F9) | `Platform.saveText`: el usuario elige siempre el destino (`showSaveFilePicker`) o recibe una descarga (`<a download>` con una URL `blob:` propia, revocada a los 30 s). El `FileSystemFileHandle` vive en memoria, solo el del documento actual; nunca se guarda. BPDF no escribe en el fichero abierto (en web no tiene acceso a él), no usa otras APIs de ficheros ni ve rutas | ✅ 9 (`guardar-web.test.ts`, E2E de descarga y de selector) |
 | Denegación de servicio (anidamiento extremo, tablas enormes, fórmulas recursivas) | Límite de tamaño de fichero (20 MiB); recorridos propios iterativos (sin recursión que dependa del contenido); `maxExpand` de KaTeX y `maxTextSize` de Mermaid (F8). **Conocido (Fase 7): muchas listas cortas son cuadráticas** en `mdast-util-from-markdown`: un documento hecho a propósito bajo el límite puede bloquear la pestaña mucho tiempo (solo esa pestaña; nada sale del equipo). Medido en [ARCHITECTURE.md](ARCHITECTURE.md) §4 quinquies; pendiente en TAREAS | 7 (medido), 8, 13 |
 
 ### 3.2 Enlaces ✅ (Fase 7)
@@ -375,6 +378,11 @@ Resumen; el diseño completo está en [ELECTRON.md](ELECTRON.md).
   lo comprueban en cada recorrido (§2.6).
 - **Abrir un documento no guarda nada**: ni nombre, ni contenido, ni ruta, ni historial.
   Solo vive en memoria mientras está abierto (D16: uno a la vez, sin recientes).
+- **Editar tampoco** (Fase 9): el texto editado vive en el editor (memoria); sin
+  autoguardado ni borradores. Solo se escribe donde el usuario elija al guardar, y el
+  destino elegido (`FileSystemFileHandle`) solo se recuerda en memoria mientras ese
+  documento sigue abierto. Los tests comprueban que no se toca `localStorage` ni
+  `sessionStorage`.
 - Persistencia mínima ([PLAN.md](PLAN.md) §8): preferencias y, si D8 lo confirma,
   posiciones por huella, sin nombres ni contenido. Borrables desde la interfaz.
 - Sin cookies.

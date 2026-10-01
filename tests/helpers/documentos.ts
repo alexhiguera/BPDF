@@ -1,6 +1,6 @@
 import { abrirSeleccion, type Seleccion } from "@/documents/seleccion";
 import { type OpenedMarkdown, type RecursosDocumento, SIN_RECURSOS } from "@/documents/types";
-import type { Platform, Soltado } from "@/platform";
+import type { DocumentoAGuardar, Platform, ResultadoGuardado, Soltado } from "@/platform";
 
 /** Utilidades para construir ficheros y plataformas en los tests. */
 
@@ -78,6 +78,23 @@ export class PlataformaEnMemoria implements Platform {
   readonly externas: string[] = [];
   openExternal(url: string) {
     this.externas.push(url);
+  }
+
+  /** Lo que se ha guardado (Fase 9), en orden. */
+  readonly guardados: { documento: DocumentoAGuardar; texto: string }[] = [];
+  private colaGuardados: (ResultadoGuardado | Error)[] = [];
+
+  /** Qué responderá el próximo guardado (por defecto, `"guardado"`). */
+  guardara(resultado: ResultadoGuardado | Error): this {
+    this.colaGuardados.push(resultado);
+    return this;
+  }
+
+  async saveText(documento: DocumentoAGuardar, texto: string): Promise<ResultadoGuardado> {
+    const r = this.colaGuardados.shift() ?? "guardado";
+    if (r instanceof Error) throw r;
+    if (r !== "cancelado") this.guardados.push({ documento, texto });
+    return r;
   }
 }
 

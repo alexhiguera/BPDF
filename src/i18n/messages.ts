@@ -189,11 +189,45 @@ export const messages = {
       external: (url: string) => `Abrir ${url} en el navegador`,
     },
   },
+  /** Cambios sin guardar al sustituir o cerrar un documento (Fase 9). */
+  discard: {
+    title: "Hay cambios sin guardar",
+    body: (nombre: string) =>
+      `Si continúas, se perderán los cambios de «${nombre}». BPDF no guarda nada por su cuenta.`,
+    cancel: "Seguir editando",
+    confirm: "Descartar los cambios",
+  },
   /** Visor Markdown (Fase 7). Comportamiento en docs/ARCHITECTURE.md → visor Markdown. */
   markdown: {
     loading: "Preparando el documento…",
     toolbar: "Herramientas del documento",
     close: "Cerrar documento",
+    /** Edición (Fase 9). */
+    mode: {
+      label: "Modo",
+      lectura: "Lectura",
+      edicion: "Edición",
+      dividido: "Dividido",
+    },
+    split: {
+      separator: "Ancho del editor",
+      value: (porcentaje: number) => `Editor al ${porcentaje} %`,
+    },
+    editor: {
+      label: "Texto Markdown. Esc y después Tab para salir del editor",
+      loading: "Cargando el editor…",
+      failed: "No se ha podido cargar el editor.",
+    },
+    save: "Guardar",
+    saveShortcut: "Guardar (Ctrl+S, ⌘S en Mac)",
+    saving: "Guardando…",
+    saved: "Guardado.",
+    downloaded: "Descargado como copia en la carpeta de descargas.",
+    saveFailed: "No se ha podido guardar. Los cambios siguen aquí; inténtalo de nuevo.",
+    modified: "Sin guardar",
+    previewPaused:
+      "Vista previa en pausa: el documento es grande y actualizarla mientras escribes lo interrumpiría.",
+    previewRefresh: "Actualizar la vista previa",
     toc: "Índice",
     showToc: "Mostrar el índice",
     hideToc: "Ocultar el índice",

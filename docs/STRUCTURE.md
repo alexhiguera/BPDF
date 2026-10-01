@@ -11,7 +11,7 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 ├── mermaid.html              segunda entrada: el marco aislado de Mermaid (F8), con su propia CSP
 ├── vite.config.ts            build estática, workers como módulos ES, cabeceras de `preview`, plugin de BPDF
 ├── vercel.json               cabeceras HTTP de la web publicada: GENERADO (`npm run cabeceras:vercel`)
-├── playwright.bench.config.ts  benchmarks de los visores (`npm run bench:pdf` · `bench:markdown`, fuera de CI)
+├── playwright.bench.config.ts  benchmarks (`npm run bench:pdf` · `bench:markdown` · `bench:editor`, fuera de CI)
 ├── src/
 │   ├── main.tsx              arranque: crea la plataforma y monta <App/> en el ErrorBoundary
 │   ├── app/                  la aplicación: shell y vistas
@@ -20,6 +20,7 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   ├── DropZone.tsx      zona de soltar a pantalla completa (envuelve la app)
 │   │   ├── EmptyState.tsx    vista sin documento: «Abrir archivo», «Abrir carpeta», atajo, privacidad
 │   │   ├── ElegirMarkdown.tsx  carpeta con varios .md: el usuario elige el principal (F7 bis)
+│   │   ├── ConfirmarDescarte.tsx  «Hay cambios sin guardar» antes de sustituir o cerrar (F9)
 │   │   ├── pdf/              interfaz del visor PDF (F5, F6), cargada a demanda
 │   │   │   ├── VisorPdf.tsx  carga del PDF, estados cargando/contraseña/error y ciclo de vida
 │   │   │   ├── Visor.tsx     área de lectura: disposición, desplazamiento, teclado, búsqueda,
@@ -49,10 +50,11 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   ├── read.ts           readDocument(): valida y construye el documento
 │   │   ├── seleccion.ts      abrirSeleccion(): varios ficheros o carpeta → documento o elección (F7 bis)
 │   │   ├── recursos.ts       recursos de un Markdown: construcción y resolverRecurso() (F7 bis)
-│   │   └── DocumentProvider.tsx  estado (un documento, D16) y useDocument()
+│   │   └── DocumentProvider.tsx  estado (un documento, D16), cambios sin guardar y su confirmación (F9)
 │   ├── platform/             ÚNICA frontera web/Electron
-│   │   ├── types.ts          interfaz Platform (pickDocument, pickFolder, openDropped, openExternal)
+│   │   ├── types.ts          interfaz Platform (pickDocument, pickFolder, openDropped, openExternal, saveText)
 │   │   ├── web.ts            implementación con APIs estándar (selector múltiple, carpetas, entradas)
+│   │   ├── guardar-web.ts    saveText en web: showSaveFilePicker (destino en memoria) o descarga (F9)
 │   │   └── index.ts          createPlatform() (la rama de Electron llega en F14)
 │   ├── lib/                  utils.ts (cn()) · format.ts (tamaños legibles) · url-externa.ts (política de URLs)
 │   ├── vite-env.d.ts         tipos de Vite (imports de CSS)
@@ -65,7 +67,8 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   └── visor/            disposicion.ts · busqueda.ts · enlaces.ts (puros) · documento.ts ·
 │   │                         superficie.ts · capas.ts · controlador.ts (ARCHITECTURE §4 quater)
 │   ├── markdown/             el lector de Markdown (F7), cargado a demanda (ARCHITECTURE §4 quinquies)
-│   │   ├── MarkdownView.tsx  la vista: barra, índice, <article>, aviso de documento grande
+│   │   ├── MarkdownView.tsx  la vista: barra, índice, <article>, aviso de documento grande; modos,
+│   │   │                     vista previa, cambios y guardar (F9)
 │   │   ├── pipeline.ts       plugins, lista blanca de elementos, urlTransform (todo lo de seguridad)
 │   │   ├── url-policy.ts     clasificación de enlaces e imágenes (pura)
 │   │   ├── toc.ts            ids md-… de los encabezados y lectura del índice
@@ -79,21 +82,25 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   └── components/       Enlace · Imagen · BloqueCodigo · Preformateado (código, fórmula o
 │   │                         diagrama) · Formula · Diagrama · Indice · elementos (encabezados,
 │   │                         tabla, casilla) · acciones.ts (contextos visor ↔ elementos)
-│   ├── editor/               llega en F9
+│   ├── editor/               el editor de Markdown (F9, ARCHITECTURE §4 octies)
+│   │   ├── EditorMarkdown.tsx  CodeMirror 6 en un Shadow DOM (CSP), a demanda
+│   │   ├── ModeSwitch.tsx · SplitView.tsx  modos y paneles con separador accesible
+│   │   ├── sincronia.ts      desplazamiento sincronizado por encabezados (puro + gancho)
+│   │   └── tipos.ts          el contrato del editor, sin tipos de CodeMirror
 │   └── preferences/          llega en F10
 ├── electron/                 llega en F14 (proceso main y preload; fuera de src/)
 ├── tests/
 │   ├── unit/                 lógica pura y guardarraíles (tokens, CSP, textos, identidad)
 │   ├── components/           Testing Library + jest-axe
-│   ├── helpers/              utilidades de test (ficheros, plataforma en memoria)
+│   ├── helpers/              utilidades de test (ficheros, plataforma en memoria, editor falso para jsdom)
 │   ├── fixtures/             documentos de prueba con su procedencia (README.md)
 │   ├── _fixtures/            proyecto ficticio autocontenido para probar validadores
 │   └── public-docs.test.ts   el validador de public_docs
 ├── e2e/                      Playwright contra la build de producción
 │   ├── specs/                app.spec.ts (base) · abrir.spec.ts (apertura) · visor-pdf.spec.ts (visor PDF) ·
 │   │                         markdown.spec.ts (visor Markdown) · recursos.spec.ts (imágenes locales) ·
-│   │                         formulas-diagramas.spec.ts (KaTeX y Mermaid)
-│   ├── bench/                benchmarks de los visores (no son tests; `npm run bench:pdf` · `bench:markdown`)
+│   │                         formulas-diagramas.spec.ts (KaTeX y Mermaid) · editor.spec.ts (editor, F9)
+│   ├── bench/                benchmarks (no son tests; `npm run bench:pdf` · `bench:markdown` · `bench:editor`)
 │   └── vigilancia.ts         consola, CSP y red vigiladas en cada carga
 ├── scripts/                  herramientas (.mjs, sin dependencias extra)
 │   ├── validar-public-docs.mjs · verificar-enlaces-docs.mjs · verificar-overrides.mjs
