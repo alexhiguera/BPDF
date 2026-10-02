@@ -364,5 +364,52 @@ test("un Markdown grande (~1 MB): primero la barra y el aviso, después el conte
   // Después, la interfaz responde: el índice salta al último encabezado.
   await page.getByRole("navigation", { name: t.tocLabel }).getByRole("link").last().click();
   await expect(page.locator(":focus")).toHaveText(/Sección \d+/);
+  await expect(page.locator(":focus")).toBeInViewport();
+  limpia(v);
+});
+
+test("bloques con fórmulas fuera de la vista: el navegador se los salta, y el foco no sale recortado", async ({
+  page,
+}) => {
+  const v = await abrir(page);
+  let texto = "# Bloques\n\n[primero](https://example.com/a) empieza el párrafo, con $x$.\n\n";
+  for (let i = 0; i < 300; i++) texto += `## Sección ${i}\n\nPárrafo **${i}** con $x^{${i}}$.\n\n`;
+  texto += "Final **sin fórmula**.\n";
+  const [selector] = await Promise.all([
+    page.waitForEvent("filechooser"),
+    botonAbrir(page).click(),
+  ]);
+  await selector.setFiles({ name: "bloques.md", mimeType: "", buffer: Buffer.from(texto) });
+  const contenido = articulo(page).locator(".md-contenido");
+  await expect(contenido).toHaveAttribute("aria-busy", "false");
+  await expect(contenido.locator(".katex").first()).toBeVisible();
+  // `content-visibility: auto` en los bloques con fórmulas: lo de dentro del primero
+  // se pinta; lo del último, lejos, no (`checkVisibility` mira si el elemento está
+  // DENTRO de un bloque saltado, no el bloque en sí). Un bloque sin fórmulas, aunque
+  // esté igual de lejos, se pinta siempre.
+  const pintado = (el: Locator) =>
+    el.evaluate((e) => e.checkVisibility({ contentVisibilityAuto: true }));
+  const conFormula = contenido.locator("> p:has(.md-formula)");
+  expect(await pintado(conFormula.first().locator("a"))).toBe(true);
+  expect(await pintado(conFormula.last().locator("strong"))).toBe(false);
+  expect(await pintado(contenido.locator("> p").last().locator("strong"))).toBe(true);
+  // Sigue en el documento y se alcanza: el índice salta a él y se pinta.
+  await page.getByRole("navigation", { name: t.tocLabel }).getByRole("link").last().click();
+  await expect(articulo(page).getByRole("heading", { name: "Sección 299" })).toBeInViewport();
+  await expect.poll(() => pintado(conFormula.last().locator("strong"))).toBe(true);
+
+  // El contorno de foco (desplazado 2px fuera del enlace) no lo recorta la
+  // contención de pintado del párrafo, aunque el enlace empiece en su borde.
+  await page.getByRole("navigation", { name: t.tocLabel }).getByRole("link").first().click();
+  const enlace = articulo(page).getByRole("link", { name: "primero" });
+  const caja = await enlace.boundingBox();
+  if (!caja) throw new Error("el enlace no tiene caja");
+  const pixel = (x: number) =>
+    page.screenshot({ clip: { x, y: caja.y + caja.height / 2, width: 1, height: 1 } });
+  const fondo = await pixel(caja.x - 12);
+  expect((await pixel(caja.x - 3)).equals(fondo)).toBe(true);
+  await page.keyboard.press("Shift"); // modalidad de teclado: `:focus-visible`
+  await enlace.focus();
+  expect((await pixel(caja.x - 3)).equals(fondo)).toBe(false);
   limpia(v);
 });

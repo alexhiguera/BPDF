@@ -34,6 +34,28 @@
   }
 }
 
+/*
+ * Bloques con fórmulas fuera de la vista: el navegador se salta su maquetación,
+ * pintado y hit test (Fase 9). Medido con trazas de Chromium en «Dividido» con
+ * 1 MB + KaTeX (282 000 nodos, 45 000 de ellos posicionados por KaTeX): tras cada
+ * tecla, Chrome repite el hit test del ratón y recorría la vista previa entera
+ * (~40 ms por tecla).
+ * Solo los bloques con fórmulas, no todos: `content-visibility: auto` vigila cada
+ * elemento con un IntersectionObserver interno, y con 56 000 bloques (1 MB de
+ * encabezados) eso costaba ~37 ms dos veces por fotograma. Así, además, ningún
+ * encabezado de primer nivel queda dentro de un bloque saltado (la sincronía de
+ * desplazamiento los mide).
+ * Los bloques ya pintados recuerdan su altura (`auto`); los demás estiman 4rem.
+ * `content-visibility` contiene el pintado de cada bloque: sin
+ * `overflow-clip-margin`, el contorno de foco (desplazado 2px, globals.css) de un
+ * enlace pegado al borde del bloque saldría recortado.
+ */
+.md-contenido > :has(.md-formula) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 4rem;
+  overflow-clip-margin: 0.5rem;
+}
+
 /* Flujo vertical: cada bloque separa del anterior, no del siguiente. */
 .md-contenido > * + *,
 .md-contenido blockquote > * + *,

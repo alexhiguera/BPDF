@@ -13,4 +13,12 @@ export default defineConfig({
   reporter: "list",
   retries: 0,
   timeout: 300_000,
+  use: {
+    ...base.use,
+    // Sin la traza de Playwright: aunque solo se guarde si algo falla, se graba
+    // siempre, y su instantánea del DOM en cada acción bloquea el hilo principal
+    // (~0,9 s por instantánea con 1 MB, ~3,9 s con KaTeX). Con ella, el benchmark
+    // del editor medía esas instantáneas como retraso al teclear (Fase 9).
+    trace: "off",
+  },
 });

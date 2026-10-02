@@ -622,12 +622,67 @@ dentro, KaTeX y Mermaid hostiles, documento sin fórmulas ni diagramas sin desca
 
 ---
 
-## Fase 9 — Editor Markdown, vista previa y modo dividido ✅
+## Fase 9 — Editor Markdown, vista previa y modo dividido 🚧
 
-Cerrada el 2026-10-01. Bitácora: iteración 14. Diseño completo:
-[ARCHITECTURE.md](ARCHITECTURE.md) §4 octies. D9 confirmada al empezar: **CodeMirror 6**.
+**ABIERTA / NO APROBADA** (*2026-10-02*). Se dio por cerrada el 2026-10-01 (iteración 14) y
+se reabrió al revisar el benchmark: el criterio de aceptación «editar un .md de 1 MB sin
+retraso perceptible al teclear» falla en el modo Dividido. No se cierra hasta que se
+cumpla. Diseño: [ARCHITECTURE.md](ARCHITECTURE.md) §4 octies. D9 confirmada al empezar:
+**CodeMirror 6**.
 
-**Hecho.** Modos Lectura / Edición / Dividido (`ModeSwitch`); editor CodeMirror 6 a demanda
+Benchmark definitivo de la iteración 14 (`npm run bench:editor`, *2026-10-01*; Chromium
+headless, 1400×900, build de producción; Event Timing API: duración de cada evento de
+teclado, de la tecla al pintado, solo los de 16 ms o más; 22 teclas a 50 ms, 5 teclas con
+pausas de 400 ms, deshacer y rehacer, al principio, en medio y al final). «Lentos» = eventos
+de 50 ms o más por zona:
+
+| Caso | Edición: mediana · máx. · lentos | Dividido: mediana · máx. · lentos |
+|---|---|---|
+| 2 KB | 16 · 24 ms · 0 | 16 · 16–24 ms · 0 |
+| 200 KB | 16 · 16–24 ms · 0 | 16 · 56–72 ms · 27–30 (vista previa en pausa) |
+| 1 MB | 16 · 24 ms · 0 | **24 · 224–256 ms · 37–46** (en pausa) |
+| 1 MB + KaTeX | 16–24 · 24–56 ms · 0–3 | **72–80 · 784–1104 ms · 468–708** (en pausa) |
+| 1 MB + Mermaid | 16 · 24–32 ms · 0 | 24–32 · 240–328 ms · 18–68 (en pausa) |
+| 1 MB de encabezados | 16–40 · 24–48 ms · 0 | 32–48 · 56–72 ms · 16–54 (en pausa) |
+
+**Resultado: el criterio «1 MB sin retraso perceptible» se cumple en Edición y NO en
+Dividido**, también con la vista previa en pausa (sin refrescos): el retraso no viene del
+refresco. Por eso la Fase 9 está abierta y no aprobada (*2026-10-02*).
+
+**Diagnóstico con trazas de Chromium (*2026-10-02*, iteración 15).** La tabla anterior
+mezcla dos cosas:
+
+- **Un artefacto del benchmark.** Heredaba `trace: "retain-on-failure"` de
+  `playwright.config.ts`, y la instantánea del DOM que Playwright hace en cada acción
+  bloqueaba el hilo principal (~0,9 s con 1 MB, ~3,9 s con KaTeX). Las teclas que caían
+  detrás medían esa espera. El bench va ahora sin traza (`playwright.bench.config.ts`).
+- **Un coste real con KaTeX.** Tras cada tecla, Chrome repite el hit test del ratón
+  (hover), y ese hit test recorría la vista previa entera: 282 000 nodos, 45 000
+  posicionados por KaTeX, ~40 ms por tecla. Corrección: `content-visibility: auto` en
+  los bloques con fórmulas (markdown.css). En todos los bloques no vale: con 56 000
+  bloques, su IntersectionObserver interno costaba ~37 ms dos veces por fotograma.
+
+Benchmark tras la corrección (mismo método, sin traza de Playwright, dos ejecuciones):
+
+| Caso | Edición: mediana · máx. · lentos | Dividido: mediana · máx. · lentos |
+|---|---|---|
+| 2 KB | 16 · 16–24 ms · 0 | 16 · 16–24 ms · 0 |
+| 200 KB | 16–24 · 16–24 ms · 0 | 16 · 24–32 ms · 0 (en pausa) |
+| 1 MB | 16 · 16–32 ms · 0 | 16 · 24–72 ms · 0–28 (en pausa) |
+| 1 MB + KaTeX | 16 · 16–104 ms · 0–1 | **48 · 104–344 ms · 10–75** (en pausa) |
+| 1 MB + Mermaid | 16–32 · 16–32 ms · 0 | 16–24 · 24–72 ms · 0–20 (en pausa) |
+| 1 MB de encabezados | 16–32 · 16–64 ms · 0–3 | 24–32 · 40–112 ms · 0–20 (en pausa) |
+
+Sin la traza de Playwright y antes de la corrección (una ejecución), KaTeX en Dividido
+daba mediana 48 · máx. 120–208 ms · 130–342 lentos.
+
+**Pendiente para aprobar la fase.** Que el criterio se cumpla en 1 MB + KaTeX en
+Dividido. Lo que queda, según la traza: hit test de ~30 ms por tecla (los bloques sin
+fórmulas siguen pintados); una vez por segundo, los detectores de anuncios de Chromium y
+un Commit (~100 ms); y un primer fotograma de ~270 ms tras saltar al final (PrePaint). Que
+1 MB en Dividido (máx. 24–72 ms) se dé por bueno lo decide quien aprueba la fase.
+
+**Implementado hasta ahora** (todo verificado salvo el criterio anterior). Modos Lectura / Edición / Dividido (`ModeSwitch`); editor CodeMirror 6 a demanda
 (98 KB gzip, trozo propio) con Markdown (GFM), historial, teclado e indentación; vista
 previa con el mismo lector, 200 ms después de la última tecla; `SplitView` con separador
 accesible (teclado, 20–80 %) que se apila en pantallas estrechas; desplazamiento
@@ -671,10 +726,12 @@ Mermaid hostiles, Markdown hostil, escribir y pegar sobre una selección, guarda
 y `showSaveFilePicker`), confirmación, `beforeunload`, 1 MB, sincronía, separador y
 pantalla estrecha. Benchmark: `npm run bench:editor`.
 
-**Pendiente de la fase**: nada bloqueante. Lo que sale está en
-[TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md).
+**Pendiente de la fase**: corregir el retraso al teclear en Dividido con documentos grandes
+(primero localizar la causa con trazas) y, después, ampliar el benchmark (P50/P95/P99, 100 KB,
+desglose de la vista previa, memoria, Mermaid en el navegador, carga aislada del editor).
+Resto en [TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md).
 
-La especificación anterior, que sigue, se conserva como referencia.
+La especificación de la fase, que sigue, sigue vigente.
 
 **Objetivo.** Editar Markdown con vista previa en vivo y guardar localmente.
 

@@ -426,56 +426,61 @@ test("1 MB: se edita con fluidez; en dividido la vista previa se pausa y se actu
   limpia(v);
 });
 
-test("dividido: el desplazamiento del editor lleva a la vista previa a la misma sección", async ({
-  page,
-}) => {
-  let doc = "# Sincronía\n\n";
-  for (let i = 1; i <= 60; i++)
-    doc += `## Sección ${i}\n\n${"Texto de la sección. ".repeat(20)}\n\n`;
-  const v = await cargar(page, texto("sincronia.md", doc));
-  await modo(page, "dividido").click();
-  await expect(editor(page)).toBeVisible();
-  const vista = articulo(page);
-  await expect(vista).toBeVisible();
-  await editor(page).hover();
-  await page.mouse.wheel(0, 4000);
-  // El editor manda: la vista previa se desplaza a la zona equivalente.
-  await expect
-    .poll(() => vista.evaluate((a) => a.scrollTop), { timeout: 5000 })
-    .toBeGreaterThan(500);
-  const arribaEditor = await page.getByTestId("editor-markdown").evaluate((el) => {
-    const scroller = el.shadowRoot?.querySelector(".cm-scroller") as HTMLElement;
-    const lineas = [...(el.shadowRoot?.querySelectorAll(".cm-line") ?? [])] as HTMLElement[];
-    const caja = scroller.getBoundingClientRect();
-    const visible = lineas.filter((l) => l.getBoundingClientRect().bottom > caja.top);
-    return visible.map((l) => l.textContent ?? "").find((t) => t.startsWith("## Sección")) ?? "";
+// Con fórmulas, sus bloques se saltan fuera de la vista (`content-visibility`,
+// markdown.css) y miden una altura estimada (4rem) hasta pintarse; párrafos largos
+// para que la estimación se aleje de la real. La sincronía debe acertar igual.
+for (const formulas of [false, true]) {
+  test(`dividido: el desplazamiento del editor lleva a la vista previa a la misma sección${formulas ? " (con fórmulas)" : ""}`, async ({
+    page,
+  }) => {
+    let doc = "# Sincronía\n\n";
+    for (let i = 1; i <= 60; i++)
+      doc += `## Sección ${i}\n\n${"Texto de la sección. ".repeat(formulas ? 80 : 20)}${formulas ? `$x^{${i}}$` : ""}\n\n`;
+    const v = await cargar(page, texto("sincronia.md", doc));
+    await modo(page, "dividido").click();
+    await expect(editor(page)).toBeVisible();
+    const vista = articulo(page);
+    await expect(vista).toBeVisible();
+    await editor(page).hover();
+    await page.mouse.wheel(0, 4000);
+    // El editor manda: la vista previa se desplaza a la zona equivalente.
+    await expect
+      .poll(() => vista.evaluate((a) => a.scrollTop), { timeout: 5000 })
+      .toBeGreaterThan(500);
+    const arribaEditor = await page.getByTestId("editor-markdown").evaluate((el) => {
+      const scroller = el.shadowRoot?.querySelector(".cm-scroller") as HTMLElement;
+      const lineas = [...(el.shadowRoot?.querySelectorAll(".cm-line") ?? [])] as HTMLElement[];
+      const caja = scroller.getBoundingClientRect();
+      const visible = lineas.filter((l) => l.getBoundingClientRect().bottom > caja.top);
+      return visible.map((l) => l.textContent ?? "").find((t) => t.startsWith("## Sección")) ?? "";
+    });
+    const n = Number(arribaEditor.replace("## Sección ", ""));
+    expect(n).toBeGreaterThan(1);
+    const cercano = await vista.evaluate((a) => {
+      const caja = a.getBoundingClientRect();
+      const hs = [...a.querySelectorAll("h2")] as HTMLElement[];
+      const visible = hs.find((h) => h.getBoundingClientRect().bottom > caja.top);
+      return Number((visible?.textContent ?? "").replace("Sección ", ""));
+    });
+    expect(Math.abs(cercano - n)).toBeLessThanOrEqual(1);
+    // La vista previa manda al revés, sin bucle: el editor sigue a la vista previa.
+    await vista.hover();
+    const antes = await page
+      .getByTestId("editor-markdown")
+      .evaluate((el) => el.shadowRoot?.querySelector<HTMLElement>(".cm-scroller")?.scrollTop ?? -1);
+    await page.mouse.wheel(0, -2000);
+    await expect
+      .poll(() =>
+        page
+          .getByTestId("editor-markdown")
+          .evaluate(
+            (el) => el.shadowRoot?.querySelector<HTMLElement>(".cm-scroller")?.scrollTop ?? -1,
+          ),
+      )
+      .toBeLessThan(antes);
+    limpia(v);
   });
-  const n = Number(arribaEditor.replace("## Sección ", ""));
-  expect(n).toBeGreaterThan(1);
-  const cercano = await vista.evaluate((a) => {
-    const caja = a.getBoundingClientRect();
-    const hs = [...a.querySelectorAll("h2")] as HTMLElement[];
-    const visible = hs.find((h) => h.getBoundingClientRect().bottom > caja.top);
-    return Number((visible?.textContent ?? "").replace("Sección ", ""));
-  });
-  expect(Math.abs(cercano - n)).toBeLessThanOrEqual(1);
-  // La vista previa manda al revés, sin bucle: el editor sigue a la vista previa.
-  await vista.hover();
-  const antes = await page
-    .getByTestId("editor-markdown")
-    .evaluate((el) => el.shadowRoot?.querySelector<HTMLElement>(".cm-scroller")?.scrollTop ?? -1);
-  await page.mouse.wheel(0, -2000);
-  await expect
-    .poll(() =>
-      page
-        .getByTestId("editor-markdown")
-        .evaluate(
-          (el) => el.shadowRoot?.querySelector<HTMLElement>(".cm-scroller")?.scrollTop ?? -1,
-        ),
-    )
-    .toBeLessThan(antes);
-  limpia(v);
-});
+}
 
 test("separador: se mueve con el teclado y ningún panel desaparece", async ({ page }) => {
   const v = await cargar(page, texto("sep.md", "# Sep"));

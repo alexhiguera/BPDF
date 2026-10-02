@@ -10,19 +10,20 @@ Solo tareas **abiertas**. Al cerrar una, se borra la línea y se cuenta en
 archivos, tests, criterios de aceptación). El diseño que construyen: [PLAN.md](PLAN.md),
 [SEGURIDAD.md](SEGURIDAD.md) y [ELECTRON.md](ELECTRON.md). Aquí solo el estado.
 
-## Estado hoy — *2026-10-01*
+## Estado hoy — *2026-10-02*
 
 Medido con Node 24.21.0 y npm 11.19.0 en **WSL2 (Ubuntu) sobre Windows**, al cerrar la
 **Fase 9** (iteración 14), tras una instalación limpia (`npm ci`). E2E con el Chromium de
-Playwright. Cerradas las Fases 0–9 (la 6 se hizo después de las 7, 7 bis y 8, por orden del
-usuario, y conserva su número).
+Playwright. Cerradas las Fases 0–8 (la 6 se hizo después de las 7, 7 bis y 8, por orden del
+usuario, y conserva su número). **La 9 está abierta y no aprobada** (*2026-10-02*: retraso al
+teclear en Dividido con 1 MB + KaTeX; iteración 15).
 
 | Comprobación | Resultado |
 |---|---|
 | Código | SPA estática de Vite 8 + React 19. Abre un PDF o un Markdown local, uno a la vez (D16). **Los PDF se leen** en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo oscuro selectivo en un worker, vistas continua y página a página, zoom, giro a los dos lados, capa de texto, enlaces, búsqueda (con mayúsculas, palabra completa y palabras partidas con guion), miniaturas navegables con flechas, pantalla completa del área de lectura, atajos de una tecla desactivables con su ayuda y PDF con contraseña ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quater). **Los Markdown se leen** en un lector GFM: HTML como texto, política de URLs propia, código resaltado con copiar, índice (§4 quinquies), **con sus imágenes locales** si se entregan con el `.md` (varios ficheros o una carpeta; §4 sexies), **fórmulas con KaTeX** y **diagramas con Mermaid** en un marco aislado (`mermaid.html`, iframe con `sandbox` y CSP propia; §4 septies), y **se editan** con CodeMirror 6 (Lectura, Edición y Dividido; vista previa con el mismo lector, desplazamiento sincronizado, confirmación antes de perder cambios y guardado local con `showSaveFilePicker` o descarga; §4 octies). **Web publicada** en Vercel (`bpdf.r3zon.com`) con `vercel.json` generado; las Fases 7 bis, 8 y 6 ya están en `origin/main`; el ajuste `2c65357` y la Fase 9, no |
 | `npm run lint` · `typecheck` | ✅ |
 | `npm run test:run` | ✅ 904 tests en 46 ficheros (incluye pdf.js y KaTeX reales en Node, la edición de Markdown con un editor falso en jsdom, la búsqueda sobre el texto real de pdf.js, el corpus de XSS de Markdown, la resolución de recursos, el saneador y el verificador del SVG de Mermaid y la sincronía de `vercel.json` con la fuente) |
-| `npm run test:e2e` | ✅ 93 tests en 7 ficheros contra la build de producción (`vite preview`): 16 del editor (Fase 9: CodeMirror con la CSP real, modos, espera de la vista previa, recursos, KaTeX y Mermaid hostiles, Markdown hostil, escribir y pegar sobre una selección, guardar, confirmación, `beforeunload`, 1 MB, sincronía, separador, pantalla estrecha), 30 del visor PDF (8 de la Fase 6: contraseña, pantalla completa con las cabeceras reales, atajos, búsqueda avanzada, miniaturas), 10 del lector de Markdown, 8 de recursos locales y 7 de fórmulas y diagramas (KaTeX y Mermaid hostiles, aislamiento del marco comprobado desde dentro, documento sin fórmulas ni diagramas sin descargas) |
+| `npm run test:e2e` | ✅ 95 tests en 7 ficheros contra la build de producción (`vite preview`): 17 del editor (Fase 9: CodeMirror con la CSP real, modos, espera de la vista previa, recursos, KaTeX y Mermaid hostiles, Markdown hostil, escribir y pegar sobre una selección, guardar, confirmación, `beforeunload`, 1 MB, sincronía sin y con fórmulas, separador, pantalla estrecha), 30 del visor PDF (8 de la Fase 6: contraseña, pantalla completa con las cabeceras reales, atajos, búsqueda avanzada, miniaturas), 11 del lector de Markdown (con los bloques con fórmulas que se saltan fuera de la vista), 8 de recursos locales y 7 de fórmulas y diagramas (KaTeX y Mermaid hostiles, aislamiento del marco comprobado desde dentro, documento sin fórmulas ni diagramas sin descargas) |
 | `npm run build` · `build:tamano` | ✅ arranque 92,5 KB gzip (límite 150; +2 KB en la F9: textos, el diálogo de descarte y los cambios sin guardar en `DocumentProvider`; CodeMirror no entra). A demanda: visor PDF 15 KB + 0,8 KB CSS, pdf.js 148 KB, lector de Markdown 76,5 KB + 1,8 KB CSS, **editor (CodeMirror) 98 KB, solo al entrar en Edición o Dividido**, KaTeX 77 KB + 4 KB CSS y sus fuentes, Mermaid (en el marco) ~50 KB + ~870 KB en trozos por tipo de diagrama, worker del modo oscuro 3 KB, worker de pdf.js 1,3 MB · avisos conocidos e inocuos: 2 de `"use client"` (`lucide-react`) y el de un trozo de Mermaid de más de 500 kB (solo se carga en el marco, a demanda) |
 | CSP | ✅ `default-src 'none'`; la Fase 4 añadió `worker-src 'self'` y `font-src 'self'`, la Fase 5 `connect-src 'self'` (cmaps de pdf.js); la Fase 7, nada; la Fase 7 bis, `blob:` solo en `img-src` (imágenes locales de Markdown); la Fase 8, `frame-src 'self'` (el marco aislado de Mermaid, `/mermaid.html`, con su propia política: `style-src 'unsafe-inline'` confinado a un origen opaco y sin red); la Fase 9, nada (CodeMirror en un Shadow DOM con hojas construibles, y escribir sobre una selección sin la edición nativa del navegador). Sin `data:` en la build (`assetsInlineLimit: 0`). Sin `unsafe-*`, sin `'wasm-unsafe-eval'`, sin orígenes externos; cero violaciones y ninguna petición externa en los E2E; comprobada con `curl -I` |
 | `npm run docs:validar` · `docs:enlaces` | ✅ · ✅ (247 enlaces en 18 ficheros) |
@@ -30,7 +31,7 @@ usuario, y conserva su número).
 | Dependencias de runtime | 19: `react`, `react-dom`, `lucide-react`, `clsx`, `tailwind-merge`, `pdfjs-dist` (6.3.289), `react-markdown` (10.1.0), `remark-gfm` (4.0.1), `lowlight` (3.3.0), `highlight.js` (11.11.1); de la Fase 8, `remark-math` (6.0.0), `katex` (0.18.9) y `mermaid` (11.17.2); de la Fase 9, `@codemirror/state` (6.7.6), `@codemirror/view` (6.43.13), `@codemirror/commands` (6.11.1), `@codemirror/language` (6.12.4), `@codemirror/lang-markdown` (6.5.2) y `@lezer/highlight` (1.2.5); todas las de contenido no confiable con versión exacta |
 | Benchmark (`npm run bench:pdf`, Ryzen 7 5800X) | Modo oscuro en el hilo principal: sin worker 18–28 ms a 2,2 Mpx y 113–141 ms a 16,8 Mpx; con worker 9–13 ms y 60–66 ms. 300 páginas: primera página ~0,9 s, máx. 4 lienzos (≤ 34 MiB a DPR 1), heap ~60 MiB |
 | Benchmark (`npm run bench:markdown`, mismo equipo) | Hasta ver el primer encabezado: 1 KB 0,33 s · 100 KB 0,5–0,9 s · **1 MB 3,3–7,3 s** · 5000 encabezados 0,6–1,0 s · 2000 bloques de código 0,8–1,1 s · listas cortas 200 KB 2,3–2,8 s (cuadrático) · 50 imágenes de 6 Mpx entregadas con 50 sin usar: texto 0,64 s, primera imagen 0,67 s, 50 URL `blob:`, heap 14 MiB · Fase 8: 1500 fórmulas en 2,4 s, 30 diagramas en 2,2 s (~60 ms cada uno), sin cambios para un Markdown sin fórmulas ni diagramas |
-| Benchmark (`npm run bench:editor`, mismo equipo) | @@BENCH@@ |
+| Benchmark (`npm run bench:editor`, mismo equipo) | Tecla más lenta (Event Timing, 50 ms entre teclas, sin la traza de Playwright, dos ejecuciones, *2026-10-02*). **Edición**: 16–32 ms con 1 MB (0 eventos ≥ 50 ms), 16–104 ms con 1 MB + KaTeX (0–1). **Dividido**: 1 MB, mediana 16 ms y picos de 24–72 ms (0–28 eventos ≥ 50 ms por zona); **1 MB + KaTeX, mediana 48 ms y picos de 104–344 ms** (10–75); 1 MB + Mermaid, 24–72 ms; 1 MB de encabezados, 40–112 ms; 200 KB, 24–32 ms. **No cumple el criterio de 1 MB + KaTeX en Dividido**. Las cifras de la iteración 14 estaban infladas por la traza de Playwright (tablas en [FASES.md](FASES.md), Fase 9) |
 | Markdown reales | 14 probados (los de `docs/` y README de paquetes con HTML, insignias remotas, tablas y código): sin errores, peticiones externas, `img` ni `href` fuera de la política |
 | PDF reales | 9 probados (papers, formulario, corpus de pdf.js, generados con Chromium): sin errores ni peticiones externas; límites del modo oscuro en ARCHITECTURE §4 quater |
 | CI en GitHub | ✅ en verde en su primera ejecución (commit `04c1291`); las Fases 7 bis, 8 y 6 aún no se han subido |
@@ -51,6 +52,16 @@ fase no empieza con una decisión que necesita sin confirmar.
 
 ## Fases
 
+- [~] 🔴 **F9** Editor Markdown, vista previa y modo dividido: **abierta, no aprobada**. Con trazas
+  de Chromium (iteración 15): los picos de 224–256 ms de 1 MB en Dividido eran la traza de
+  Playwright (hoy, máx. 24–72 ms); con KaTeX, el hit test del ratón tras cada tecla recorría la
+  vista previa, corregido en parte (`content-visibility` en los bloques con fórmulas). **Sigue sin
+  cumplir 1 MB + KaTeX en Dividido**: mediana 48 ms, máx. 104–344 ms, 10–75 eventos ≥ 50 ms. Queda
+  (ARCHITECTURE §4 octies): hit test de ~30 ms por tecla, ~100 ms por segundo de detectores de
+  anuncios de Chromium + Commit, y ~270 ms en el primer fotograma tras saltar al final. Decidir
+  también si 1 MB en Dividido (máx. 24–72 ms) se da por bueno. Después, ampliar el benchmark
+  (P50/P95/P99, 100 KB, desglose de la vista previa, memoria, Mermaid en el navegador, carga del
+  editor)
 - [ ] 🟡 **F10** Preferencias (infraestructura con `zod`, panel, posición por documento, borrado)
 - [ ] 🟡 **F11** UI/UX final
 - [ ] 🔴 **F12** Seguridad: endurecimiento y auditoría

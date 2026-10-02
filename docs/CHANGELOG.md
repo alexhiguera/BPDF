@@ -10,7 +10,103 @@ R3ZON SaaS Template.
 
 ---
 
-### Iteración 14 — *2026-10-01* — Fase 9: editor de Markdown, vista previa y modo dividido
+### Iteración 15 — *2026-10-02* — Fase 9: diagnóstico del retraso en Dividido con trazas de Chromium (sigue sin aprobar)
+
+La Fase 9 se reabrió porque teclear en Dividido con 1 MB tenía retraso (iteración 14). Por
+orden del usuario, primero había que encontrar la causa con trazas reales y no aplicar
+soluciones a ciegas. Se grabaron trazas de Chromium vía CDP (`Tracing.start`) contra la
+build de producción y se analizaron por tareas del hilo principal. **La fase sigue abierta y
+no aprobada**: 1 MB + KaTeX en Dividido no cumple.
+
+**Qué se encontró (evidencia de la traza)**
+
+- **Los picos de 224–256 ms de 1 MB en Dividido no eran de la app.** El benchmark heredaba
+  `trace: "retain-on-failure"` de `playwright.config.ts`: la traza de Playwright se graba
+  siempre, aunque solo se guarde si algo falla. En cada acción, su instantánea del DOM es
+  un `EvaluateScript` sin URL que recorre todo el documento. En la traza: 16 tareas de
+  ~900 ms (~3,9 s con KaTeX) y 2,4 millones de maquetaciones forzadas, mientras las tareas
+  de teclado tenían una mediana de 9,9 ms y un máximo de 38,9 ms. Con `--trace off`, sin
+  más cambios, 1 MB en Dividido baja a un máx. de 24–64 ms.
+- **KaTeX sí tenía un coste real.** Tras cada tecla, Chrome lanza un `mousemove` sintético
+  para recalcular el *hover*, y su hit test (`LayoutView::HitTest`) recorría la vista previa
+  entera: 282 000 nodos, 45 864 posicionados (43 680 de KaTeX), ~40–50 ms por tecla.
+- **Lo que no es la causa.** Costaba lo mismo con el ratón sobre el editor o sobre la vista
+  previa, y `contain: strict` no lo evita. Además, una vez por segundo, los detectores de
+  anuncios de Chromium (`StickyAdDetector`, `OverlayInterstitialAdDetector`) hacen sus
+  propios hit tests, a los que se suma un Commit (~100 ms).
+- **Sonda con CSS inyectado** (hoja construible, sin tocar la app). Con `pointer-events: none`
+  no cambiaba nada. Con KaTeX sin posicionar, 40 → 31 ms: las capas pesan, pero no lo
+  explican todo. Con `content-visibility: auto` en los bloques, el hit test bajaba a
+  ~13 ms y la tecla más lenta de 200 a 64 ms.
+
+**Qué se cambió y por qué**
+
+- **`content-visibility: auto` en los bloques de primer nivel con fórmulas**
+  (`.md-contenido > :has(.md-formula)`, markdown.css). Aprobado por el usuario tras ver la
+  causa. Se probó primero en **todos** los bloques, y el benchmark lo tumbó: con 1 MB de
+  encabezados (56 013 bloques), el IntersectionObserver interno de `content-visibility`
+  costaba ~37 ms dos veces por fotograma (`computeIntersections`, 1,7 s en 3 s de traza), y
+  Dividido pasó a un máx. de 168–608 ms. Acotado a los bloques con fórmulas, F vuelve a su
+  sitio y ningún encabezado de primer nivel queda dentro de un bloque saltado, que es lo que
+  mide la sincronía.
+- **`overflow-clip-margin: 0.5rem`.** La contención de pintado recortaba el contorno de foco
+  (desplazado 2px) de un enlace pegado al borde del bloque. Se comprobó en Chromium
+  comparando píxeles, y lo cubre un E2E.
+- **`playwright.bench.config.ts` con `trace: "off"`** (aprobado), con el motivo escrito. Las
+  cifras de la iteración 14 se quedan en su entrada: no se borran, se explican.
+- **Tests:**
+  - E2E nuevo: los bloques con fórmulas lejanos se saltan y los que no tienen fórmulas no;
+    el índice llega al último; el foco no sale recortado.
+  - La sincronía del editor se prueba también con fórmulas.
+  - El E2E de 1 MB comprueba además que el salto del índice deja el encabezado a la vista.
+
+**Descartado, y errores propios del camino**
+
+- Una corrección en `sincronia.ts` (recolocar la vista previa en los fotogramas siguientes,
+  porque los bloques sin pintar miden una altura estimada). Hizo falta con la regla en todos
+  los bloques: el E2E de sincronía falló por dos secciones. Con la regla acotada, el test no
+  falla sin ella, ni con párrafos cuatro veces más largos, así que se quitó: sin un caso que
+  la exija, es código de más.
+- `trace: "off"` en el E2E de 1 MB del lector: hizo falta solo mientras la regla estaba en
+  todos los bloques. La instantánea de Playwright lee el estilo de cada nodo, y dentro de
+  bloques saltados cada lectura obliga a calcularlo: `getComputedStyle` de 90 000 nodos
+  pasaba de 41 ms a 8 s. Se quitó al acotar la regla.
+- Errores propios:
+  - El primer analizador de trazas (`Math.max(...array)` con millones de eventos)
+    desbordaba la pila.
+  - La primera sonda acumulaba observadores (los recuentos salían duplicados) y aplicaba la
+    regla al único hijo del artículo.
+  - El primer E2E usaba mal `checkVisibility`: mira si el elemento está dentro de un bloque
+    saltado, no el bloque en sí.
+
+**Cifras** (benchmark completo dos veces, sin la traza de Playwright; tablas en FASES y
+ARCHITECTURE §4 octies)
+
+| Caso | Antes (iteración 14) | Después |
+|---|---|---|
+| 1 MB, Edición | máx. 24 ms · 0 lentos | máx. 16–32 ms · 0 |
+| 1 MB, Dividido | máx. 224–256 ms · 37–46 lentos | máx. 24–72 ms · 0–28 |
+| 1 MB + KaTeX, Dividido | mediana 72–80 · máx. 784–1104 ms · 468–708 | mediana 48 · máx. 104–344 ms · 10–75 |
+
+Lo que queda en KaTeX en Dividido, según la traza:
+
+- Un hit test de ~30 ms por tecla: los bloques sin fórmulas siguen pintados.
+- ~100 ms por segundo de los detectores de anuncios de Chromium y un Commit.
+- ~270 ms en el primer fotograma tras saltar al final (PrePaint 157 ms, entradas de
+  composición 55 ms). De ahí el pico de 336–344 ms en la zona «final».
+
+**Verificación**
+
+- `lint`, `typecheck`, 904 tests unitarios en 46 ficheros, `build`, `build:tamano`
+  (92,5 KB) y 95 E2E en verde.
+- CSP sin cambios: el E2E compara la cabecera y cuenta cero violaciones y ninguna petición
+  externa.
+- Sin dependencias nuevas.
+
+### Iteración 14 — *2026-10-01* — Fase 9: editor de Markdown, vista previa y modo dividido (no aprobada)
+
+> **Reabierta el 2026-10-02**: el benchmark definitivo demostró que el criterio de 1 MB
+> falla en Dividido (tabla abajo). La fase sigue abierta; esta entrada recoge lo hecho.
 
 La Fase 9 añade la edición de Markdown con D9 confirmada al empezar: **CodeMirror 6**. Tres
 modos (Lectura, Edición, Dividido), vista previa con el mismo lector, desplazamiento
@@ -70,7 +166,24 @@ Edición (picos de casi 1 s).
 **Rendimiento** (`npm run bench:editor`, Ryzen 7 5800X, Event Timing API, 50 ms entre
 teclas):
 
-@@CIFRAS@@
+Benchmark definitivo de la iteración 14 (`npm run bench:editor`, *2026-10-01*; Chromium
+headless, 1400×900, build de producción; Event Timing API: duración de cada evento de
+teclado, de la tecla al pintado, solo los de 16 ms o más; 22 teclas a 50 ms, 5 teclas con
+pausas de 400 ms, deshacer y rehacer, al principio, en medio y al final). «Lentos» = eventos
+de 50 ms o más por zona:
+
+| Caso | Edición: mediana · máx. · lentos | Dividido: mediana · máx. · lentos |
+|---|---|---|
+| 2 KB | 16 · 24 ms · 0 | 16 · 16–24 ms · 0 |
+| 200 KB | 16 · 16–24 ms · 0 | 16 · 56–72 ms · 27–30 (vista previa en pausa) |
+| 1 MB | 16 · 24 ms · 0 | **24 · 224–256 ms · 37–46** (en pausa) |
+| 1 MB + KaTeX | 16–24 · 24–56 ms · 0–3 | **72–80 · 784–1104 ms · 468–708** (en pausa) |
+| 1 MB + Mermaid | 16 · 24–32 ms · 0 | 24–32 · 240–328 ms · 18–68 (en pausa) |
+| 1 MB de encabezados | 16–40 · 24–48 ms · 0 | 32–48 · 56–72 ms · 16–54 (en pausa) |
+
+**Resultado: el criterio «1 MB sin retraso perceptible» se cumple en Edición y NO en
+Dividido**, también con la vista previa en pausa (sin refrescos): el retraso no viene del
+refresco. Por eso la Fase 9 está abierta y no aprobada (*2026-10-02*).
 
 **Errores propios por el camino**:
 
@@ -88,7 +201,10 @@ teclas):
 **Anuncio al usuario (CLAUDE.md §8)**: los Markdown se pueden editar (Edición y Dividido),
 con vista previa, y guardar (`Ctrl/⌘+S`); BPDF avisa antes de perder cambios sin guardar.
 
-**Verificación.** @@VERIF@@
+**Verificación.** Desde `npm ci`: lint, typecheck, 904 tests en 46 ficheros, build,
+`build:tamano` (92,5 KB gzip), 93 E2E (cero errores de consola, cero violaciones de CSP y
+ninguna petición externa), `npm audit` (0), `docs:validar` y `docs:enlaces`, todo en verde.
+**Benchmark: no cumple el criterio de 1 MB en Dividido** (arriba).
 
 ---
 

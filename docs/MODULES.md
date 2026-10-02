@@ -21,7 +21,7 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 | Lector de Markdown | ✅ F7 | `src/markdown/`, `src/styles/markdown.css` |
 | Fórmulas (KaTeX) y diagramas (Mermaid, en un marco aislado) | ✅ F8 | `src/markdown/matematicas.ts`, `mermaid*.ts`, `marco-mermaid.ts`, `svg-seguro.ts`, `mermaid.html` |
 | Recursos locales de Markdown (varios ficheros, carpeta, imágenes) | ✅ F7 bis | `src/documents/recursos.ts`, `src/documents/seleccion.ts`, `src/markdown/imagenes.ts`, `src/platform/web.ts` |
-| Editor de Markdown (CodeMirror 6, vista previa, dividido, guardar) | ✅ F9 | `src/editor/`, `src/markdown/MarkdownView.tsx`, `src/platform/guardar-web.ts` |
+| Editor de Markdown (CodeMirror 6, vista previa, dividido, guardar) | 🚧 F9 (abierta, no aprobada: retraso al teclear en Dividido con 1 MB) | `src/editor/`, `src/markdown/MarkdownView.tsx`, `src/platform/guardar-web.ts` |
 | Escritorio (Electron) | ⬜ F14 | |
 
 ## Módulos de la plantilla

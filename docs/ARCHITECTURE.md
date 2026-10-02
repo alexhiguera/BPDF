@@ -700,7 +700,10 @@ la vista previa sin volver a montarla (pintar 1 MB cuesta segundos). En **Edici�
 previa no está montada**: oculta pero montada, con 1 MB + KaTeX teclear tenía picos de casi
 1 s (medido; probablemente la recolección de basura sobre un árbol enorme); volver a
 Lectura o Dividido la pinta otra vez. Editor y vista previa llevan `contain: strict`: lo
-que pasa en uno no obliga a maquetar ni pintar el otro.
+que pasa en uno no obliga a maquetar ni pintar el otro. **No evita el hit test** (medido,
+iteración 15): tras cada tecla, Chrome repite el del ratón y recorre la vista previa
+entera, esté el puntero donde esté. Por eso los bloques con fórmulas llevan además
+`content-visibility: auto` (markdown.css; ver «Rendimiento»).
 
 **CSP: el editor vive en un Shadow DOM.** CodeMirror inyecta sus estilos con `style-mod`:
 con el `document` como raíz, en una etiqueta `<style>` que `style-src 'self'` bloquea; con un
@@ -773,10 +776,49 @@ para salir del editor»: Tab indenta). El modo se ve y se anuncia (`aria-pressed
 nombre). El separador es enfocable, con valor y límites. El diálogo de descarte es modal y
 devuelve el foco. jest-axe en todo lo nuevo.
 
-**Rendimiento** (`npm run bench:editor`, Ryzen 7 5800X, Chromium; Event Timing API: de la
-tecla al pintado; 50 ms entre teclas):
+**Rendimiento** (`npm run bench:editor`, *2026-10-02*, iteración 15; Ryzen 7 5800X,
+Chromium headless, 1400×900, build de producción, sin la traza de Playwright; Event Timing
+API: duración de cada evento de teclado, de la tecla al pintado, solo los de 16 ms o más;
+22 teclas a 50 ms, 5 teclas con pausas de 400 ms, deshacer y rehacer, al principio, en medio
+y al final; dos ejecuciones). «Lentos» = eventos de 50 ms o más por zona:
 
-@@CIFRAS@@
+| Caso | Edición: mediana · máx. · lentos | Dividido: mediana · máx. · lentos |
+|---|---|---|
+| 2 KB | 16 · 16–24 ms · 0 | 16 · 16–24 ms · 0 |
+| 200 KB | 16–24 · 16–24 ms · 0 | 16 · 24–32 ms · 0 (vista previa en pausa) |
+| 1 MB | 16 · 16–32 ms · 0 | 16 · 24–72 ms · 0–28 (en pausa) |
+| 1 MB + KaTeX | 16 · 16–104 ms · 0–1 | **48 · 104–344 ms · 10–75** (en pausa) |
+| 1 MB + Mermaid | 16–32 · 16–32 ms · 0 | 16–24 · 24–72 ms · 0–20 (en pausa) |
+| 1 MB de encabezados | 16–32 · 16–64 ms · 0–3 | 24–32 · 40–112 ms · 0–20 (en pausa) |
+
+**Resultado: el criterio «1 MB sin retraso perceptible» se cumple en Edición y NO en
+Dividido con KaTeX.** Por eso la Fase 9 sigue abierta y no aprobada. Las cifras de la
+iteración 14 (1 MB en Dividido: máx. 224–256 ms; KaTeX: 784–1104 ms) estaban infladas por
+la traza de Playwright: aunque solo se guarde si algo falla, se graba siempre, y su
+instantánea del DOM en cada acción bloqueaba el hilo principal (~0,9 s con 1 MB, ~3,9 s
+con KaTeX; trazas de Chromium). El bench va ahora sin ella (`playwright.bench.config.ts`).
+
+**Bloques con fórmulas: `content-visibility: auto`** (markdown.css). En Dividido, con
+1 MB + KaTeX, la traza mostraba que cada tecla pagaba un hit test de ~40 ms. Chrome lo
+repite tras cada cambio de maquetación para actualizar el *hover*, y recorre la vista
+previa: 282 000 nodos, 45 000 posicionados por KaTeX. Si los bloques con fórmulas fuera de
+la vista se saltan, baja a ~30 ms. **No en todos los bloques:** con 1 MB de encabezados
+(56 000 bloques), el IntersectionObserver interno de `content-visibility` costaba ~37 ms
+dos veces por fotograma (medido; Dividido pasó a máx. 168–608 ms). Efectos:
+
+- Un bloque con fórmulas aún no pintado mide 4rem hasta pintarse; los pintados recuerdan su
+  altura. El índice, los enlaces internos y la sincronía llegan igual (E2E).
+- Su contención de pintado recortaría lo que sale del bloque. `overflow-clip-margin` deja
+  ver entero el contorno de foco desplazado 2px (E2E, comparando píxeles).
+- Leer estilo o posición de algo DENTRO de un bloque saltado obliga a calcularlo. Medido
+  con todos los bloques saltados: `getComputedStyle` de 90 000 nodos, 8 s en vez de 41 ms.
+  Ningún encabezado de primer nivel queda dentro de uno, así que la sincronía no lo paga.
+
+Lo que queda en KaTeX en Dividido, según la traza:
+
+- Un hit test de ~30 ms por tecla: los bloques sin fórmulas siguen pintados.
+- Una vez por segundo, los detectores de anuncios de Chromium y un Commit (~100 ms).
+- Un primer fotograma de ~270 ms tras saltar al final del documento (PrePaint).
 
 **Límites conocidos.**
 

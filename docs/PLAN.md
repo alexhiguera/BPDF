@@ -3,7 +3,7 @@
 > **Estado:** escrito en la Fase 0 (*2026-09-29*); D1–D4 y D15 confirmadas y Fase 1
 > cerrada el mismo día. D16 confirmada y §4.2 y §5 implementados en la Fase 3
 > (*2026-09-29*). Revisado el *2026-09-30* con las Fases 5, 7, 7 bis, 8 y 6 cerradas (D13
-> confirmada e implementada en la 6), y el *2026-10-01* con la 9 (D9: CodeMirror 6). Este documento describe **cómo será** BPDF. Cómo es hoy:
+> confirmada e implementada en la 6), y el *2026-10-01* con la 9 en curso (D9: CodeMirror 6; abierta, no aprobada). Este documento describe **cómo será** BPDF. Cómo es hoy:
 > `ARCHITECTURE.md`, `STACK.md` y `STRUCTURE.md`.
 >
 > Documentos hermanos: [SEGURIDAD.md](SEGURIDAD.md) (modelo de amenazas y controles),
@@ -197,7 +197,7 @@ Reglas:
   `incompatible`, `folder-no-markdown`, `folder-too-large` y `mixed-drop`; cada uno con su
   texto en `messages.ts` (§9.3).
 - **Un documento a la vez en v1** (D16, confirmada). Abrir otro lo sustituye; si la
-  apertura falla, el documento abierto se conserva. Con cambios sin guardar (✅ F9), toda
+  apertura falla, el documento abierto se conserva. Con cambios sin guardar (🚧 F9), toda
   sustitución y cerrar piden confirmación después de validar lo nuevo y antes de aplicarlo
   ([ARCHITECTURE.md](ARCHITECTURE.md) §4 octies). El estado vive en
   [`DocumentProvider`](../src/documents/DocumentProvider.tsx): pestañas o varios
@@ -225,7 +225,7 @@ src/
 ├── markdown/                ✅ F7–F8: pipeline.ts · MarkdownView.tsx · url-policy.ts · toc.ts ·
 │                            matematicas.ts · mermaid*.ts · svg-seguro.ts · imagenes.ts ·
 │                            components/ (BloqueCodigo, Enlace, Imagen, Formula, Diagrama, Indice…)
-├── editor/                  ✅ F9: EditorMarkdown.tsx (CodeMirror 6, a demanda) · ModeSwitch.tsx ·
+├── editor/                  🚧 F9: EditorMarkdown.tsx (CodeMirror 6, a demanda) · ModeSwitch.tsx ·
 │                            SplitView.tsx · sincronia.ts · tipos.ts
 └── preferences/             F10: esquema zod, almacén versionado, hook
 electron/                    F14: main.ts · preload.ts · protocol.ts · ipc.ts
@@ -239,7 +239,7 @@ electron/                    F14: main.ts · preload.ts · protocol.ts · ipc.ts
 | Carpeta | ✅ F7 bis: botón «Abrir carpeta», `<input type="file" webkitdirectory>`; con varios `.md`, el usuario elige | Diálogo nativo de carpeta en el main; el main entrega rutas relativas |
 | Arrastrar y soltar | ✅ F3: zona a pantalla completa con manejadores de React sobre la raíz de la app (sin listeners en `window`). ✅ F7 bis: varios ficheros (un `.md` con sus imágenes) o una carpeta (`webkitGetAsEntry`, capturado dentro del evento) | Igual (DOM); `webUtils.getPathForFile` en el preload solo si hace falta guardar o resolver relativos |
 | Argumentos / «Abrir con…» | No aplica | `process.argv` (Windows/Linux), `open-file` (macOS), `second-instance` con bloqueo de instancia única; el main lee y valida, y envía el contenido |
-| Guardar (Markdown) | ✅ F9: `showSaveFilePicker` si existe (Chromium; el usuario elige destino la primera vez, el handle vive en memoria), si no descarga con `<a download>` y Blob. Nunca se sobrescribe en silencio el fichero abierto | IPC `saveDocument(id, texto)`: el main solo escribe en ficheros que el usuario abrió o eligió con «Guardar como» |
+| Guardar (Markdown) | 🚧 F9: `showSaveFilePicker` si existe (Chromium; el usuario elige destino la primera vez, el handle vive en memoria), si no descarga con `<a download>` y Blob. Nunca se sobrescribe en silencio el fichero abierto | IPC `saveDocument(id, texto)`: el main solo escribe en ficheros que el usuario abrió o eligió con «Guardar como» |
 
 La interfaz `Platform` ([ELECTRON.md](ELECTRON.md) §3) existe desde la Fase 3 con la
 implementación web ([`src/platform/`](../src/platform/)). Hoy: `pickDocument()`,
@@ -372,7 +372,7 @@ Diseño implementado: [ARCHITECTURE.md](ARCHITECTURE.md) §4 quinquies.
   tercero la IP y el momento de lectura (píxeles espía) y obliga a abrir la CSP. Se
   muestra el texto alternativo y el enlace.
 
-### 7.3 Edición (✅ Fase 9)
+### 7.3 Edición (🚧 Fase 9, abierta: no aprobada)
 
 Modos: **lectura**, **edición**, **dividido** (editor + vista previa con desplazamiento
 sincronizado por encabezados). Editor: **CodeMirror 6** (D9, confirmada; MIT, modular,
@@ -458,7 +458,7 @@ con un bloque `[data-theme="light"]`.
   oscura/original, buscar, cerrar); panel de miniaturas a la izquierda. ✅ F6: girar a la
   izquierda, pantalla completa (del área de lectura), ayuda de atajos, opciones de búsqueda
   (mayúsculas, palabra completa) y el diálogo de contraseña.
-- **Markdown** (✅ F7–F9): barra (índice, modos lectura/edición/dividido, «Sin guardar»,
+- **Markdown** (✅ F7–F8; 🚧 F9): barra (índice, modos lectura/edición/dividido, «Sin guardar»,
   guardar, cerrar); índice a la izquierda en lectura; hoja centrada con ancho de lectura
   (~72 caracteres); en dividido, editor y vista previa con un separador. Tamaño de letra, en
   la F10.
@@ -488,7 +488,7 @@ los dos visores existían.
 | Mostrar u ocultar miniaturas (PDF) | `T` * | ✅ F6 |
 | Pantalla completa (entrar o salir) | `F` * (salir también con `Esc`, del navegador) y `F11` (Electron) | ✅ F6 (`F11`: F14) |
 | Ayuda de atajos | `?` * | ✅ F6 |
-| Guardar (Markdown) | `Ctrl/Cmd+S` | ✅ F9 |
+| Guardar (Markdown) | `Ctrl/Cmd+S` | 🚧 F9 |
 
 \* Atajos de una tecla (WCAG 2.1.4): solo actúan con el foco fuera de campos de texto y
 elementos editables, y se pueden **desactivar** con un interruptor en la ayuda (`?`, que
