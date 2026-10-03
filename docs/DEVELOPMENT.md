@@ -62,11 +62,13 @@ protegido, sin texto y CJK).
 | `dev` | Vite en modo desarrollo (antes, `predev` copia los recursos de pdf.js) |
 | `build` | Build estática en `dist/` (antes, `prebuild` copia los recursos de pdf.js) |
 | `build:tamano` | Peso gzip de lo que se descarga al arrancar; falla por encima de 150 KB. Requiere `build` |
+| `build:verificar` | `dist/` publicable (Fase 15): robots y sitemap de `public-site.ts`, sin `app.example.com`, URLs de desarrollo, recursos externos en HTML o CSS ni restos de escritorio. Requiere `build`; corre en CI |
 | `preview` | Sirve `dist/` con la CSP y las cabeceras de seguridad |
 | `lint` · `lint:fix` · `format` | Biome |
 | `typecheck` | `tsc --noEmit` |
 | `test` · `test:run` · `test:coverage` | Vitest (unitarios, componentes, a11y) |
 | `test:e2e` · `test:e2e:ui` | Playwright contra la build de producción (`vite preview`, puerto 3100), en Chromium |
+| `test:humo` | Prueba de humo de la web publicada (Fase 15, `playwright.produccion.config.ts`): por defecto contra `https://bpdf.r3zon.com`; `BPDF_URL=http://localhost:3101` la ensaya contra la build local. A mano, tras desplegar; ni en CI ni en `test:e2e` ([DEPLOYMENT.md](DEPLOYMENT.md)) |
 | `test:e2e:compat` | La misma suite en Firefox y WebKit (Fase 13, `playwright.compat.config.ts`). Lo que solo da Chromium (CDP, `Permissions-Policy`, permisos del portapapeles de Playwright) se salta allí con su motivo (`e2e/navegadores.ts`); los avisos de consola de Firefox que no son fallos de BPDF están en `AVISOS_CONOCIDOS` (`e2e/vigilancia.ts`) |
 | `bench:pdf` | Benchmark del visor PDF: render y modo oscuro por página con y sin worker, a DPR 1 y 2 y a varios zooms, y documentos de 300 y 1000 páginas (apertura, recorrido, lienzos, memoria, tareas largas al navegar). `BPDF_CPU=4` frena la CPU ×4 con CDP: una aproximación a un equipo modesto, no un equipo de verdad. Imprime tablas; no es un test y no corre en CI |
 | `bench:memoria` | Memoria real con CDP (Fase 13): montón, nodos, escuchadores, documentos, workers y URL `blob:` vivas, tras forzar la recolección, al abrir y cerrar varias veces un PDF de 300 páginas y Markdown de 2 KB, 1 MB, 1 MB + KaTeX y 1 MB + Mermaid (lectura y Dividido), y al cambiar de documento sin cerrar |
@@ -168,6 +170,11 @@ npm run test:e2e      # build de producción + Playwright (Chromium)
   [`e2e.yml`](../.github/workflows/e2e.yml). Por defecto, `develop` y `long/**`. Motivo:
   [ARCHITECTURE.md §8](ARCHITECTURE.md).
 - `ci.yml`: lint → typecheck → tests → docs → build → tamaño del arranque.
+- `e2e.yml`: la suite E2E entera en Chromium (job `e2e`) y, desde la Fase 13, en Firefox y
+  WebKit (job `compat`, un navegador por job, en paralelo; `npm run test:e2e:compat --
+  --project=<navegador>`). Lo que solo da Chromium se salta con su motivo; los benchmarks no
+  corren en CI. En CI, Playwright reintenta una vez: un test que pasa al reintentar sale como
+  «flaky» en el informe; uno que falla dos veces rompe el job.
 - `security.yml`: `npm audit` (rompe con HIGH o superior) en cada PR, cada push a `main`
   y cada lunes.
 - Commits: Conventional Commits en inglés técnico ([`CLAUDE.md`](../CLAUDE.md) §2).

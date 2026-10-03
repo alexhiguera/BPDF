@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { project, siteUrl } from "@/config/project";
 import { PAGINAS_PUBLICAS, robotsTxt, sitemapXml } from "@/config/public-site";
@@ -10,6 +12,26 @@ const REPO = process.cwd();
 describe("configuración de este proyecto", () => {
   it("la identidad de project.ts coincide con package.json y public_docs/", () => {
     expect(comprobarIdentidad({ raizRepo: REPO, proyecto: project })).toEqual([]);
+  });
+
+  it("el dominio es el oficial (D5) y el de ejemplo no vuelve a la configuración pública", () => {
+    // Fase 15. Lo que se publica o se sincroniza con el Docusaurus, además de project.ts.
+    expect(siteUrl()).toBe("https://bpdf.r3zon.com");
+    const publicos = [
+      "src/config/project.ts",
+      "src/config/public-site.ts",
+      "index.html",
+      "vercel.json",
+      ...readdirSync(path.join(REPO, "public_docs"), { recursive: true, encoding: "utf8" })
+        .filter((f) => /\.(md|json)$/.test(f))
+        .map((f) => path.join("public_docs", f)),
+    ];
+    for (const rel of publicos) {
+      expect(readFileSync(path.join(REPO, rel), "utf8"), rel).not.toMatch(/\bexample\.com/);
+    }
+    expect(robotsTxt() + sitemapXml()).not.toMatch(/example\./);
+    expect(robotsTxt()).toContain("Sitemap: https://");
+    expect(sitemapXml()).not.toMatch(/<loc>http:/);
   });
 
   it("robots.txt y sitemap.xml salen del dominio de project.ts, con fechas literales", () => {

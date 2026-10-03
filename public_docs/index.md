@@ -3,11 +3,11 @@ title: "Documentación de BPDF"
 sidebar_label: "Inicio"
 sidebar_position: 0
 slug: /
-description: "Documentación oficial de BPDF, el visor de PDF y Markdown para leer en modo oscuro. BPDF está en desarrollo: las guías llegarán con cada función."
+description: "Documentación oficial de BPDF, el visor de PDF y Markdown para leer en modo oscuro, ya disponible en bpdf.r3zon.com. Las guías llegarán con la documentación completa."
 keywords: [bpdf, pdf, markdown, visor, modo oscuro]
 tags: [portada]
 last_update:
-  date: 2026-09-29
+  date: 2026-10-04
   author: Equipo R3ZON
 r3zon:
   tipo: indice
@@ -18,8 +18,9 @@ r3zon:
 ---
 
 **Respuesta corta.** Esta será la documentación oficial de **BPDF**, un visor gratuito y
-open source de PDF y Markdown pensado para leer en modo oscuro. BPDF está en desarrollo
-y todavía no se puede usar: cada guía se publicará cuando exista la función que describe.
+open source de PDF y Markdown pensado para leer en modo oscuro. BPDF ya se puede usar en
+`https://bpdf.r3zon.com`; las guías de cada función llegarán con la documentación completa.
+Qué versión hay y qué puede hacer: [Novedades](novedades.md).
 
 ## Qué es BPDF
 

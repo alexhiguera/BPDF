@@ -5,14 +5,15 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 
 | Pieza | Estado | Dónde |
 |---|---|---|
-| Identidad del producto | ✅ (D5 confirmada: el dominio se cambia en la F15) | `src/config/project.ts` |
+| Identidad del producto | ✅ (dominio oficial de D5 desde la F15) | `src/config/project.ts` |
+| Distribución web: dominio, `robots.txt`, `sitemap.xml`, `dist/` publicable, smoke de producción | 🚧 F15 (implementada; pendiente de verificar en producción) | `src/config/public-site.ts`, `scripts/verificar-dist.mjs`, `playwright.produccion.config.ts`, `e2e/produccion/` |
 | SPA estática (Vite + React) y shell accesible | ✅ F2 | `index.html`, `vite.config.ts`, `src/main.tsx`, `src/app/` |
 | Tokens de diseño y primitivos (Button, Field, Input) | ✅ F2 (revisados en F11; lista en PLAN §9.5) | `src/styles/globals.css`, `src/components/ui/` |
 | Textos centralizados | ✅ F2 | `src/i18n/messages.ts` |
 | CSP y cabeceras de seguridad | ✅ F2 (base; se amplía por fase) · ✅ F12 (CSP definitiva, `Permissions-Policy` ampliada; verificadas en producción) | `src/config/security-headers.ts` |
 | Tests: unitarios, componentes, a11y, guardarraíles, E2E | ✅ | `tests/`, `e2e/` |
 | CI: calidad, tamaño del arranque, E2E, seguridad de dependencias | ✅ | `.github/workflows/` |
-| `public_docs/` con contrato y validador | ✅ (portada «próximamente») | `public_docs/`, `scripts/validar-public-docs.mjs` |
+| `public_docs/` con contrato y validador | ✅ (portada «próximamente»; registro de cambios para usuarios, `novedades.md`, desde la F15) | `public_docs/`, `scripts/validar-public-docs.mjs` |
 | Documentación interna y plan | ✅ | `docs/` |
 | Apertura de archivos (selector, `Ctrl/Cmd+O`, arrastre, validación) | ✅ F3 | `src/documents/`, `src/app/DropZone.tsx`, `src/app/DocumentErrorAlert.tsx` |
 | Capa de plataforma (web) | ✅ F3 (la única: sin escritorio, D19) | `src/platform/` |
@@ -23,7 +24,7 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 | Recursos locales de Markdown (varios ficheros, carpeta, imágenes) | ✅ F7 bis | `src/documents/recursos.ts`, `src/documents/seleccion.ts`, `src/markdown/imagenes.ts`, `src/platform/web.ts` |
 | Editor de Markdown (CodeMirror 6, vista previa, dividido, guardar) | ✅ F9 (aprobada con una excepción de rendimiento: Dividido con 1 MB + KaTeX o 1 MB de encabezados; FASES, Fase 9) | `src/editor/`, `src/markdown/MarkdownView.tsx`, `src/platform/guardar-web.ts` |
 | Interfaz final: atajos anunciados, «Acerca de», mención a R3ZON, favicon, pantalla estrecha (D12) | ✅ F11 | `src/app/`, `src/preferences/PreferencesDialog.tsx`, `src/config/version.ts`, `public/favicon.svg` |
-| Accesibilidad, rendimiento y compatibilidad (barra con flechas, separador de 24 px, axe, Firefox y WebKit, memoria con CDP) | 🚧 F13 implementada, pendiente de revisión | `src/app/pdf/barra-teclado.ts`, `e2e/specs/a11y.spec.ts`, `playwright.compat.config.ts`, `e2e/bench/memoria.bench.ts` |
+| Accesibilidad, rendimiento y compatibilidad (barra con flechas, separador de 24 px, axe, Firefox y WebKit, memoria con CDP) | ✅ F13 (Firefox y WebKit también en CI) | `src/app/pdf/barra-teclado.ts`, `e2e/specs/a11y.spec.ts`, `playwright.compat.config.ts`, `e2e/bench/memoria.bench.ts` |
 | Escritorio (Electron) | ❌ F14 cancelada (D19: BPDF es solo web) | |
 
 ## Módulos de la plantilla

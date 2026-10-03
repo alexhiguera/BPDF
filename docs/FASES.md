@@ -52,9 +52,9 @@ web); conserva su número, sin trabajo pendiente.
 | 10 | Preferencias | Infraestructura, panel, memoria por documento y borrado. La infraestructura estaba prevista en la F2 y se aplazó aquí, a su primer uso real |
 | 11 | UI/UX final | Igual. Al especificarla: título fijo, «Acerca de» dentro de Preferencias, sin enlace al repositorio (F16) |
 | 12 | Seguridad: endurecimiento y auditoría | Ya no «añade» seguridad: cada fase implementa la suya. Aquí se verifica, se endurece (CSP final, Trusted Types: medido y no adoptado en v1) y se audita. ✅ **Cerrada** (*2026-10-03*) |
-| 13 | Accesibilidad y rendimiento | Los tests viven en cada fase; esta fase **mide** con el corpus grande y corrige |
+| 13 | Accesibilidad y rendimiento | Los tests viven en cada fase; esta fase **mide** con el corpus grande y corrige. ✅ **Cerrada** (*2026-10-04*) |
 | 14 | ~~Electron: aplicación~~ | **Cancelada** el *2026-10-03*: BPDF es solo una aplicación web (D19) |
-| 15 | Distribución web | Incluye la publicación web (antes no tenía fase). **Reescrita** el *2026-10-03* sin la parte de escritorio (D19) |
+| 15 | Distribución web | Incluye la publicación web (antes no tenía fase). **Reescrita** el *2026-10-03* sin la parte de escritorio (D19). 🚧 **Implementada**, pendiente de despliegue y verificación (*2026-10-04*) |
 | 16 | Open source y documentación final | Igual; la licencia ya existe desde F1 |
 
 Paralelizables (si hay dos sesiones a la vez): **F7–F9** con **F5–F6**. Todas tocan
@@ -1252,9 +1252,8 @@ T-3 y T-4 decididos y escritos.
 
 ## Fase 13 — Accesibilidad y rendimiento
 
-> **Estado: IMPLEMENTADA / PENDIENTE DE REVISIÓN** (*2026-10-04*, iteración 29). No se cierra
-> hasta revisar con el usuario la barra y el separador, Firefox, WebKit, la memoria, el
-> Markdown grande, las listas cuadráticas y los riesgos aceptados. Detalle en
+> **CERRADA / APROBADA** el *2026-10-04* (implementada en la iteración 29; cerrada en la 30,
+> con la compatibilidad de Firefox y WebKit en CI). Detalle en
 > [ARCHITECTURE.md](ARCHITECTURE.md) §4 undecies.
 >
 > **Qué se hizo.** Barra del visor con una sola parada de Tab y flechas; separador de 24 px;
@@ -1265,8 +1264,11 @@ T-3 y T-4 decididos y escritos.
 > escuchador colgado por apertura (CDP) y el foco perdido al cancelar la contraseña (Firefox).
 > IME sobre una selección, con CDP. Memoria real con CDP (`npm run bench:memoria`). PDF de 1000
 > páginas y CPU frenada ×4 (`BPDF_CPU`). **Listas cuadráticas: regresión de micromark 4.0.3,
-> fijado en 4.0.2** (`override`). Markdown de 1 MB: estudiado, se propone mantenerlo.
-> **Abierto:** en WebKit, Dividido con 1 MB + KaTeX no se puede usar (P50 ~400 ms por tecla).
+> fijado en 4.0.2** (`override`, aprobado temporalmente hasta el arreglo de micromark#246).
+> **Limitaciones conocidas de v1, aceptadas:** Markdown de ~1 MB en ~3 s; en el WebKit de
+> Playwright en Linux, Dividido con 1 MB + KaTeX va muy lento (rendimiento, no funciones;
+> sin confirmar en Safari real); Trusted Types sin adoptar. **CI:** job `compat` en `e2e.yml`
+> con Firefox y WebKit.
 >
 > **Diferencias con el alcance escrito abajo:** el corpus grande se genera en los propios
 > benchmarks (`crearPdfGrande(1000)`, los generadores de Markdown), sin `scripts/` nuevos; no
@@ -1328,6 +1330,16 @@ conserva porque tiene sentido por sí mismo.
 
 ## Fase 15 — Distribución web
 
+> **IMPLEMENTADA / PENDIENTE DE DESPLIEGUE Y VERIFICACIÓN** (*2026-10-04*, iteración 31).
+> Hecho y comprobado en local: el dominio oficial en `project.ts` (y con él `robots.txt`,
+> `sitemap.xml` y `public_docs/_meta/`); `npm run build:verificar` sobre `dist/` (también en
+> CI); la prueba de humo de producción (`npm run test:humo`, ensayada contra `vite
+> preview`); `DEPLOYMENT.md` reescrito; la versión se mantiene en **0.1.0** (SemVer 0.x;
+> 1.0.0 al cerrar la Fase 16); el registro de cambios para usuarios en
+> `public_docs/novedades.md`. **Falta**, tras el despliegue que hace el usuario: el smoke,
+> `cabeceras:verificar` y `curl -I` contra `https://bpdf.r3zon.com`, `robots.txt`,
+> `sitemap.xml` y el dominio. Solo entonces se cierra.
+
 > **Reescrita el *2026-10-03*** (D19: BPDF es solo web). Antes era «Distribución: web y
 > escritorio». Se retiró todo lo que solo tenía sentido con una app de escritorio, sin
 > sustituirlo: instaladores por plataforma, firma y notarización de binarios, fuses,
@@ -1351,7 +1363,8 @@ depende de la Fase 14 (cancelada).
   comprobación con `npm run cabeceras:verificar -- <url>` y `curl -I` (CSP, HSTS, etc., de
   `/` y `/mermaid.html`); E2E de humo contra la URL pública; `DEPLOYMENT.md` reescrito.
 - Versionado del producto (`package.json` → `version`, semver) y registro de cambios para
-  usuarios (distinto de la bitácora `docs/CHANGELOG.md`; nombre y ubicación a decidir).
+  usuarios (distinto de la bitácora `docs/CHANGELOG.md`): `public_docs/novedades.md`,
+  decidido en la implementación (iteración 31; DEPLOYMENT.md).
 
 **Fuera de alcance.** Versión de escritorio o cualquier sustituto (D19); tiendas de
 aplicaciones.
@@ -1366,7 +1379,10 @@ despliegue real, no solo en local). Sin secretos: no hay binarios que firmar.
 **Criterios de aceptación.** Web pública con las cabeceras correctas
 (`cabeceras:verificar` en verde contra producción); E2E de humo en verde contra la URL
 pública, con cero errores de consola, cero violaciones de CSP y ninguna petición externa;
-el dominio de `project.ts` es el real; versión y registro de cambios publicados.
+el dominio de `project.ts` es el real; la versión, visible en «Acerca de» de la web; el
+registro de cambios, escrito en `public_docs/`. Publicarlo en `docs.r3zon.com` es de la
+Fase 16, con el resto de `public_docs/` (precisado en la iteración 31: «publicados» chocaba
+con el alcance de la F16).
 
 **Documentación.** DEPLOYMENT (reescrito), CLAUDE.md §0 (entornos), bitácora, TAREAS.
 

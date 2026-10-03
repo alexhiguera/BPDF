@@ -9,36 +9,36 @@
     "",
     "`sitioProducto` debe coincidir con `project.domain` de src/config/project.ts y",
     "`sitioDocumentacion` terminar en `/<project.slug>`: el validador lo comprueba.",
-    "El dominio `app.example.com` es provisional hasta la decisión D5 (docs/PLAN.md §14)."
+    "Dominio oficial (D5, docs/PLAN.md §14), fijado en la Fase 15."
   ],
   "$version": 1,
   "$origen": "src/config/project.ts",
 
-  "sitioProducto": "https://app.example.com",
+  "sitioProducto": "https://bpdf.r3zon.com",
   "sitioDocumentacion": "https://docs.r3zon.com/bpdf",
 
   "ids": {
-    "organization": "https://app.example.com/#organization",
-    "website": "https://app.example.com/#website",
-    "softwareApplication": "https://app.example.com/#software"
+    "organization": "https://bpdf.r3zon.com/#organization",
+    "website": "https://bpdf.r3zon.com/#website",
+    "softwareApplication": "https://bpdf.r3zon.com/#software"
   },
 
   "organization": {
     "@type": "Organization",
-    "@id": "https://app.example.com/#organization",
+    "@id": "https://bpdf.r3zon.com/#organization",
     "name": "R3ZON",
     "url": "https://r3zon.com",
-    "sameAs": ["https://r3zon.com", "https://app.example.com", "https://docs.r3zon.com/bpdf"]
+    "sameAs": ["https://r3zon.com", "https://bpdf.r3zon.com", "https://docs.r3zon.com/bpdf"]
   },
 
   "softwareApplication": {
     "@type": "SoftwareApplication",
-    "@id": "https://app.example.com/#software",
+    "@id": "https://bpdf.r3zon.com/#software",
     "name": "BPDF",
     "applicationCategory": "UtilitiesApplication",
     "operatingSystem": "Web",
     "description": "Visor de PDF y Markdown para leer en modo oscuro. Los documentos no salen del dispositivo.",
     "inLanguage": "es-ES",
-    "publisher": { "@id": "https://app.example.com/#organization" }
+    "publisher": { "@id": "https://bpdf.r3zon.com/#organization" }
   }
 }

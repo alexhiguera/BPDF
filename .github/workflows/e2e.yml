@@ -58,3 +58,45 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  # Fase 13: la MISMA suite en Firefox y WebKit (`playwright.compat.config.ts`), un
+  # navegador por job y en paralelo con el de Chromium. Lo que solo existe en Chromium
+  # (CDP, `Permissions-Policy`…) se salta allí con su motivo, que sale en el informe
+  # (`e2e/navegadores.ts`); la vigilancia de consola, CSP y red es la misma. Un fallo en
+  # cualquiera de los dos rompe el workflow. Sin benchmarks: miden la máquina, no se
+  # comprueban.
+  compat:
+    name: Playwright (${{ matrix.navegador }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      # Que un navegador falle no cancela el otro: se ven los dos resultados.
+      fail-fast: false
+      matrix:
+        navegador: [firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci --no-audit --no-fund
+
+      - name: Instalar ${{ matrix.navegador }}
+        run: npx playwright install --with-deps ${{ matrix.navegador }}
+
+      - name: E2E en ${{ matrix.navegador }}
+        run: npm run test:e2e:compat -- --project=${{ matrix.navegador }}
+
+      - name: Informe de Playwright
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.navegador }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

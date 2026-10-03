@@ -3,7 +3,7 @@ import { siteUrl } from "./project.ts";
 /**
  * `robots.txt` y `sitemap.xml` de la web pública. Los emite `vite.config.ts` en
  * la build, a partir del dominio de `project.ts`, para no repetirlo en ficheros
- * estáticos (y el dominio aún es provisional: D5).
+ * estáticos (dominio oficial de D5 desde la Fase 15).
  *
  * `lastModified` es LITERAL. Nunca `new Date()`: movería la fecha de todo el
  * sitio en cada despliegue y el buscador acabaría ignorando la señal. Quien
@@ -11,7 +11,8 @@ import { siteUrl } from "./project.ts";
  * el mismo commit (CLAUDE.md §9).
  */
 export const PAGINAS_PUBLICAS: readonly { path: string; lastModified: string }[] = [
-  { path: "/", lastModified: "2026-09-29" },
+  // La Fase 11 cambió lo que se ve en `/` (pie con el crédito, estado vacío) el 2026-10-03.
+  { path: "/", lastModified: "2026-10-03" },
 ];
 
 export function robotsTxt(): string {

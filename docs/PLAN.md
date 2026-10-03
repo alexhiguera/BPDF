@@ -489,8 +489,8 @@ con un bloque `[data-theme="light"]`.
 - **Mención al pie** (✅ F11), solo en la pantalla vacía: «BPDF · Gratis y open source ·
   Creado por R3ZON con ❤️», con «R3ZON» enlazado a `https://r3zon.com` por
   `Platform.openExternal`. Con un documento abierto no aparece: no quita espacio al visor.
-  BPDF se publica en `https://bpdf.r3zon.com`, la URL oficial (D5, confirmada; el cambio del
-  dominio de `project.ts` es de la Fase 15).
+  BPDF se publica en `https://bpdf.r3zon.com`, la URL oficial (D5, confirmada; `project.ts` la
+  usa desde la Fase 15).
 - **Errores:** fichero no soportado, demasiado grande, PDF dañado, Markdown no UTF-8 y los
   de la apertura de varios ficheros o carpetas (F7 bis). Cada uno con texto claro y sin
   detalles técnicos crudos. Los de apertura (✅ F3) se muestran como aviso
@@ -603,7 +603,7 @@ reales):
 |---|---|
 | Primera página de un PDF de 1000 páginas < 1,5 s | ✅ 0,95 s (con la CPU frenada ×4: 1,3 s) |
 | Ninguna tarea larga > 200 ms al navegar un PDF | ✅ ninguna (×4: máx. 179 ms) |
-| Ninguna tarea larga > 200 ms al teclear | ✅ salvo la excepción de la Fase 9 (Dividido con 1 MB + KaTeX: máx. 224 ms en Chromium) y **WebKit en ese mismo caso (P50 ~400 ms: abierto)** |
+| Ninguna tarea larga > 200 ms al teclear | ✅ salvo la excepción de la Fase 9 (Dividido con 1 MB + KaTeX: máx. 224 ms en Chromium) y, en el WebKit de Playwright en Linux, ese mismo caso (P50 ~400 ms): **limitación conocida de v1**, sin confirmar en Safari real |
 | Memoria estable al abrir y cerrar | ✅ el montón vuelve a 6–9 MiB, workers y URL `blob:` a 0 (`bench:memoria`, CDP) |
 | Arranque ≤ 150 KB gzip | ✅ 95,1 KB |
 
@@ -679,7 +679,7 @@ terceros sin licencia clara.
 | **D10** | **Sin tema claro en v1**: solo el tema oscuro (en PDF sigue la «página original»). Sin infraestructura para un tema claro (confirmada al empezar la Fase 11, *2026-10-03*) | Fase 11 |
 | **D12** | Móvil y tablet: **adaptación básica**, no una experiencia móvil propia: sin desplazamiento horizontal a 375 px, controles ≥ 24 px, barras que se reparten, sin gestos ni zoom con los dedos nuevos (confirmada al empezar la Fase 11) | Fase 11: E2E `interfaz.spec.ts` |
 | **D14** | Formularios y anotaciones de PDF: **se muestran, pero no se rellenan ni se editan en v1** (confirmada el *2026-10-03*; ya era así desde la Fase 5: apariencias pintadas en el lienzo, sin capa interactiva) | Fase 5: `src/pdf/render.ts` (`AnnotationMode.ENABLE`) |
-| **D5** | Hosting web: **Vercel**; URL oficial: **`https://bpdf.r3zon.com`** (confirmada el *2026-10-03*). Las cabeceras salen de `vercel.json`, generado desde la fuente única. Cambiar el dominio de `project.ts` (y con él `robots.txt`, `sitemap.xml` y `public_docs/_meta/`) es trabajo de la Fase 15 | Fases 12 y 15 ([DEPLOYMENT.md](DEPLOYMENT.md)) |
+| **D5** | Hosting web: **Vercel**; URL oficial: **`https://bpdf.r3zon.com`** (confirmada el *2026-10-03*). Las cabeceras salen de `vercel.json`, generado desde la fuente única. `project.ts` usa el dominio oficial desde la Fase 15 (y con él `robots.txt`, `sitemap.xml` y `public_docs/_meta/`) | Fases 12 y 15 ([DEPLOYMENT.md](DEPLOYMENT.md)) |
 | **D19** | **BPDF es solo una aplicación web: sin versión de escritorio (Electron) ni sustituto.** Decisión de producto del usuario (*2026-10-03*). Sustituye toda la planificación anterior de Electron | La Fase 14 se cancela; la 15 se reescribe solo para la web; D11 y T-5 dejan de aplicar; [ELECTRON.md](ELECTRON.md) queda como histórico |
 
 ### 14.1 Pendientes de confirmación (usuario)

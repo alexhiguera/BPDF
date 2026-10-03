@@ -10,10 +10,10 @@
     "el Docusaurus los lee siempre. `npm run docs:validar` comprueba que cada ruta existe en",
     "la app (un HTML de la build la sirve) y que `base` coincide con `sitioProducto`.",
     "",
-    "BPDF es una sola vista, sin sesión: solo existe `/`. El dominio está pendiente de D5."
+    "BPDF es una sola vista, sin sesión: solo existe `/`. Dominio oficial (D5): Fase 15."
   ],
   "$version": 1,
-  "base": "https://app.example.com",
+  "base": "https://bpdf.r3zon.com",
 
   "modulos": {},
 

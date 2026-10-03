@@ -10,6 +10,136 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 31 — *2026-10-04* — Fase 15 implementada: dominio oficial, versión y smoke de producción
+
+**Contexto.** El usuario abrió la Fase 15 (distribución web) con la F13 cerrada y la F14
+cancelada. Se hizo todo lo que se puede hacer sin desplegar; lo que exige la web publicada
+espera al commit y al push del usuario. **La Fase 15 queda IMPLEMENTADA / PENDIENTE DE
+DESPLIEGUE Y VERIFICACIÓN**: no se cierra hasta comprobar la producción.
+
+**Especificación.** La de FASES coincide con lo pedido. Una contradicción, resuelta a favor
+del alcance de la F16: el criterio de aceptación pedía el registro de cambios «publicado»,
+pero publicar `public_docs/` en `docs.r3zon.com` es de la F16. Queda escrito en
+`public_docs/` y se publica con la F16 (FASES, precisado).
+
+**Dominio.** `project.ts` pasa de `app.example.com` a `bpdf.r3zon.com` (D5). Sigue siendo la
+única fuente:
+- `robots.txt` y `sitemap.xml` salen de él en la build;
+- `public_docs/_meta/entidad.json` y `rutas-app.json` lo repiten (son JSON) y `docs:validar`
+  comprueba que coinciden.
+- Un test nuevo de `project.test.ts` falla si el dominio deja de ser el oficial o si
+  `example.com` vuelve a la configuración pública.
+- El `lastmod` del sitemap pasa de *2026-09-29* a *2026-10-03*: la Fase 11 cambió lo que se ve
+  en `/` (pie con el crédito) y no movió la fecha (CLAUDE.md §9).
+- Sin canonical ni metadatos con URL absoluta: no se añaden (SEO avanzado, fuera de v1).
+
+**`dist/` publicable** (`npm run build:verificar`, `scripts/lib/dist.mjs`, con 14 tests).
+Busca en la build `app.example.com`, URLs de desarrollo, recursos externos en el HTML o el CSS
+y restos de escritorio, y compara robots y sitemap con la fuente. Un paso más del job de
+calidad de CI, no un job nuevo. Al probarlo contra la build real salieron dos falsos
+positivos, que se quedan fuera de la regla:
+- `process.versions.electron`: la detección de entorno de pdf.js, código de la biblioteca;
+- la palabra «localhost» en un mensaje de error de `vfile`: la regla pasó de la palabra
+  suelta a las URL `http(s)://localhost`.
+
+**Smoke de producción** (`npm run test:humo`, `playwright.produccion.config.ts`,
+`e2e/produccion/humo.spec.ts`). Seis tests, en Chromium y sin reintentos:
+- portada (título, favicon, Preferencias, crédito de R3ZON sin pulsarlo);
+- un Markdown con fórmula (módulos a demanda y fuentes de KaTeX);
+- un PDF del repositorio (pdf.js y su worker);
+- las cabeceras de `/` iguales a `cabecerasPara("/")`;
+- `robots.txt` y `sitemap.xml` iguales a los de la fuente;
+- `http://` redirige a `https://`.
+
+Todos con la vigilancia de siempre (consola, CSP, red). Por defecto apunta a la URL de
+`project.ts`; con `BPDF_URL=http://localhost:<puerto>` levanta la build local con
+`vite preview`, y la redirección se salta con su motivo. No corre en CI ni con `test:e2e`:
+dependería de un despliegue que el repositorio no controla. Descartados un job manual de
+CI (el script basta) y Mermaid en el smoke: es lo más lento y lo cubren la suite E2E y, en producción,
+`cabeceras:verificar` (el marco y su módulo).
+
+**Versión: se mantiene 0.1.0.** Es la que la web lleva publicada y la F15 no cambia nada de
+lo que el usuario usa; subirla sería «hacer release». Estrategia escrita en DEPLOYMENT:
+SemVer 0.x (MINOR para cambios que se notan, PATCH para arreglos) y 1.0.0 al cerrar la F16.
+
+**Registro de cambios para usuarios: `public_docs/novedades.md`.** Qué versión hay, qué hace
+BPDF, qué navegador necesita y sus límites conocidos; cada versión añadirá su apartado. No
+copia la bitácora. Cada dato se comprobó contra el código (nombres de modos y botones,
+guardar según navegador, imágenes remotas como enlace, `build.target`). La portada de
+`public_docs/` decía que BPDF «todavía no se puede usar»: corregido, con su fecha. CLAUDE.md
+§8 apunta ahora a este registro.
+
+**DEPLOYMENT reescrito:** cómo se publica, dominio y derivados, cabeceras, versión y
+registro, la lista para comprobar un despliegue y el historial de verificaciones.
+
+**Sin cambios** en el código de la app, las cabeceras, la CSP ni las dependencias. No se
+repitieron benchmarks ni la compatibilidad completa (solo `app.spec`, por robots y sitemap).
+
+**Verificación.** `lint`, `typecheck`, `npm test` **1026** en 54 ficheros, `test:e2e`
+(Chromium) **130**, `app.spec` en Firefox y WebKit **12**, smoke contra la build local
+**5 + 1 saltado**, `build`, `build:tamano` (95,1 KB), `build:verificar`, `docs:enlaces`
+(290), `docs:validar` (2 páginas) y `npm audit` (0).
+
+### Iteración 30 — *2026-10-04* — Fase 13 cerrada: Firefox y WebKit en CI; limitaciones de v1
+
+**Contexto.** El usuario aprobó las decisiones técnicas de la Fase 13 y pidió, antes de
+cerrarla, que CI dejara de comprobar solo Chromium. **La Fase 13 queda CERRADA / APROBADA.**
+Siguiente: la Fase 15 (la 14 está cancelada).
+
+**Decisiones del usuario:**
+- **WebKit, Dividido con ~1 MB + KaTeX: limitación conocida de v1.** Los recorridos
+  funcionales de WebKit pasan; el problema es de rendimiento en ese escenario extremo, medido
+  con el WebKit de Playwright en Linux y sin confirmar en Safari real. No se esquiva: ni
+  detección de Safari, ni otro modo, ni otra vista previa.
+- **Markdown de ~1 MB:** ~3 s, aceptado. Sin worker ni pintado por partes en v1.
+- **`override` de micromark 4.0.2, aprobado de forma temporal.** Se conservan los benchmarks y
+  el issue upstream (#246), con una tarea para retirarlo. Ni fork ni parche local.
+- **Trusted Types:** sigue sin adoptarse. Memoria, rendimiento del PDF y accesibilidad,
+  aprobados. El crecimiento pequeño que solo se ve con Playwright y CDP no es una fuga
+  demostrada.
+
+**CI de compatibilidad.** En `e2e.yml`, un job `compat` nuevo en paralelo con el de Chromium,
+que sigue con la suite completa.
+- Matriz `[firefox, webkit]` con `fail-fast: false`: un navegador no cancela al otro.
+- Cada job instala solo su navegador (`playwright install --with-deps`) y ejecuta
+  `npm run test:e2e:compat -- --project=<navegador>`.
+- Sube su propio informe si falla.
+- Los saltos llevan su motivo en el informe. La vigilancia de consola, CSP y red es la misma.
+- Sin benchmarks.
+- Descartado: un workflow aparte, porque comparte disparadores y concurrencia con el de E2E,
+  y una caché de navegadores, porque añade una clave que mantener a cambio de un minuto.
+
+**Simulado en local con `CI=1`** (el reintento de CI incluido):
+- Firefox: 125 pasan, 4 saltados con su motivo y 1 intermitente que pasa al reintentar (agotó los 30 s en el primer intento), 92 s.
+- WebKit: 123 pasan, 5 saltados con su motivo y 2 intermitentes que pasan al reintentar (el de los 200 ms del editor, ya conocido, y el del Markdown de ~1 MB, que con la máquina cargada tardó 36,9 s frente al límite de 30 s del test), 134 s. En una pasada anterior, el salto de página de abajo.
+
+Al simularlo apareció un aviso de rendimiento de WebKit sobre los módulos que Vite precarga
+(«preloaded … but not used within a few seconds»), cuando un test tarda en usarlos. Se añadió
+a `AVISOS_CONOCIDOS`, solo para WebKit y con su motivo.
+
+También volvió a salir, intermitente en WebKit, el salto a la página 150 que acaba en la 300.
+Sin reintentos falla 1 vez de cada 20 (antes del arreglo del campo de página, 2 de 8). Una
+sonda con los mismos pasos no lo reproduce en 30 ejecuciones. Queda en TAREAS como carrera
+residual, y en CI se ve como intermitente en el informe.
+
+**No se mide el tiempo en GitHub** sin hacer push. En local, el job de cada navegador ejecuta
+sus tests en 1,5–2,5 min. En GitHub hay que sumar `npm ci`, instalar el navegador con sus
+dependencias (~1–2 min) y la build (~10 s). Como los dos jobs corren a la vez que el de
+Chromium, el workflow E2E debería alargarse poco (estimación).
+
+**TAREAS**, reordenada:
+- limitaciones aceptadas de v1;
+- seguimiento futuro;
+- pruebas manuales;
+- fuera de v1, en [mejoras.md](mejoras.md).
+
+Fuera de la lista lo que resolvió la Fase 13.
+
+**Verificación.** `lint`, `typecheck`, `npm test` **1011/1011**, `test:e2e` (Chromium)
+**130/130**, compatibilidad en modo CI (arriba), `build`, `build:tamano` (95,1 KB),
+`docs:enlaces` (279), `docs:validar` y `npm audit` (0). No se repitieron los
+benchmarks: el cierre no toca los caminos medidos.
+
 ### Iteración 29 — *2026-10-04* — Fase 13: accesibilidad, rendimiento y compatibilidad (implementada, pendiente de revisión)
 
 **Contexto.** La Fase 13 según su especificación y el encargo del usuario: accesibilidad,

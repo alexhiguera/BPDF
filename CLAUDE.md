@@ -22,9 +22,13 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   La 11 (UI/UX final) se cerró el mismo día (D10: sin tema claro; D12: adaptación básica;
   título de ventana siempre «BPDF»). La 12 (seguridad) se cerró el mismo día, verificada en
   producción ([`docs/auditoria.md`](docs/auditoria.md), Auditoría 1; T-4, Trusted Types: no
-  adoptado en v1, riesgo aceptado). La 13 (accesibilidad, rendimiento y compatibilidad) está
-  **implementada y pendiente de revisión** (*2026-10-04*; ARCHITECTURE §4 undecies): no se
-  cierra hasta revisarla con el usuario. Firefox y WebKit tienen ya su suite E2E. La app es una SPA estática de Vite + React (D1)
+  adoptado en v1, riesgo aceptado). La 13 (accesibilidad, rendimiento y compatibilidad) se
+  cerró el *2026-10-04* (ARCHITECTURE §4 undecies): Firefox y WebKit corren la suite E2E
+  también en CI; limitaciones de v1 aceptadas: Markdown de ~1 MB en ~3 s y, en WebKit,
+  Dividido con 1 MB + KaTeX muy lento. La 15 (distribución web; la 14 se canceló) está
+  **implementada y pendiente de despliegue y verificación** (*2026-10-04*): dominio oficial,
+  versión 0.1.0 y registro de cambios para usuarios ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)).
+  Después, la 16 (open source y documentación final). La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
   oscuro selectivo en un worker, búsqueda avanzada, pantalla completa, atajos de una tecla
@@ -39,9 +43,9 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   funciones serverless, ni variables de entorno.
 - **Entornos:** local y la **web publicada en Vercel** (`https://bpdf.r3zon.com`, la URL en uso), que
   despliega desde git lo que el usuario sube; sus cabeceras salen de `vercel.json`
-  (generado). **D5 confirmada**: Vercel, y `https://bpdf.r3zon.com` es la URL oficial. El
-  dominio de `project.ts` aún es el de ejemplo: cambiarlo es parte de la distribución formal
-  de la web, en la Fase 15 ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)).
+  (generado). **D5 confirmada**: Vercel, y `https://bpdf.r3zon.com` es la URL oficial. `project.ts`
+  usa ese dominio desde la Fase 15, y de él salen `robots.txt`, `sitemap.xml` y lo que
+  comprueba `public_docs/_meta/` ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)).
 - **Datos de producción:** ninguno. La web publicada es estática: no guarda ni recibe
   datos de usuario (los documentos no salen del dispositivo) y no hay cuentas.
 - **Alcance:** **solo web** (D19, *2026-10-03*): sin versión de escritorio (Electron) ni
@@ -62,6 +66,7 @@ npm run test:run          # Vitest: unitarios, componentes y accesibilidad
 npm run test:e2e          # Playwright contra la build de producción (vite preview)
 npm run build             # build estática en dist/
 npm run build:tamano      # peso del arranque (tras build; límite 150 KB gzip)
+npm run build:verificar   # dist/ publicable: dominio, robots, sitemap, sin URLs externas (tras build)
 npm run test:e2e:compat   # la misma suite E2E en Firefox y WebKit
 npm run bench:pdf         # benchmark del visor PDF (mide; no es un test ni corre en CI; BPDF_CPU=4 frena la CPU)
 npm run bench:memoria     # memoria real con CDP al abrir y cerrar documentos
@@ -71,6 +76,7 @@ npm run docs:enlaces      # enlaces de docs internos
 npm run deps:overrides    # ¿siguen haciendo falta los overrides de package.json?
 npm run cabeceras:vercel  # regenera vercel.json desde security-headers.ts
 npm run cabeceras:verificar -- https://bpdf.r3zon.com  # cabeceras reales vs. la fuente
+npm run test:humo         # smoke contra la web publicada (a mano, tras desplegar; no en CI)
 ```
 
 ## 1. Pregunta antes de decidir algo importante
@@ -201,8 +207,10 @@ tarea. Un documento desactualizado es trabajo incompleto.
 
 **Todo cambio que el usuario de BPDF pueda percibir se le anuncia.** Si no le cambia nada
 (refactor, tipos, tests), **no se anuncia**: un aviso lleno de ruido interno deja de
-leerse. Hasta que exista el registro de cambios para usuarios (Fase 15), menciónalo al
-entregar para que quien mantiene el proyecto decida.
+leerse. El registro de cambios para usuarios es
+[`public_docs/novedades.md`](public_docs/novedades.md) (Fase 15): el cambio se anota ahí,
+bajo la versión que lo traerá, y se menciona al entregar para que quien mantiene el
+proyecto decida la versión (SemVer: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)).
 
 La bitácora (`docs/CHANGELOG.md`) y el anuncio al usuario son registros distintos: uno lo
 lee quien mantiene el código, el otro quien usa el producto.

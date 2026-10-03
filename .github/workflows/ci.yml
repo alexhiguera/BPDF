@@ -73,6 +73,12 @@ jobs:
       - name: Tamaño del arranque
         run: npm run build:tamano
 
+      # Fase 15: dominio oficial, robots y sitemap, sin URLs de desarrollo ni recursos
+      # externos (scripts/lib/dist.mjs). El smoke contra la web publicada NO corre aquí:
+      # depende de un despliegue y se lanza a mano (`npm run test:humo`, DEPLOYMENT.md).
+      - name: Build publicable
+        run: npm run build:verificar
+
   notify:
     name: Notificar a Discord (opcional)
     needs: quality

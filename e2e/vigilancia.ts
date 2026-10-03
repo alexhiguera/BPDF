@@ -43,6 +43,13 @@ export const AVISOS_CONOCIDOS: { navegador: string; patron: RegExp; motivo: stri
       "aviso de rendimiento de Firefox por el desplazamiento sincronizado de Dividido (Fase 9); funciona",
   },
   {
+    navegador: "webkit",
+    patron:
+      /was preloaded using link preload but not used within a few seconds from the window's load event/,
+    motivo:
+      "aviso de rendimiento de WebKit sobre los módulos que Vite precarga para las importaciones a demanda: si pasan unos segundos hasta usarlos (un test lento, axe analizando), lo anota; se usan igual",
+  },
+  {
     navegador: "firefox",
     patron: /XML Parsing Error: prefix not bound to a namespace[\s\S]*mermaid\.html/,
     motivo:

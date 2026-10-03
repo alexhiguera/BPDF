@@ -187,6 +187,10 @@ petición a terceros. Es lo que materializa la privacidad (D7).
 `frame-ancestors`); `e2e/specs/app.spec.ts` (la cabecera servida es la de la fuente, el
 HTML lleva el `<meta>`, **cero violaciones** y ninguna petición fuera del propio origen, y
 un **control** que inyecta un script en línea y comprueba que se bloquea y se detecta).
+Desde la Fase 13, la misma vigilancia (consola, CSP y red) corre también en Firefox y WebKit,
+en local y en CI (`test:e2e:compat`); los avisos de consola de un navegador que no son fallos
+de BPDF están listados con su motivo (`AVISOS_CONOCIDOS`), y las violaciones de CSP y las
+peticiones externas cuentan siempre.
 
 ### 2.2 Otras cabeceras
 

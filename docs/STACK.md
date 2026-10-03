@@ -15,7 +15,7 @@ Fase 7 el pipeline de Markdown (`react-markdown`, `remark-gfm`) y el resaltado d
 | Lenguaje | **TypeScript 7** estricto, con `noUncheckedIndexedAccess` | |
 | Lint y formato | **Biome 2** | Un binario, sin ESLint ni Prettier |
 | Tests | **Vitest 5** + Testing Library + **jest-axe** + jsdom | Unitarios, componentes y accesibilidad |
-| E2E | **Playwright** (Chromium; Firefox y WebKit con `npm run test:e2e:compat` desde la Fase 13) | Contra el build de producción. Imprescindible para lo que depende del navegador real (canvas de PDF, CSP, portapapeles). Accesibilidad con `@axe-core/playwright` |
+| E2E | **Playwright** (Chromium; Firefox y WebKit con `npm run test:e2e:compat` desde la Fase 13, también en CI) | Contra el build de producción. Imprescindible para lo que depende del navegador real (canvas de PDF, CSP, portapapeles). Accesibilidad con `@axe-core/playwright` |
 | CI | **GitHub Actions** | `ci.yml`, `e2e.yml`, `security.yml` |
 
 Plataforma fijada con `engines` (`node >=24 <25`) y `.nvmrc` (`24`). Navegadores mínimos
@@ -223,7 +223,7 @@ librería pesada se carga de forma diferida.
 
 ### `overrides`
 
-**Uno: `"micromark": "4.0.2"`** (Fase 13, *2026-10-04*). micromark 4.0.3 (publicada el
+**Uno: `"micromark": "4.0.2"`** (Fase 13, *2026-10-04*; aprobado por el usuario **de forma temporal**: ni fork ni parche local). micromark 4.0.3 (publicada el
 *2026-09-26*, entró en el lockfile con la Fase 7) añadió `micromark-util-edit-map`, cuyo
 `EditMap.consume` reconstruye la lista entera de eventos en cada uso: una vez por elemento de
 lista, cita o encabezado setext. Resultado: tiempo **cuadrático** con muchos de ellos (perfil:

@@ -884,8 +884,9 @@ en Dividido (iteraciones 16–18).
   acceso al fichero abierto). Firefox y Safari no tienen `showSaveFilePicker`: descargan.
 - Probado en Chromium, Firefox y WebKit (Fase 13, §4 undecies): Shadow DOM con hojas
   construibles, escribir y pegar sobre una selección, deshacer, Ctrl/⌘+S y la descarga. **En
-  WebKit, Dividido con 1 MB + KaTeX no se puede usar** (P50 ~400 ms por tecla; medido en
-  Linux, falta Safari): pendiente de decisión.
+  WebKit, Dividido con 1 MB + KaTeX va muy lento** (P50 ~400 ms por tecla, medido con el
+  WebKit de Playwright en Linux; sin confirmar en Safari real): limitación conocida de v1
+  (§4 undecies).
 - IME: componer sobre una selección, comprobado en Chromium (CDP); en Firefox y Safari, a mano.
 
 ### 4 nonies. Preferencias y posición de lectura (Fase 10)
@@ -993,7 +994,7 @@ visor PDF, el lector de Markdown o el diálogo. El arranque solo suma el botón 
 
 ### 4 undecies. Accesibilidad, rendimiento y compatibilidad (Fase 13)
 
-> **Implementada, pendiente de revisión** (*2026-10-04*, iteración 29). Especificación:
+> **Cerrada y aprobada el *2026-10-04*** (iteraciones 29 y 30). Especificación:
 > [FASES.md](FASES.md), Fase 13. Cifras en PLAN §10 y §11; bitácora, iteración 29.
 
 **Teclado y foco.**
@@ -1101,7 +1102,7 @@ respuesta). Con micromark 4.0.2 el tokenizado vuelve a ser lineal (Node, 400 KB 
 `override` (STACK.md); 4.0.3 solo traía un arreglo menor de énfasis y esta optimización. Se
 quita cuando micromark publique el arreglo (TAREAS).
 
-**Markdown de 1 MB: se queda como está (decisión propuesta, pendiente de revisión).** 3,0 s
+**Markdown de 1 MB: se queda como está (aceptado para v1, decisión del usuario).** 3,0 s
 hasta ver el documento, con «Preparando el documento…» por encima de 100 KB; en Node, el
 análisis (micromark + árbol + hast) es ~1,5 s de esos 3 y el resto es React creando ~72 000
 elementos y la primera maquetación. Opciones, medidas o razonadas:
@@ -1114,17 +1115,30 @@ elementos y la primera maquetación. Opciones, medidas o razonadas:
 | 4. Bajar el límite (20 MiB) | Acota el peor caso | No mejora 1 MB; cambia lo que el usuario puede abrir (decisión de producto) |
 
 Ninguna es una mejora clara y proporcionada para v1: la 2 no quita la mitad del tiempo y la 3
-toca medio lector. Se propone mantenerlo, con la regresión de micromark ya corregida.
+toca medio lector. Se mantiene, con la regresión de micromark ya corregida: es una
+limitación conocida de los documentos grandes en v1.
 
-**Lo que queda abierto (para revisar):**
+**Limitaciones conocidas de v1 (aceptadas al cerrar la fase):**
 
-- **WebKit, Dividido con 1 MB + KaTeX: inutilizable** (P50 392 ms por tecla; en Chromium,
-  la excepción aceptada en la F9 es P95 112 ms). Medido con el WebKit de Playwright en Linux,
-  no con Safari en macOS: hay que confirmarlo a mano. Firefox no lo sufre. No se toca en esta
-  fase: es la misma excepción de la F9, mucho peor en un motor; la salida probable es pausar
-  la vista previa (o el modo Dividido) con KaTeX en WebKit, y eso es una decisión.
-- El `<input type="file">` retenido entre aperturas solo se ha medido con las herramientas de
-  depuración abiertas (las que permiten medirlo): fuera de ellas no se puede observar.
+- **WebKit, Dividido con 1 MB + KaTeX: limitación conocida de v1** (decisión del usuario,
+  *2026-10-04*). Los recorridos funcionales de WebKit pasan todos (editor incluido); lo que
+  falla es el **rendimiento en ese escenario extremo**, un Markdown de ~1 MB con fórmulas en el
+  modo Dividido: ~400 ms de mediana y hasta ~8 s por pulsación (dos mediciones). La medida es
+  del **WebKit de Playwright en Linux**: no se ha confirmado en Safari real, y no se puede dar
+  por hecho que Safari se comporte igual. Firefox no lo sufre (máx. 40 ms). No se añade nada
+  para esquivarlo (ni detección de Safari, ni cambiar de modo, ni otra vista previa): queda como
+  comprobación futura en Safari real (TAREAS).
+- Markdown de ~1 MB: unos 3 s hasta verlo (arriba).
+- Trusted Types: no adoptado (Fase 12; abajo).
+- El `<input type="file">` retenido entre aperturas solo se observa con las herramientas de
+  medida (Playwright y CDP): no se considera una fuga demostrada de BPDF.
+
+**En CI** (`e2e.yml`, job `compat`): la suite E2E corre también en Firefox y WebKit, un job
+por navegador, en paralelo con el de Chromium; lo que solo da Chromium se salta con su motivo
+y un fallo en cualquiera de los dos rompe el workflow. Una carrera residual en WebKit (saltar
+de página justo después de un desplazamiento rápido, 1 de cada 20 ejecuciones con la máquina
+cargada; antes del arreglo del campo, 2 de 8) queda como intermitente: el reintento de CI la
+marca como tal en el informe (TAREAS).
 
 **Trusted Types (T-4), revisado tras la compatibilidad:** nada cambia el análisis de la
 Fase 12 (sigue sin adoptarse en v1). La compatibilidad no añadió sumideros nuevos, y WebKit
