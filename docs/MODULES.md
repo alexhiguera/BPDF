@@ -22,7 +22,7 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 | Fórmulas (KaTeX) y diagramas (Mermaid, en un marco aislado) | ✅ F8 | `src/markdown/matematicas.ts`, `mermaid*.ts`, `marco-mermaid.ts`, `svg-seguro.ts`, `mermaid.html` |
 | Recursos locales de Markdown (varios ficheros, carpeta, imágenes) | ✅ F7 bis | `src/documents/recursos.ts`, `src/documents/seleccion.ts`, `src/markdown/imagenes.ts`, `src/platform/web.ts` |
 | Editor de Markdown (CodeMirror 6, vista previa, dividido, guardar) | ✅ F9 (aprobada con una excepción de rendimiento: Dividido con 1 MB + KaTeX o 1 MB de encabezados; FASES, Fase 9) | `src/editor/`, `src/markdown/MarkdownView.tsx`, `src/platform/guardar-web.ts` |
-| Interfaz final: atajos anunciados, «Acerca de», favicon, pantalla estrecha (D12) | 🚧 F11 (implementada, pendiente de revisión) | `src/app/`, `src/preferences/PreferencesDialog.tsx`, `src/config/version.ts`, `public/favicon.svg` |
+| Interfaz final: atajos anunciados, «Acerca de», mención a R3ZON, favicon, pantalla estrecha (D12) | ✅ F11 | `src/app/`, `src/preferences/PreferencesDialog.tsx`, `src/config/version.ts`, `public/favicon.svg` |
 | Escritorio (Electron) | ❌ F14 cancelada (D19: BPDF es solo web) | |
 
 ## Módulos de la plantilla

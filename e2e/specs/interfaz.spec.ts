@@ -204,3 +204,36 @@ test("los botones anuncian su atajo, y los de una tecla solo si están activados
   await expect(miniaturas).toHaveAttribute("title", t.showThumbnails);
   limpia(v);
 });
+
+test("mención a R3ZON: discreta, solo sin documento, y abre r3zon.com por el mecanismo externo", async ({
+  page,
+}) => {
+  // Se sustituye `window.open` para ver qué pide abrir la app sin abrir nada.
+  await page.addInitScript(() => {
+    const w = window as unknown as { __abiertas: unknown[][] };
+    w.__abiertas = [];
+    window.open = (...args: unknown[]) => {
+      w.__abiertas.push(args);
+      return null;
+    };
+  });
+  const v = await abrir(page);
+  const pie = page.getByRole("contentinfo");
+  await expect(pie).toContainText(project.name);
+  await expect(pie).toContainText(messages.credits.free);
+  const enlace = pie.getByRole("link", { name: project.organization });
+  await expect(enlace).toHaveAttribute("href", "https://r3zon.com");
+  await expect(pie.getByRole("link")).toHaveCount(1);
+  await enlace.click();
+  await enlace.click({ button: "middle" });
+  expect(
+    await page.evaluate(() => (window as unknown as { __abiertas: unknown[][] }).__abiertas),
+  ).toEqual([["https://r3zon.com/", "_blank", "noopener,noreferrer"]]); // la forma canónica que da `URL` al revalidarla
+  expect(new URL(page.url()).pathname).toBe("/");
+  // Con un documento abierto, el pie no está: no quita sitio al visor.
+  await abrirFichero(page, PDF);
+  await pdfListo(page);
+  await expect(page.getByRole("link", { name: project.organization })).toHaveCount(0);
+  // Ninguna petición a r3zon.com ni a ningún otro origen (lo vigila `limpia`).
+  limpia(v);
+});

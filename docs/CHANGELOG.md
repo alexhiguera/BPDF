@@ -10,6 +10,48 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 24 — *2026-10-03* — Fase 11 cerrada: mención a R3ZON y favicon aprobado
+
+**Contexto.** Tras revisar la implementación, el usuario añadió una decisión de producto
+antes de cerrar: reflejar de forma discreta que BPDF es gratis, open source y creado por
+R3ZON. Aprobó el favicon. **La Fase 11 queda CERRADA / APROBADA.**
+
+**Hecho, y por qué así:**
+- **Pie «BPDF · Gratis y open source · Creado por R3ZON con ❤️»** (`src/app/Creditos.tsx`),
+  **solo en la pantalla vacía**: un pie fijo con un documento abierto le quitaría una línea
+  al visor, que es justo lo que se pidió evitar; con un documento, la misma información está
+  en «Acerca de». Texto pequeño en `fg-subtle` sobre `app` (combinación permitida por PLAN
+  §9.2).
+- **«R3ZON» enlaza a `https://r3zon.com`** por `Platform.openExternal`, el mecanismo de los
+  enlaces de los documentos: revalida la URL y abre una pestaña sin `opener` ni `Referer`;
+  el clic se intercepta y el central se anula; `target` y `rel` quedan como red. El enlace
+  tiene un área de 24 px de alto (D12). La CSP no cambia: abrir una pestaña no es una
+  petición de la app.
+- **«Acerca de»** añade «BPDF es una herramienta gratuita y open source creada por R3ZON con
+  ❤️.», junto a la versión, la licencia y la privacidad. Sigue sin enlaces.
+- **Identidad:** la URL de la organización, en `project.ts` (`organizationUrl`), junto a
+  `organization`. El dominio de BPDF **no** cambia: `https://bpdf.r3zon.com` queda escrito
+  como la URL pública en uso (CLAUDE §0, PLAN §9.3); formalizarlo es D5, en la Fase 15.
+- Un detalle medido: `openExternal` abre la forma canónica de la URL (`https://r3zon.com/`,
+  con la barra que añade `URL` al revalidarla). El E2E comprueba exactamente esa.
+
+**Pendientes que se mantienen.** Para la Fase 13: el separador de Dividido (6 px) y la
+navegación con flechas de las barras. Para la Fase 16: el enlace al repositorio, la
+documentación pública final (Docusaurus de `docs.r3zon.com`) y una GitHub Wiki (FASES y
+TAREAS).
+
+**Tests.** Componentes: `Creditos` (texto, un solo enlace, `href` exacto, `target` y `rel`,
+el clic va a la plataforma y se cancela, el central se anula, jest-axe); `App` (el pie con la
+pantalla vacía abre r3zon.com por la plataforma y desaparece con un documento); «Acerca de»
+con la frase nueva y jest-axe. E2E: el clic llega a `window.open` con
+`noopener,noreferrer`, la app no navega, el clic central no abre nada, sin peticiones
+externas ni violaciones de CSP, y el pie no aparece con un PDF abierto; la comprobación de
+375 px ya recorría la pantalla vacía (ahora con el pie).
+
+**Verificación.** `lint`, `typecheck`, `npm test` **989/989** (53 ficheros), `test:e2e`
+**115/115**, `build`, `build:tamano` (**94,8 KB** gzip), `docs:enlaces`, `docs:validar` y
+`npm audit` (0). Sin benchmark: no se tocó `markdown.css` ni el editor.
+
 ### Iteración 23 — *2026-10-03* — Fase 11: interfaz final (implementada, pendiente de revisión)
 
 **Contexto.** Tras la auditoría previa, el usuario confirmó **D10** (sin tema claro en v1) y

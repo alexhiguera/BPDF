@@ -622,3 +622,18 @@ describe("App: interfaz (Fase 11)", () => {
     expect(document.title).toBe(project.name);
   });
 });
+
+describe("App: mención a R3ZON (Fase 11)", () => {
+  it("sin documento se ve al pie y abre r3zon.com por la plataforma; con documento no ocupa sitio", async () => {
+    const plataforma = new PlataformaEnMemoria().elegira(fichero("notas.md", "# Notas"));
+    montar(plataforma);
+    const enlace = within(screen.getByRole("contentinfo")).getByRole("link", {
+      name: project.organization,
+    });
+    fireEvent.click(enlace);
+    expect(plataforma.externas).toEqual(["https://r3zon.com"]);
+    await abrir();
+    await screen.findByRole("heading", { level: 1, name: "notas.md" });
+    expect(screen.queryByRole("link", { name: project.organization })).toBeNull();
+  });
+});

@@ -32,6 +32,11 @@ export const project = {
   /** Organización que publica el producto: `entidad.json` (documentación pública). */
   organization: "R3ZON",
   /**
+   * Web de la organización: el «Creado por R3ZON» de la app (Fase 11). Se abre con
+   * `Platform.openExternal`, como cualquier enlace externo. No es el dominio de BPDF.
+   */
+  organizationUrl: "https://r3zon.com",
+  /**
    * Idioma del producto (BCP 47). Configura `<html lang>` (index.html) y el
    * `inLanguage` de `entidad.json`.
    *

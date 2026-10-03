@@ -13,23 +13,23 @@ estado.
 
 ## Estado hoy — *2026-10-03*
 
-Medido con Node 24.21.0 y npm 11.19.0 en **WSL2 (Ubuntu) sobre Windows**, al implementar la
-**Fase 11** (iteración 23). E2E con el Chromium de Playwright. Cerradas las Fases 0–10 (la 6
+Medido con Node 24.21.0 y npm 11.19.0 en **WSL2 (Ubuntu) sobre Windows**, al cerrar la
+**Fase 11** (iteración 24). E2E con el Chromium de Playwright. Cerradas las Fases 0–11 (la 6
 se hizo después de las 7, 7 bis y 8, por orden del usuario, y conserva su número). **La 9 se
 aprobó con una excepción de rendimiento** (*2026-10-03*): teclear en Dividido con 1 MB +
 KaTeX o con 1 MB de encabezados supera los objetivos de latencia ([FASES.md](FASES.md),
 Fase 9). La 10 (preferencias) se cerró el mismo día. **BPDF es solo una aplicación web**
 (D19, *2026-10-03*): la Fase 14 (Electron) se canceló y la 15 se reescribió sin escritorio.
-**La 11 (UI/UX final) está implementada y pendiente de la revisión del usuario** (D10: sin tema
-claro; D12: adaptación básica).
+La 11 (UI/UX final) se cerró también el *2026-10-03* (D10: sin tema claro; D12: adaptación
+básica). Siguiente: **Fase 12**.
 
 | Comprobación | Resultado |
 |---|---|
 | Código | SPA estática de Vite 8 + React 19. Abre un PDF o un Markdown local, uno a la vez (D16). **Los PDF se leen** en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo oscuro selectivo en un worker, vistas continua y página a página, zoom, giro a los dos lados, capa de texto, enlaces, búsqueda (con mayúsculas, palabra completa y palabras partidas con guion), miniaturas navegables con flechas, pantalla completa del área de lectura, atajos de una tecla desactivables con su ayuda y PDF con contraseña ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quater). **Los Markdown se leen** en un lector GFM: HTML como texto, política de URLs propia, código resaltado con copiar, índice (§4 quinquies), **con sus imágenes locales** si se entregan con el `.md` (varios ficheros o una carpeta; §4 sexies), **fórmulas con KaTeX** y **diagramas con Mermaid** en un marco aislado (`mermaid.html`, iframe con `sandbox` y CSP propia; §4 septies), y **se editan** con CodeMirror 6 (Lectura, Edición y Dividido; vista previa con el mismo lector, desplazamiento sincronizado, confirmación antes de perder cambios y guardado local con `showSaveFilePicker` o descarga; §4 octies). **Preferencias** (Fase 10): diálogo desde la cabecera, valores por defecto del PDF, miniaturas, tipografía de Markdown, atajos de una tecla y posición por PDF (huella de pdf.js, 50 como mucho), en `bpdf:prefs` y `bpdf:positions` (§4 nonies). **Web publicada** en Vercel (`bpdf.r3zon.com`) con `vercel.json` generado; en `origin/main` hasta `f0f38b7` (primer commit de la Fase 9); `3eb39e9`, `4abd868`, `4210a78` y `57e82e8` (iteraciones 15–21) y el cierre de la Fase 10 con D19 (iteración 22), aún sin subir |
 | `npm run lint` · `typecheck` | ✅ |
-| `npm run test:run` | ✅ 986 tests en 52 ficheros (incluye la interfaz de la Fase 11: atajos anunciados, favicon, «Acerca de», `Cargando`; las preferencias: esquema, almacén versionado, posiciones, diálogo, visor y `App`; pdf.js y KaTeX reales en Node, la edición de Markdown con un editor falso en jsdom, la búsqueda sobre el texto real de pdf.js, el corpus de XSS de Markdown, la resolución de recursos, el saneador y el verificador del SVG de Mermaid y la sincronía de `vercel.json` con la fuente) |
-| `npm run test:e2e` | ✅ 114 tests en 10 ficheros contra la build de producción (`vite preview`): 6 de la interfaz (Fase 11: pantalla estrecha a 375 px, título, «Acerca de», favicon, atajos), 11 de preferencias (Fase 10: posición con `modo-oscuro.pdf`, recordar desactivado, olvidar, sin documento, recargar, tipografía, miniaturas, corruptas y versión futura, varias pestañas, privacidad), 18 del editor (Fase 9: CodeMirror con la CSP real, modos, espera de la vista previa, recursos, KaTeX y Mermaid hostiles, Markdown hostil, escribir y pegar sobre una selección, guardar, confirmación, `beforeunload`, 1 MB, sincronía sin y con fórmulas, apilado de los paneles, separador, pantalla estrecha), 30 del visor PDF (8 de la Fase 6: contraseña, pantalla completa con las cabeceras reales, atajos, búsqueda avanzada, miniaturas), 11 del lector de Markdown (con los bloques con fórmulas que se saltan fuera de la vista), 1 de memoria (al cambiar de documento se libera el anterior, con CDP), 8 de recursos locales y 7 de fórmulas y diagramas (KaTeX y Mermaid hostiles, aislamiento del marco comprobado desde dentro, documento sin fórmulas ni diagramas sin descargas) |
-| `npm run build` · `build:tamano` | ✅ arranque 94,4 KB gzip (límite 150; +1,1 KB en la F11: `atajos.ts` y `Cargando` en `App`; +0,8 KB en la F10: el botón «Preferencias» y su icono; +2 KB en la F9: textos, el diálogo de descarte y los cambios sin guardar en `DocumentProvider`; CodeMirror no entra). A demanda: preferencias con `zod` ~23 KB y su diálogo ~2 KB, visor PDF 15 KB + 0,8 KB CSS, pdf.js 148 KB, lector de Markdown 76,5 KB + 1,8 KB CSS, **editor (CodeMirror) 98 KB, solo al entrar en Edición o Dividido**, KaTeX 77 KB + 4 KB CSS y sus fuentes, Mermaid (en el marco) ~50 KB + ~870 KB en trozos por tipo de diagrama, worker del modo oscuro 3 KB, worker de pdf.js 1,3 MB · avisos conocidos e inocuos: 2 de `"use client"` (`lucide-react`) y el de un trozo de Mermaid de más de 500 kB (solo se carga en el marco, a demanda) |
+| `npm run test:run` | ✅ 989 tests en 53 ficheros (incluye la interfaz de la Fase 11: atajos anunciados, favicon, «Acerca de», `Cargando`, la mención a R3ZON; las preferencias: esquema, almacén versionado, posiciones, diálogo, visor y `App`; pdf.js y KaTeX reales en Node, la edición de Markdown con un editor falso en jsdom, la búsqueda sobre el texto real de pdf.js, el corpus de XSS de Markdown, la resolución de recursos, el saneador y el verificador del SVG de Mermaid y la sincronía de `vercel.json` con la fuente) |
+| `npm run test:e2e` | ✅ 115 tests en 10 ficheros contra la build de producción (`vite preview`): 7 de la interfaz (Fase 11: pantalla estrecha a 375 px, título, «Acerca de», favicon, atajos, mención a R3ZON), 11 de preferencias (Fase 10: posición con `modo-oscuro.pdf`, recordar desactivado, olvidar, sin documento, recargar, tipografía, miniaturas, corruptas y versión futura, varias pestañas, privacidad), 18 del editor (Fase 9: CodeMirror con la CSP real, modos, espera de la vista previa, recursos, KaTeX y Mermaid hostiles, Markdown hostil, escribir y pegar sobre una selección, guardar, confirmación, `beforeunload`, 1 MB, sincronía sin y con fórmulas, apilado de los paneles, separador, pantalla estrecha), 30 del visor PDF (8 de la Fase 6: contraseña, pantalla completa con las cabeceras reales, atajos, búsqueda avanzada, miniaturas), 11 del lector de Markdown (con los bloques con fórmulas que se saltan fuera de la vista), 1 de memoria (al cambiar de documento se libera el anterior, con CDP), 8 de recursos locales y 7 de fórmulas y diagramas (KaTeX y Mermaid hostiles, aislamiento del marco comprobado desde dentro, documento sin fórmulas ni diagramas sin descargas) |
+| `npm run build` · `build:tamano` | ✅ arranque 94,8 KB gzip (límite 150; +1,5 KB en la F11: `atajos.ts`, `Cargando` y `Creditos` en `App`; +0,8 KB en la F10: el botón «Preferencias» y su icono; +2 KB en la F9: textos, el diálogo de descarte y los cambios sin guardar en `DocumentProvider`; CodeMirror no entra). A demanda: preferencias con `zod` ~23 KB y su diálogo ~2 KB, visor PDF 15 KB + 0,8 KB CSS, pdf.js 148 KB, lector de Markdown 76,5 KB + 1,8 KB CSS, **editor (CodeMirror) 98 KB, solo al entrar en Edición o Dividido**, KaTeX 77 KB + 4 KB CSS y sus fuentes, Mermaid (en el marco) ~50 KB + ~870 KB en trozos por tipo de diagrama, worker del modo oscuro 3 KB, worker de pdf.js 1,3 MB · avisos conocidos e inocuos: 2 de `"use client"` (`lucide-react`) y el de un trozo de Mermaid de más de 500 kB (solo se carga en el marco, a demanda) |
 | CSP | ✅ `default-src 'none'`; la Fase 4 añadió `worker-src 'self'` y `font-src 'self'`, la Fase 5 `connect-src 'self'` (cmaps de pdf.js); la Fase 7, nada; la Fase 7 bis, `blob:` solo en `img-src` (imágenes locales de Markdown); la Fase 8, `frame-src 'self'` (el marco aislado de Mermaid, `/mermaid.html`, con su propia política: `style-src 'unsafe-inline'` confinado a un origen opaco y sin red); la Fase 9, nada (CodeMirror en un Shadow DOM con hojas construibles, y escribir sobre una selección sin la edición nativa del navegador); la Fase 10, nada (`zod` con `jitless`, sin `new Function`). Sin `data:` en la build (`assetsInlineLimit: 0`). Sin `unsafe-*`, sin `'wasm-unsafe-eval'`, sin orígenes externos; cero violaciones y ninguna petición externa en los E2E; comprobada con `curl -I` |
 | `npm run docs:validar` · `docs:enlaces` | ✅ · ✅ (263 enlaces en 18 ficheros) |
 | `npm audit --audit-level=high` | ✅ 0 vulnerabilidades · 0 overrides · 0 scripts de instalación sin aprobar |
@@ -53,12 +53,14 @@ fase no empieza con una decisión que necesita sin confirmar.
 
 ## Fases
 
-- [~] 🟡 **F11** UI/UX final: **implementada, pendiente de revisión del usuario** (iteración 23;
-  FASES, Fase 11; PLAN §9.5)
 - [ ] 🔴 **F12** Seguridad: endurecimiento y auditoría
-- [ ] 🟠 **F13** Accesibilidad y rendimiento (medición)
+- [ ] 🟠 **F13** Accesibilidad y rendimiento (medición). Hereda de la F11: el separador de
+  Dividido (6 px de ancho en escritorio, WCAG 2.5.8) y la navegación con flechas en las barras
+  con `role="toolbar"`
 - [ ] 🟡 **F15** Distribución web (reescrita el *2026-10-03* sin escritorio: D19; FASES, Fase 15)
-- [ ] 🟡 **F16** Open source y documentación final
+- [ ] 🟡 **F16** Open source y documentación final. Hereda de la F11: el enlace al repositorio
+  público en la interfaz, la documentación pública final (`public_docs/` en el Docusaurus de
+  `docs.r3zon.com`) y una GitHub Wiki
 
 ## Otras
 

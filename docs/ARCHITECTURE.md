@@ -959,7 +959,7 @@ visor PDF, el lector de Markdown o el diálogo. El arranque solo suma el botón 
 
 ### 4 decies. La interfaz final (Fase 11)
 
-> **Implementada el *2026-10-03*, pendiente de revisión del usuario.** Lista de revisión:
+> **Cerrada y aprobada el *2026-10-03*** (iteraciones 23 y 24). Lista de revisión:
 > [PLAN.md](PLAN.md) §9.5; especificación: [FASES.md](FASES.md), Fase 11.
 
 - **El título de la ventana no cambia: siempre «BPDF».** Poner el nombre del documento
@@ -979,8 +979,12 @@ visor PDF, el lector de Markdown o el diálogo. El arranque solo suma el botón 
 - **D12, medido:** a 375 px ninguna pantalla desplaza en horizontal y ningún control de la
   interfaz mide menos de 24 × 24 px (`e2e/specs/interfaz.spec.ts`). No cuenta el contenido
   del documento.
-- **Arranque:** +1,1 KB gzip (94,4 KB): `App` importa `atajos.ts` para anunciar Ctrl/⌘+O y
-  el componente `Cargando`.
+- **Mención a R3ZON** (`Creditos`), solo sin documento abierto: un pie fino no le quita
+  espacio al visor, y con un documento la misma información está en «Acerca de». Su enlace
+  usa `Platform.openExternal`, como los de los documentos, sin abrir la CSP (abrir una
+  pestaña no es una petición de la app).
+- **Arranque:** +1,5 KB gzip en la fase (94,8 KB): `App` importa `atajos.ts` para anunciar
+  Ctrl/⌘+O, y los componentes `Cargando` y `Creditos`.
 
 ### 5. La menor complejidad que cumpla los requisitos
 

@@ -486,6 +486,10 @@ con un bloque `[data-theme="light"]`.
   cuenta), y eso sería guardar un nombre de fichero (CLAUDE.md §4).
 - **Favicon** (✅ F11): `public/favicon.svg`, una hoja con la esquina doblada en los colores
   de los tokens, servida desde el propio origen.
+- **Mención al pie** (✅ F11), solo en la pantalla vacía: «BPDF · Gratis y open source ·
+  Creado por R3ZON con ❤️», con «R3ZON» enlazado a `https://r3zon.com` por
+  `Platform.openExternal`. Con un documento abierto no aparece: no quita espacio al visor.
+  BPDF se publica hoy en `https://bpdf.r3zon.com` (la URL en uso; formalizarla es D5, Fase 15).
 - **Errores:** fichero no soportado, demasiado grande, PDF dañado, Markdown no UTF-8 y los
   de la apertura de varios ficheros o carpetas (F7 bis). Cada uno con texto claro y sin
   detalles técnicos crudos. Los de apertura (✅ F3) se muestran como aviso

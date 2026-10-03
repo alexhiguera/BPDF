@@ -137,6 +137,7 @@ describe("PreferencesDialog: «Acerca de» (Fase 11)", () => {
     };
     const { container, dialogo } = montar();
     const acerca = within(dialogo).getByRole("region", { name: t.about.title(project.name) });
+    expect(acerca).toHaveTextContent(t.about.creator(project.name, project.organization));
     expect(acerca).toHaveTextContent(t.about.version(paquete.version));
     expect(acerca).toHaveTextContent(t.about.license(paquete.license));
     expect(acerca).toHaveTextContent(messages.emptyState.privacy);

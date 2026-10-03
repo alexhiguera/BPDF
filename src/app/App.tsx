@@ -7,6 +7,7 @@ import { messages } from "@/i18n/messages";
 import type { Platform } from "@/platform";
 import { Cargando } from "./Cargando";
 import { ConfirmarDescarte } from "./ConfirmarDescarte";
+import { Creditos } from "./Creditos";
 import { DocumentErrorAlert } from "./DocumentErrorAlert";
 import { DropZone } from "./DropZone";
 import { ElegirMarkdown } from "./ElegirMarkdown";
@@ -144,6 +145,8 @@ function Shell({ platform }: { platform: Platform }) {
           <ConfirmarDescarte nombre={document.name} onResponder={respondDiscard} />
         )}
       </main>
+      {/* Sin documento: la mención de BPDF y R3ZON (Fase 11). Con uno, nada quita sitio al visor. */}
+      {!document && <Creditos onOpenExternal={(url) => platform.openExternal(url)} />}
     </DropZone>
   );
 }

@@ -196,6 +196,7 @@ export default function PreferencesDialog({ onCerrar }: { onCerrar: () => void }
           <h3 id={`${id}-acerca`} className="font-semibold text-fg">
             {t.about.title(project.name)}
           </h3>
+          <p>{t.about.creator(project.name, project.organization)}</p>
           <p>{t.about.version(version)}</p>
           <p>{t.about.license(licencia)}</p>
           <p>{messages.emptyState.privacy}</p>

@@ -22,6 +22,7 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   ├── ElegirMarkdown.tsx  carpeta con varios .md: el usuario elige el principal (F7 bis)
 │   │   ├── ConfirmarDescarte.tsx  «Hay cambios sin guardar» antes de sustituir o cerrar (F9)
 │   │   ├── Cargando.tsx      aviso de carga anunciado (role="status") de los trozos a demanda (F11)
+│   │   ├── Creditos.tsx      «BPDF · Gratis y open source · Creado por R3ZON», sin documento (F11)
 │   │   ├── pdf/              interfaz del visor PDF (F5, F6), cargada a demanda
 │   │   │   ├── VisorPdf.tsx  carga del PDF, estados cargando/contraseña/error y ciclo de vida
 │   │   │   ├── Visor.tsx     área de lectura: disposición, desplazamiento, teclado, búsqueda,

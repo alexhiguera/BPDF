@@ -61,6 +61,13 @@ export const messages = {
     /** Las mismas teclas que la ayuda y los tooltips (Fase 11). */
     shortcut: `Atajo: ${teclas.abrir.join(" ")}`,
   },
+  /** Mención discreta al pie del estado vacío (Fase 11). Los nombres salen de project.ts. */
+  credits: {
+    free: "Gratis y open source",
+    createdBy: "Creado por",
+    withLove: "con ❤️",
+    organizationTitle: (url: string) => `${url}, en una pestaña nueva`,
+  },
   dropZone: {
     hint: "Suelta el archivo para abrirlo (o un Markdown con sus imágenes, o su carpeta)",
   },
@@ -267,6 +274,8 @@ export const messages = {
       title: (nombre: string) => `Acerca de ${nombre}`,
       version: (version: string) => `Versión ${version}`,
       license: (licencia: string) => `Software libre con licencia ${licencia}`,
+      creator: (nombre: string, organizacion: string) =>
+        `${nombre} es una herramienta gratuita y open source creada por ${organizacion} con ❤️.`,
     },
   },
   /** Cambios sin guardar al sustituir o cerrar un documento (Fase 9). */

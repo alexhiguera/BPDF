@@ -19,8 +19,8 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   documentada**: teclear en Dividido con 1 MB + KaTeX, o con 1 MB de encabezados, supera
   los objetivos de latencia (medido; [`docs/FASES.md`](docs/FASES.md), Fase 9). La 10
   (preferencias, posición solo para PDF) se cerró el *2026-10-03* (ARCHITECTURE §4 nonies).
-  **Fase 11** (UI/UX final): **implementada, pendiente de revisión** (D10: sin tema claro;
-  D12: adaptación básica; título de ventana siempre «BPDF»). La app es una SPA estática de Vite + React (D1)
+  La 11 (UI/UX final) se cerró el mismo día (D10: sin tema claro; D12: adaptación básica;
+  título de ventana siempre «BPDF»). Siguiente: **Fase 12** (seguridad). La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
   oscuro selectivo en un worker, búsqueda avanzada, pantalla completa, atajos de una tecla
@@ -33,7 +33,7 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   [`docs/FASES.md`](docs/FASES.md) y [`docs/TAREAS_PENDIENTES.md`](docs/TAREAS_PENDIENTES.md).
 - **Estática, siempre:** la build (`dist/`) son ficheros. Nada de servidor, SSR, API ni
   funciones serverless, ni variables de entorno.
-- **Entornos:** local y la **web publicada en Vercel** (`https://bpdf.r3zon.com`), que
+- **Entornos:** local y la **web publicada en Vercel** (`https://bpdf.r3zon.com`, la URL en uso), que
   despliega desde git lo que el usuario sube; sus cabeceras salen de `vercel.json`
   (generado). D5 sigue abierta de forma oficial y el dominio de `project.ts` aún es el de
   ejemplo ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). La distribución formal de la web

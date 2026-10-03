@@ -1088,11 +1088,11 @@ cambia algún uso, CLAUDE.md §0, bitácora, TAREAS. Anuncio de cambios visibles
 
 ---
 
-## Fase 11 — UI/UX final 🚧
+## Fase 11 — UI/UX final ✅
 
-**IMPLEMENTADA / PENDIENTE DE REVISIÓN** (*2026-10-03*, iteración 23). No se da por cerrada
-hasta que el usuario la apruebe (y, si quiere, la compruebe a mano). Lista de revisión:
-[PLAN.md](PLAN.md) §9.5.
+**CERRADA / APROBADA** el *2026-10-03* (implementada en la iteración 23, cerrada en la 24).
+El usuario aprobó el favicon y, al cerrar, añadió la mención a R3ZON (abajo). Al cerrar:
+989/989 unitarios y 115/115 E2E. Lista de revisión: [PLAN.md](PLAN.md) §9.5.
 
 **Decisiones del usuario al empezar** (*2026-10-03*): **D10** sin tema claro en v1; **D12**
 adaptación básica (sin desplazamiento horizontal a 375 px, controles ≥ 24 px, barras que se
@@ -1120,6 +1120,14 @@ capturas visuales** en los E2E.
   y la frase de privacidad. Sin enlaces.
 - **Favicon:** `public/favicon.svg` (hoja clara con la esquina doblada en el acento, sobre el
   fondo de la app), enlazado en `index.html`; sin la tolerancia al 404 en `vigilancia.ts`.
+  **Aprobado por el usuario.**
+- **Mención a R3ZON** (decisión de producto al cerrar, iteración 24): al pie del estado vacío,
+  «BPDF · Gratis y open source · Creado por R3ZON con ❤️» (`Creditos`), solo **sin documento
+  abierto** para no quitar espacio al visor; «R3ZON» enlaza a `https://r3zon.com` por
+  `Platform.openExternal` (el mecanismo de los enlaces externos: revalida la URL, pestaña
+  sin `opener` ni `Referer`; el clic central se anula). En «Acerca de», «BPDF es una
+  herramienta gratuita y open source creada por R3ZON con ❤️.». La URL de la organización,
+  en `project.ts` (`organizationUrl`); el dominio de BPDF no cambia (D5 sigue abierta).
 
 **Desviaciones y decisiones al implementar:**
 - El texto del estado vacío pasa de «Atajo: Ctrl+O (⌘O en Mac)» a «Atajo: Ctrl/⌘ O», la
@@ -1333,8 +1341,11 @@ commits de CLAUDE.md §2, definición de hecho, cómo se escriben los tests, pol
 dependencias); `SECURITY.md` (versiones soportadas, reporte privado por GitHub Security
 Advisories, plazos de respuesta); `CODE_OF_CONDUCT.md`; plantillas de issues y PR;
 `docs/` revisado para lectores externos (índice, arquitectura, qué es la bitácora);
-`public_docs/` completo si D4; revisar que no queda nada interno de R3ZON que no deba
-publicarse (rutas o nombres de repositorios privados en la documentación).
+`public_docs/` completo si D4 (lo publica el Docusaurus de R3ZON en `docs.r3zon.com`); una
+GitHub Wiki; el **enlace al repositorio público** en la interfaz («Acerca de» y la mención
+al pie; la Fase 11 lo dejó fuera hasta que el repositorio sea público); revisar que no
+queda nada interno de R3ZON que no deba publicarse (rutas o nombres de repositorios
+privados en la documentación).
 
 **Fuera de alcance.** Funcionalidades.
 
