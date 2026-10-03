@@ -10,6 +10,477 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 19 — *2026-10-03* — Fase 9: la cola de 1 MB + KaTeX en Dividido, investigada (sin cambios de código; sigue sin aprobar)
+
+**Objetivo.** Por orden del usuario, solo investigar la cola que queda en 1 MB + KaTeX en
+Dividido: 184–368 ms en las primeras teclas tras saltar a otra zona.
+
+**Restricciones.** Sin implementar soluciones. Sin tocar el benchmark, la corrección del
+apilado ni el resaltado.
+
+**Decisión del usuario sobre el resaltado.** Con muchos encabezados se mantiene tal cual,
+como limitación documentada de Lezer.
+
+**Método.** Una sonda temporal reproduce lo que hace el benchmark (Ctrl+End o Ctrl+Home, y
+teclear sin esperar), con una traza de CDP que empieza antes del salto y marcas «salto» y
+«teclear». Variantes:
+- KaTeX, 1 MB sin KaTeX, y fórmulas solo en la segunda mitad;
+- teclear en el acto («fría») o tras calmarse el hilo («caliente»);
+- diagnósticos con CSS inyectado: KaTeX sin posicionar, y sin `content-visibility`.
+
+**Qué pasa tras el salto** (KaTeX, salto al final, en frío; primera tecla de 360 ms):
+
+| Desde el salto | Duración | Qué es |
+|---|--:|---|
+| 42 ms | 72 ms | rAF de la app (CodeMirror mide y la sincronía mueve la vista previa, ~34 ms) + Paint 42 ms |
+| 114 ms | 60 ms | la tecla: CodeMirror, con 27 ms de layout forzado |
+| **175 ms** | **223 ms** | **la vista previa en la zona nueva: PrePaint 92 + entradas de composición 52 + Paint 46 + Layout 27** |
+| luego | 44–101 ms | CodeMirror termina de analizar en `requestIdleCallback` |
+| luego | 30 ms | MinorGC |
+
+**Es el salto, no teclear.** «En caliente», ese coste lo paga la propia tecla del salto
+(264–296 ms) y después se teclea a 24 ms. «En frío», como en el benchmark, lo pagan las
+primeras pulsaciones.
+
+**El fotograma caro es materializar bloques con `content-visibility`:**
+
+| Escenario | PrePaint | Fotograma |
+|---|--:|--:|
+| 1 MB sin KaTeX (sin bloques con `content-visibility`) | ~16 ms | 33 ms |
+| Fórmulas solo en una mitad, salen de la vista (se ocultan) | 24 ms | 60 ms |
+| Fórmulas solo en una mitad, entran 4 bloques | 60 ms | 133 ms |
+| KaTeX entero, entran 4 bloques | 87–115 ms | 169–223 ms |
+| KaTeX entero sin posicionar | 85 ms | 169 ms |
+| **Sin `content-visibility` (diagnóstico)** | — | **el fotograma desaparece** |
+
+- Se materializan 1–4 bloques (43–172 nodos), y aun así el coste crece con el tamaño del
+  documento. Ocultar bloques es barato. Las capas de KaTeX no son la causa.
+- Sin `content-visibility`, la primera tecla tras el salto baja de 360 a 208 ms, y la tecla
+  del salto en caliente de 264 a 80 ms.
+
+**Lo que no es:**
+- **React:** no trabaja (la vista previa está en pausa). Solo la sincronía, en el trozo
+  `MarkdownView`, cuesta ~30 ms.
+- **KaTeX:** no se ejecuta; su DOM ya existe.
+- **IntersectionObserver:** 3,5 ms tras el salto.
+- **GC:** una MinorGC de 30 ms, sin coincidir con el pico.
+
+**Qué es de BPDF y qué del navegador:**
+
+| Componente | Coste | De quién |
+|---|--:|---|
+| Materializar bloques (PrePaint + composición) | ~110–170 ms | Chromium, pero lo provoca `content-visibility`, que pone BPDF |
+| Sincronía (medir encabezados tras el salto) | ~30 ms | BPDF |
+| Análisis en segundo plano | 40–100 ms por tramo | CodeMirror (su `Work.Slice`, no configurable) |
+| Detectores de anuncios | ~55 ms por segundo | Chromium |
+| Teclear ya estabilizado | ~24 ms | — |
+
+**Opciones** (ninguna implementada):
+
+1. **Quitar `content-visibility` de los bloques con fórmulas.**
+   - Por qué ahora: el hit test que lo justificó (iteración 15) ya lo resuelve el apilado
+     (iteración 18).
+   - Mantiene exactamente la UX; incluso mejora la estimación de la barra y la sincronía.
+   - En diagnóstico quita el fotograma de materialización. A cambio, los detectores de
+     anuncios suben de ~55 a ~72 ms y el Paint de cada fotograma sube algo.
+   - Hay que medirlo con el benchmark oficial antes de decidir: no se sabe si el balance
+     cumple.
+2. **No recalcular las anclas de la sincronía en cada salto:** ~30 ms. Riesgo: anclas
+   desfasadas.
+3. **Retrasar la sincronía hasta que se deje de teclear:** cambia la UX (la vista previa
+   iría por detrás).
+4. **El análisis en segundo plano de CodeMirror y los detectores de anuncios:** BPDF no
+   puede cambiarlos sin parchear dependencias.
+
+**No hay una corrección mínima segura sin medir antes la opción 1. El código queda
+intacto.**
+
+### Iteración 18 — *2026-10-03* — Fase 9: perfil de KaTeX y de encabezados en Chromium; el editor, por encima en el apilado (sigue sin aprobar)
+
+Por orden del usuario, había que localizar con perfiles qué trabajo queda en cada pulsación
+en dos casos, sin suponer que tienen la misma causa: 1 MB + KaTeX en Dividido, y 1 MB de
+encabezados en Edición y en Dividido. **La Fase 9 sigue abierta y no aprobada.** El
+benchmark no se ha tocado.
+
+Herramientas: trazas de Chromium (CDP `Tracing`) y perfiles de CPU de V8 (CDP `Profiler`),
+con la escritura del benchmark, en una sonda temporal.
+
+**1 MB + KaTeX en Dividido: causa**
+
+Cuánto KaTeX participa: de 2184 bloques con fórmulas solo 4 están pintados (160 de 203 112
+nodos KaTeX). `content-visibility` funciona.
+
+Coste por componente en la traza, con el ratón sobre el editor (27 pulsaciones):
+
+| Componente | Coste |
+|---|--:|
+| Hit test del `mousemove` sintético que Chrome lanza tras cada maquetación | 1045 ms (30–50 ms por tecla) |
+| JavaScript (CodeMirror) | 293 ms |
+| Commit, que incluye los hit tests de los detectores de anuncios | 255 ms |
+| Layout | 196 ms |
+| IntersectionObserver | 86 ms |
+| Paint | 55 ms |
+| Recalcular estilos | 3 ms |
+
+El hit test es el coste dominante:
+
+| Escenario | Hit test total | Pulsaciones ≥ 50 ms |
+|---|--:|--:|
+| Ratón sobre el editor | 1045 ms | 18 |
+| Ratón sobre la vista previa | 224 ms | 3 |
+| Fórmulas solo en la mitad del documento, fuera de la vista (101k nodos KaTeX) | ~16–21 ms por tecla | 1 |
+| Encabezados (sin KaTeX) | ~0,2 ms por tecla | — |
+
+El hit test crece con todo el KaTeX del documento aunque esté saltado. La vista previa va
+después del editor en el orden de pintado, así que, para un punto sobre el editor, Chrome
+la recorre entera antes de llegar a él.
+
+Diagnóstico con CSS inyectado (no son correcciones):
+- **El editor por encima del apilado:** el hit test del ratón desaparece. Igual que con el
+  ratón sobre la vista previa.
+- **KaTeX sin posicionar:** sigue en ~21 ms. Sus capas pesan, pero no lo explican todo.
+
+**Corrección** (`SplitView.tsx`): con los dos paneles, el izquierdo (el editor) lleva
+`relative z-1`.
+- Los paneles no se solapan: no cambia qué se ve ni dónde se pulsa.
+- El índice (`z-10`), la capa de arrastre (`z-10`) y los diálogos (capa superior) siguen
+  por encima.
+- Sin cambios para la sincronía del scroll, las anclas ni la accesibilidad (el apilado es
+  solo visual).
+- E2E nuevo: el panel queda apilado, y un punto del editor y otro de la vista previa
+  devuelven su propio panel (`elementFromPoint`).
+
+Efecto en la traza (ratón sobre el editor): hit test 1045 → 157 ms; hilo ocupado 1804 → 865
+ms; pulsación más lenta 136 → 96 ms; ≥ 50 ms, 18 → 3.
+
+Benchmark oficial sin cambios, 3 ejecuciones juntas (≈ 285 pulsaciones), antes (iteración
+16) → después:
+
+| 1 MB + KaTeX en Dividido | Antes | Después |
+|---|--:|--:|
+| P50 | 48 ms | 16 ms |
+| P95 | 112 ms | 96 ms |
+| P99 | 320 ms | 216 ms |
+| Máx. | 400 ms | 256 ms |
+| Eventos ≥ 50 ms por ejecución | 38–111 | 14–28 |
+| Eventos ≥ 100 ms por ejecución | 17–21 | 5–11 |
+| Tarea larga | 223–288 ms | 97–203 ms |
+
+**Sigue sin cumplir.** Lo que queda, por zonas:
+- La cola está en las primeras pulsaciones tras saltar a una zona:
+  - al principio, nada más entrar en Dividido: 184–193 ms;
+  - al final: hasta 368 ms.
+  - La zona media queda en ≤ 64 ms.
+  - Es el fotograma que pinta lo que se acaba de hacer visible (PrePaint y entradas de
+    composición, ya visto en la iteración 15).
+- Una vez por segundo, los detectores de anuncios de Chromium hacen un hit test dentro del
+  Commit (~55 ms). Es interno del navegador.
+
+**1 MB de encabezados: otra causa**
+
+En la traza no hay hit test (~0,2 ms por tecla), ni layout ni paint relevantes. Cada
+pulsación es ~20 ms de JavaScript de CodeMirror.
+
+El perfil de CPU lo sitúa en el parser incremental de Markdown (Lezer), al aplicar cada
+transacción:
+- `applyTransaction` → `LanguageState` → `work` / `advance`: 401 ms en 27 pulsaciones,
+  ~15 ms por tecla;
+- dentro: `reuseFragment` / `takeNodes` (~207 ms) y `toTree` / `balance` (~192 ms);
+- GC menor: 65–74 ms.
+
+Con 56 013 bloques colgando de la raíz del documento, cada edición reutiliza y reequilibra
+esa lista hasta la posición editada:
+
+| Edición | Parser en 27 pulsaciones |
+|---|--:|
+| Encabezados, al final | 401 ms |
+| Encabezados, al principio | 47 ms |
+| KaTeX (13k bloques), al final | 135 ms |
+
+No es el índice, la sincronía, los observers, el foco ni `content-visibility`.
+
+**No se ha corregido.** No hay una corrección mínima que no cambie lo que ve el usuario (por
+ejemplo, menos resaltado en documentos enormes). Queda como propuesta.
+
+Benchmark después, sin cambios para este caso (3 ejecuciones):
+- **Edición:** P95 40, P99 48, máx. 48 ms; 0 eventos ≥ 50 ms.
+- **Dividido:** P95 64, P99 112, máx. 120 ms; 12–19 eventos ≥ 50 ms y 4 ≥ 100 ms.
+  - La peor pulsación (105–120 ms) es la primera tras el clic en la zona media.
+
+**Otras cifras (después, 3 ejecuciones):**
+- 1 MB: Edición máx. 32 ms; Dividido P95 48, máx. 56 ms.
+- 1 MB + Mermaid, Dividido: P95 24, máx. 56 ms.
+- 1 MB + KaTeX, Edición: máx. 32 ms.
+
+**WebKit:** `sudo -n npx playwright install-deps webkit` → `sudo: a password is required`.
+Sin medir.
+
+**Verificación**
+- `lint`, `typecheck`, 904 tests unitarios, `build` y `build:tamano` (92,5 KB): en verde.
+- 97 E2E en verde, incluidos sincronía con y sin fórmulas, separador y pantalla estrecha.
+- CSP sin cambios.
+
+### Iteración 17 — *2026-10-03* — Fase 9: el documento anterior ya se libera; Firefox medido sin el ruido de Playwright (sigue sin aprobar)
+
+El benchmark ampliado (iteración 16) dejó dos problemas por investigar antes de seguir
+optimizando:
+- al cambiar de documento, el DOM del preview anterior seguía vivo;
+- en Firefox, cambiar de modo tardaba hasta 143 s.
+
+Por orden del usuario se buscó la causa real de cada uno; nada de Chromium se ha
+optimizado. **La Fase 9 sigue abierta y no aprobada.**
+
+**1. Retención del DOM al cambiar de documento: causa y corrección**
+
+- **Cómo se encontró.** Se tomó un heap snapshot por CDP tras cambiar de documento y se
+  buscó el camino de retención más corto (sin aristas débiles) desde la raíz hasta una
+  tabla separada del árbol:
+
+  ```
+  módulo → variable «An» → Range → ShadowRoot del editor → host → contenedor de SplitView
+    → <article> → el preview entero
+  ```
+
+  En el bundle, `var An; function jn(e,t,n=t){let r=An||=document.createRange(); …}` es el
+  `scratchRange` de `@codemirror/view`: CodeMirror guarda en una variable de módulo el
+  último `Range` con el que midió texto y nunca lo suelta. Al destruir la vista, el `Range`
+  queda en el ShadowRoot; el ShadowRoot colgaba del `div` de React, dentro del mismo árbol
+  que el preview.
+- **Por qué solo desde Dividido.** Al salir desde Lectura o Edición no pasa: en Edición el
+  preview está desmontado. Se liberaba «tras el siguiente refresco» cuando CodeMirror volvía
+  a medir y reapuntaba el `Range`.
+- **Lo que no es.** Con la corrección, el snapshot no tiene ninguna tabla del documento
+  anterior alcanzable: no hay un segundo retenedor. No retienen nada React, los observers,
+  los listeners, los temporizadores, la sincronía del scroll, Mermaid, KaTeX ni los `blob:`.
+- **Corrección** (`EditorMarkdown.tsx`): el ShadowRoot cuelga de un nodo que crea y quita
+  el propio editor. El `Range` de CodeMirror solo llega ya a ese nodo vacío.
+  - El `data-testid` pasa a ese nodo: los tests que usan `shadowRoot` no cambian.
+  - Sin cambios de CSP ni de maquetación (el nodo lleva `h-full`).
+- **Test** (`e2e/specs/memoria.spec.ts`, CDP): con la versión anterior falla (301 tablas
+  vivas, 1 en la página); con la corrección pasa.
+  - Va sin la traza de Playwright, en su propio fichero: con traza, el grabador de
+    instantáneas de Playwright retiene él mismo los nodos (301 vivas también con la
+    corrección).
+  - Playwright no deja cambiar `trace` dentro de un `describe`.
+- **Memoria (benchmark sin cambios), antes → después:**
+
+  | Momento | Antes | Después |
+  |---|---|---|
+  | Tras cambiar de 1 MB a 2 KB | V8 22,8 MB · Blink 35,6 MB · 2575 tablas vivas / 6 | V8 7,4 MB · Blink 8,3 MB · **6 / 6** |
+  | Tras volver al 1 MB | Blink 168,7 MB · 5138 / 2569 | Blink 137,0 MB · **2569 / 2569** |
+  | 1 MB + KaTeX | Blink 359,9 MB · 4753 / 2184 | Blink 319,2 MB · **2184 / 2184** |
+  | 1 MB + Mermaid | Blink 299,3 MB · 4747 / 2563 | Blink 180,4 MB · **2563 / 2563** |
+
+**2. Firefox: las cifras de minutos eran Playwright**
+
+- **Perfil de Gecko** (`MOZ_PROFILER_STARTUP`) del cambio de modo del benchmark. Los
+  ~105 s entre el clic y el editor visible estaban enteros en el script que inyecta
+  Playwright (`JSActor message handler` → `debugger eval code` → `getAriaRole`, con
+  2197 reflows síncronos). `getByRole` / `getByText` calculan roles y nombres de todo el
+  documento en cada sondeo: con ≈ 280 000 nodos, decenas de segundos por sondeo.
+- **Segundo artefacto.** Con localizadores CSS, `expect(editor).toBeVisible()` seguía
+  tardando 84,6 s, con el editor listo en la página en < 1 s. Esperando desde la página
+  (`waitForFunction`, misma condición), 54 ms.
+- **Benchmark corregido** (error demostrado):
+  - localizadores CSS acotados, que apuntan a los mismos elementos;
+  - la espera de `entrarEn`, desde la página.
+  - Chromium da las mismas cifras que antes (una ejecución de latencia completa).
+- **Lo real, medido desde la página** (Firefox / Chromium, hasta el hilo quieto):
+
+  | Cambio | Firefox | Chromium |
+  |---|--:|--:|
+  | Lectura → Dividido, 1 MB + KaTeX | 0,97 s | 1,07 s |
+  | Lectura → Edición, 1 MB + KaTeX | 1,1 s | 0,9 s |
+  | Edición → Dividido, 1 MB + KaTeX | 6,3–7,9 s | 3,7–3,9 s |
+  | Edición → Dividido, 1 MB | 3,1 s | 1,9–2,1 s |
+  | Dividido → Edición | < 0,5 s | < 0,1 s |
+
+  Perfil de Edición → Dividido en Firefox, con KaTeX:
+  - React vuelve a montar el preview (~4 s): el parser de Markdown ~1,9 s, KaTeX ~0,65 s e
+    insertar el DOM ~0,65 s;
+  - layout ~2,7 s (Reflow 1,8 s y Styles 1,1 s);
+  - el foco de CodeMirror, que lee `scrollTop`, 0,6 s;
+  - GC ~0,5 s.
+
+  Es el coste de reconstruir el preview, que en Edición está desmontado por diseño. Firefox
+  es ~1,5–2 veces más lento en cada fase; no se encontró una causa propia de Firefox. No se
+  ha optimizado (no se pidió).
+- **Teclear en Firefox, con el benchmark corregido (dos ejecuciones):**
+
+  | Caso | P95 | P99 | Máx. | Eventos ≥ 50 ms | Entrar en el modo |
+  |---|--:|--:|--:|--:|--:|
+  | 1 MB, Edición | 24 ms | 32 ms | 32 ms | 0 | 0,47–0,57 s |
+  | 1 MB, Dividido | 16–24 ms | 24 ms | 24 ms | 0 | 3,0–3,2 s |
+  | 1 MB + KaTeX, Dividido | 56–72 ms | 72–88 ms | 88 ms | 11 por ejecución | 0,83–0,87 s |
+
+  Antes salía en KaTeX un máximo de 40 ms solo porque se tecleaba tras ~90 s de espera
+  involuntaria, con todo ya asentado. La cifra nueva es peor y es la comparable con
+  Chromium.
+
+**Errores propios del camino**
+
+- La primera sonda de Firefox medía también con `getByRole`, así que sus 16–27 s
+  también eran ruido.
+- La marca de «visible» de la sonda se ponía tras un `getBoundingClientRect` que forzaba el
+  layout pendiente. Eso creaba un falso «fotograma de 2,4 s después de verse el editor».
+- El primer test de memoria iba con la traza de Playwright y no podía pasar.
+- `test.use({ trace })` no se admite dentro de un `describe`.
+
+**Verificación**
+
+- `lint`, `typecheck`, 904 tests unitarios, `build` y `build:tamano` (92,5 KB): en verde.
+- 96 E2E en verde (los 95 de antes más el de memoria). Incluyen recursos locales,
+  sincronía con y sin fórmulas, KaTeX y Mermaid, cambios sin guardar con su confirmación,
+  y CSP (cabecera idéntica, cero violaciones y ninguna petición externa).
+- WebKit, sin datos: sigue sin las bibliotecas del sistema.
+
+### Iteración 16 — *2026-10-02* — Fase 9: benchmark del editor ampliado (sigue sin aprobar)
+
+Por orden del usuario, antes de más optimizaciones hacía falta medir todo lo que faltaba:
+- P50, P95 y P99 por pulsación;
+- las fases de la vista previa;
+- la memoria;
+- Mermaid en el navegador;
+- la carga de CodeMirror;
+- Firefox y WebKit.
+
+No se ha tocado la app; solo el benchmark (`e2e/bench/editor.bench.ts`,
+`playwright.bench.config.ts`, scripts `bench:*`). **La Fase 9 sigue abierta y no
+aprobada.** Tablas de latencia y vista previa en [FASES.md](FASES.md), Fase 9.
+
+**Cómo se mide, y por qué así**
+
+- **Escritura:** la de siempre, para que las cifras sean comparables con las anteriores. Se
+  teclea nada más saltar a cada zona.
+  - Error propio: la primera versión añadía una espera entre saltar y teclear. Escondía el
+    fotograma caro tras el salto (el pico de KaTeX) y se quitó.
+- **Latencia por pulsación, dos métodos:**
+  - Event Timing por `interactionId` (Chromium y Firefox; «<16» = no informada).
+  - Tecla → siguiente fotograma, con `keydown.timeStamp` y una tarea tras el
+    `requestAnimationFrame`. Este método vale también para WebKit, que no tiene Event
+    Timing.
+- **Muestras:** tres ejecuciones juntas, ≈ 280 pulsaciones por caso y modo. Con una sola
+  (93 pulsaciones), el P99 es el máximo.
+- **Instrumentación:** solo desde el benchmark (`addInitScript`): oyentes de `keydown` y
+  clic, un envoltorio de los temporizadores de 200 ms (la espera de la vista previa) y las
+  respuestas del marco de Mermaid. Ningún cambio en la app.
+- **Corregido: el benchmark anterior inflaba los recuentos.** Creaba un PerformanceObserver
+  por zona sin desconectar los anteriores, así que cada evento se contaba hasta 6 veces. Los
+  recuentos de «eventos ≥ 50 ms» de las iteraciones 14 y 15 salían multiplicados ×1 a ×6;
+  los máximos no. No se reescriben: se explican aquí.
+- **Vista previa:** se mide la cadena tecla → disparo de la espera → fin del callback → primera
+  mutación del artículo → fotograma siguiente. En pausa, desde el clic en «Actualizar». El
+  aviso de pausa solo aparece con cambios sin mostrar: se mira después de teclear (la
+  primera versión lo miraba antes y no pulsaba nunca).
+- **Memoria (CDP):**
+  - `Runtime.getHeapUsage` (V8 y Blink) y `Memory.getDOMCounters`, tras
+    `HeapProfiler.collectGarbage`.
+  - Tablas vivas en el montón con `Runtime.queryObjects`, frente a las del documento.
+  - Sin la instrumentación del benchmark en la página. No incluye GPU, rasterización ni el
+    marco de Mermaid.
+
+**Resultados que no están en FASES**
+
+Memoria (Chromium, 1 MB = 2569 tablas):
+
+| Momento | V8 | Blink | Nodos | Tablas vivas / en el documento |
+|---|--:|--:|--:|--:|
+| Inicial, sin documento | 2,3 MB | 0,5 MB | 63 | 0 / 0 |
+| 1 MB abierto (Lectura) | 44,1 MB | 135,3 MB | 141 408 | 2569 / 2569 |
+| 1 MB, editando en Edición (sin GC) | 12,5 MB | 15,1 MB | 533 | — / 0 |
+| 1 MB, tras editar en Edición | 8,8 MB | 3,7 MB | 527 | 0 / 0 |
+| 1 MB, editando en Dividido (sin GC) | 58,5 MB | 136,6 MB | 134 134 | — / 2569 |
+| 1 MB, tras editar en Dividido | 47,6 MB | 128,9 MB | 134 131 | 2569 / 2569 |
+| **Tras cambiar a otro documento (2 KB)** | 22,8 MB | 35,6 MB | 134 092 | **2575 / 6** |
+| Ídem, 5 s después | 22,7 MB | 35,5 MB | 134 092 | 2575 / 6 |
+| **Tras volver al 1 MB** | 61,8 MB | 168,7 MB | 275 067 | **5138 / 2569** |
+| 1 MB + KaTeX (Lectura) | 73,5 MB | 359,9 MB | 548 743 | 4753 / 2184 |
+| 1 MB + KaTeX, tras editar en Dividido | 61,8 MB | 329,0 MB | 408 909 | 2184 / 2184 |
+| 1 MB + Mermaid (Lectura) | 73,0 MB | 299,3 MB | 550 159 | 4747 / 2563 |
+| 1 MB + Mermaid, tras editar en Dividido | 53,9 MB | 170,2 MB | 134 429 | 2563 / 2563 |
+
+**Hallazgo: al cambiar de documento, el DOM de la vista previa anterior queda retenido**
+fuera del árbol. Se ve con `queryObjects`, recolectado, y sin la instrumentación del
+benchmark en la página. Se libera tras el siguiente pintado del documento nuevo: la
+retención es de un documento, no crece sin límite. Pico: dos documentos a la vez (Blink,
+360 MB). Causa no investigada (no se pidió); es una tarea.
+
+Mermaid (Chromium):
+- Primer dibujo con el marco en frío: 523–542 ms.
+- Edición fuera de los diagramas: 0 dibujos y el mismo nodo y la misma URL `blob:`.
+- Edición dentro de un diagrama: 1 dibujo (solo ese), de la tecla al diagrama nuevo
+  224–241 ms. El otro, intacto.
+- 1 MB + Mermaid: los 52 diagramas se dibujan al acercarse a la vista (solo 1 al abrir; el
+  primero a los 3,3 s). Al pulsar «Actualizar» tras editar fuera de ellos, 0 dibujos.
+
+Carga de CodeMirror (Chromium, 5 contextos en frío; 3 más con traza):
+
+| Documento | Hasta pedir el trozo | Descarga | Hasta visible | Hasta estable |
+|---|--:|--:|--:|--:|
+| 2 KB | 2 ms | 9–10 ms | 329 ms | 336 ms |
+| 1 MB | 33–57 ms | 10 ms | 362–392 ms | 371–403 ms |
+
+- **Trozo:** `EditorMarkdown` es uno solo (100 995 B). Se analiza fuera del hilo principal
+  (`v8.parseOnBackground`, ~10 ms) y se ejecuta en ~8 ms (2 KB) o ~34 ms (1 MB).
+- **Con 2 KB,** el hilo principal trabaja ~60 ms de los ~330 hasta ver el editor: el resto
+  es espera. Encaja con la espera mínima con la que React muestra el contenido de un
+  `Suspense` (no verificado en el código de React).
+- **Con 1 MB,** la traza incluye trabajo de después de estabilizarse el editor y no se
+  separa.
+
+**Compatibilidad**
+
+- **Firefox, escenarios críticos, dos ejecuciones.** Teclear va bien:
+  - 1 MB Edición: P95 32, P99 32, máx. 40 ms.
+  - 1 MB Dividido: P95 24, P99 32, máx. 32 ms.
+  - 1 MB + KaTeX Dividido: P95 40, P99 40, máx. 40 ms.
+  - En los tres, 0 eventos ≥ 50 ms; por fotograma, máx. 37, 31 y 71 ms.
+- **Firefox, cambiar de modo es lento:**
+  - 1 MB a Edición: 9,6–11,0 s (Chromium: 2,5–4,1 s).
+  - 1 MB + KaTeX a Dividido: 128–143 s, hasta el editor visible y el hilo quieto (Chromium:
+    5,2–6,5 s).
+  - En la ejecución completa, tras el caso de 1 MB, el editor no apareció en 120 s, dos
+    veces de dos.
+  - En una pestaña recién abierta, aparece a los 16–27 s.
+  - Una sonda descartó la instrumentación: ni los temporizadores envueltos, ni los
+    oyentes, ni el observador de Event Timing, ni la espera de fotogramas lo provocan.
+- **WebKit:** no arranca en este WSL. Faltan bibliotecas del sistema (libgtk-4, gstreamer,
+  libxslt…), que instala `sudo npx playwright install-deps webkit`: necesita la contraseña
+  del usuario. Sin datos.
+
+**Propuesta de criterio técnico** para «1 MB editable sin retraso perceptible». Se mide con
+`bench:editor`, Chromium, ≥ 3 ejecuciones juntas, todas las zonas y los dos modos, sin
+quitar el primer fotograma tras saltar. Cada umbral sale de una referencia externa, no de
+las cifras:
+
+| Medida | Umbral | Referencia |
+|---|---|---|
+| P95 por pulsación | ≤ 50 ms | presupuesto de RAIL para gestionar la entrada |
+| P99 por pulsación | ≤ 100 ms | respuesta «inmediata» de RAIL |
+| Máximo por pulsación | ≤ 200 ms | INP «bueno» |
+| Pulsaciones ≥ 100 ms | 0 por ejecución | — |
+| Tarea larga máxima al teclear | ≤ 100 ms | — |
+| P95 de Dividido sobre el de Edición | ≤ 16 ms más | un fotograma |
+
+Aplicada a las cifras de hoy:
+
+- **Cumplen:** 1 MB (Edición y Dividido), 1 MB + Mermaid y 1 MB + KaTeX en Edición.
+- **No cumplen:**
+  - 1 MB + KaTeX en Dividido: todas las medidas.
+  - 1 MB de encabezados: P95 56 ms ya en Edición (es el propio editor), y P99 104 ms en
+    Dividido. Este caso no fallaba con las cifras anteriores.
+- **Fuera del umbral de teclear:** cambiar de modo en Firefox con KaTeX (minutos). Que
+  cuente para «editable» lo decide quien aprueba.
+
+**Errores propios del camino** (además de los de arriba):
+- El análisis de Mermaid buscaba un `<svg>`, y el diagrama dibujado es un `<img>` con URL
+  `blob:`.
+- Contaba como «primer diagrama» uno del documento anterior.
+- Tras «Actualizar», el foco se quedaba en el botón y la siguiente escritura no llegaba al
+  editor.
+- Un `$i` sin escapar a través de `wsl` hizo que tres ejecuciones escribieran en el mismo
+  fichero: se repitieron.
+
 ### Iteración 15 — *2026-10-02* — Fase 9: diagnóstico del retraso en Dividido con trazas de Chromium (sigue sin aprobar)
 
 La Fase 9 se reabrió porque teclear en Dividido con 1 MB tenía retraso (iteración 14). Por

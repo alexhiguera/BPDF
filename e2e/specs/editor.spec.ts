@@ -482,6 +482,34 @@ for (const formulas of [false, true]) {
   });
 }
 
+test("dividido: el editor va por encima en el apilado, y cada panel sigue recibiendo su puntero", async ({
+  page,
+}) => {
+  // El hit test del ratón tras cada tecla no recorre la vista previa (SplitView.tsx).
+  const v = await cargar(page, texto("apilado.md", "# Apilado\n\nTexto de la vista previa."));
+  await modo(page, "dividido").click();
+  await expect(editor(page)).toBeVisible();
+  const panel = page.getByTestId("paneles").locator("> div").first();
+  await expect(panel).toHaveCSS("position", "relative");
+  await expect(panel).toHaveCSS("z-index", "1");
+  const enPunto = async (caja: { x: number; y: number; width: number; height: number }) =>
+    page.evaluate(
+      ({ x, y }) => {
+        const el = document.elementFromPoint(x, y);
+        if (el?.closest('[data-testid="editor-markdown"]')) return "editor";
+        if (el?.closest("article")) return "vista";
+        return el?.tagName ?? "nada";
+      },
+      { x: caja.x + caja.width / 2, y: caja.y + caja.height / 2 },
+    );
+  const cajaEditor = await page.getByTestId("editor-markdown").boundingBox();
+  const cajaVista = await articulo(page).boundingBox();
+  if (!cajaEditor || !cajaVista) throw new Error("sin cajas");
+  expect(await enPunto(cajaEditor)).toBe("editor");
+  expect(await enPunto(cajaVista)).toBe("vista");
+  limpia(v);
+});
+
 test("separador: se mueve con el teclado y ningún panel desaparece", async ({ page }) => {
   const v = await cargar(page, texto("sep.md", "# Sep"));
   await modo(page, "dividido").click();

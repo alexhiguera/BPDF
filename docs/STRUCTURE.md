@@ -99,7 +99,8 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 ├── e2e/                      Playwright contra la build de producción
 │   ├── specs/                app.spec.ts (base) · abrir.spec.ts (apertura) · visor-pdf.spec.ts (visor PDF) ·
 │   │                         markdown.spec.ts (visor Markdown) · recursos.spec.ts (imágenes locales) ·
-│   │                         formulas-diagramas.spec.ts (KaTeX y Mermaid) · editor.spec.ts (editor, F9)
+│   │                         formulas-diagramas.spec.ts (KaTeX y Mermaid) · editor.spec.ts (editor, F9) ·
+│   │                         memoria.spec.ts (al cambiar de documento se libera el anterior; CDP, sin traza)
 │   ├── bench/                benchmarks (no son tests; `npm run bench:pdf` · `bench:markdown` · `bench:editor`)
 │   └── vigilancia.ts         consola, CSP y red vigiladas en cada carga
 ├── scripts/                  herramientas (.mjs, sin dependencias extra)

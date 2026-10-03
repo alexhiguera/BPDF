@@ -701,9 +701,30 @@ previa no está montada**: oculta pero montada, con 1 MB + KaTeX teclear tenía 
 1 s (medido; probablemente la recolección de basura sobre un árbol enorme); volver a
 Lectura o Dividido la pinta otra vez. Editor y vista previa llevan `contain: strict`: lo
 que pasa en uno no obliga a maquetar ni pintar el otro. **No evita el hit test** (medido,
-iteración 15): tras cada tecla, Chrome repite el del ratón y recorre la vista previa
-entera, esté el puntero donde esté. Por eso los bloques con fórmulas llevan además
-`content-visibility: auto` (markdown.css; ver «Rendimiento»).
+iteración 15): tras cada tecla, Chrome repite el del ratón. Por eso:
+
+- los bloques con fórmulas llevan además `content-visibility: auto` (markdown.css; ver
+  «Rendimiento»);
+- en Dividido, el panel del editor va por encima en el apilado (`relative z-1`, iteración
+  18). Con la vista previa encima, un punto sobre el editor obligaba a recorrer toda la
+  vista previa, aunque sus bloques estuvieran saltados: 30–50 ms por tecla con 1 MB +
+  KaTeX.
+
+**El parser de Markdown del editor (Lezer) cuesta según dónde se edite** (iteración 18).
+Con muchos bloques de primer nivel, cada transacción reutiliza y reequilibra la lista
+hasta la posición editada. Con 1 MB de encabezados (56 000 bloques), ~15 ms por tecla al
+final y ~2 ms al principio. **Decisión del usuario (iteración 19): se mantiene el resaltado
+tal cual**; es una limitación conocida de Lezer.
+
+**Materializar bloques con `content-visibility` tiene un coste** (iteración 19). Al saltar
+a otra zona, la sincronía mueve la vista previa, y en el fotograma siguiente Chromium
+materializa los bloques con fórmulas que entran en la vista.
+- Con 1 MB + KaTeX, ese fotograma dura 133–223 ms: PrePaint 60–115 ms, más entradas de
+  composición 22–52 ms, más Paint.
+- Lo pagan las primeras teclas si se escribe nada más saltar.
+- Sin `content-visibility` (diagnóstico), ese fotograma no aparece: la primera tecla baja
+  de 360 a 208 ms.
+- Ocultar bloques es barato, y las capas de KaTeX no son la causa.
 
 **CSP: el editor vive en un Shadow DOM.** CodeMirror inyecta sus estilos con `style-mod`:
 con el `document` como raíz, en una etiqueta `<style>` que `style-src 'self'` bloquea; con un
@@ -716,6 +737,15 @@ CodeMirror sin tocar el navegador. Resultado: **la CSP no cambia** (E2E: cabecer
 cero violaciones, ninguna `<style>`, escribir y pegar sobre una selección). Los tokens de
 color son propiedades personalizadas, que cruzan la frontera del Shadow DOM: el tema del
 editor los usa.
+
+**El ShadowRoot cuelga de un nodo propio del editor, que se quita al desmontar.**
+CodeMirror guarda en una variable de módulo el último `Range` con el que midió texto
+(`scratchRange`, `@codemirror/view`) y no lo suelta. Al destruir la vista, ese `Range` queda
+en el ShadowRoot. Cuando el ShadowRoot colgaba del `div` de React, el `Range` retenía todo
+el árbol desmontado. Al cambiar de documento desde Dividido, eso era la vista previa entera
+(1 MB: 2575 tablas vivas con 6 en la página, 35 MB de Blink), hasta que CodeMirror volvía a
+medir. Medido con un heap snapshot por CDP, que dio el camino de retención; lo vigila
+`e2e/specs/memoria.spec.ts` (iteración 17).
 
 **El texto.** Vive en el `EditorState` de CodeMirror (una cuerda: teclear no copia el
 documento). Cada tecla hace O(1) fuera del editor: marca «modificado» la primera vez y

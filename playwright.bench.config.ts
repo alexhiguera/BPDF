@@ -1,4 +1,4 @@
-import { defineConfig } from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
 import base from "./playwright.config";
 
 /**
@@ -21,4 +21,12 @@ export default defineConfig({
     // del editor medía esas instantáneas como retraso al teclear (Fase 9).
     trace: "off",
   },
+  // Chromium por defecto (los scripts `bench:*` pasan `--project=chromium`);
+  // Firefox y WebKit para los escenarios críticos del editor
+  // (`npm run bench:editor:compat`, Fase 9).
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
+    { name: "webkit", use: { ...devices["Desktop Safari"] } },
+  ],
 });

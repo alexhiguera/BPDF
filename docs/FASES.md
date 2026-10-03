@@ -682,6 +682,60 @@ fórmulas siguen pintados); una vez por segundo, los detectores de anuncios de C
 un Commit (~100 ms); y un primer fotograma de ~270 ms tras saltar al final (PrePaint). Que
 1 MB en Dividido (máx. 24–72 ms) se dé por bueno lo decide quien aprueba la fase.
 
+**Benchmark ampliado (*2026-10-02*, iteración 16).** Misma escritura de siempre (50 ms
+entre teclas, tres zonas, deshacer y rehacer, se teclea nada más saltar a cada zona).
+Ahora hay un solo observador de eventos por página: hasta la iteración 15 se creaba uno
+por zona, y los recuentos de eventos ≥ 50 ms de las tablas anteriores salían
+multiplicados ×1 a ×6 (los máximos no). Chromium, tres ejecuciones juntas (≈ 280
+pulsaciones por fila).
+- **Latencia por pulsación:** Event Timing agrupado por `interactionId` (como INP). «<16»
+  = el navegador no la informó.
+- **Eventos y tareas:** eventos ≥ 50 / ≥ 100 ms y tarea larga máxima, rango entre
+  ejecuciones.
+
+| Caso | Modo | P50 | P95 | P99 | Máx. | Ev. ≥ 50 | Ev. ≥ 100 | Tarea máx. |
+|---|---|--:|--:|--:|--:|--:|--:|--:|
+| 2 KB | Edición | <16 | 16 | 16 | 24 | 0 | 0 | 0 |
+| 2 KB | Dividido | <16 | 16 | 16 | 24 | 0 | 0 | 0 |
+| 100 KB | Edición | <16 | 16 | 16 | 24 | 0 | 0 | 0 |
+| 100 KB | Dividido | <16 | 16 | 24 | 24 | 0 | 0 | 123–138 |
+| 200 KB | Edición | <16 | 16 | 16 | 16 | 0 | 0 | 0 |
+| 200 KB | Dividido | <16 | 24 | 24 | 32 | 0 | 0 | 0 |
+| 1 MB | Edición | <16 | 24 | 32 | 32 | 0 | 0 | 0 |
+| 1 MB | Dividido | 16 | 32 | 56 | 64 | 2–7 | 0 | 0 |
+| 1 MB + KaTeX | Edición | <16 | 24 | 32 | 88 | 0–1 | 0 | 0 |
+| **1 MB + KaTeX** | **Dividido** | **48** | **112** | **320** | **400** | **38–111** | **17–21** | **223–288** |
+| 1 MB + Mermaid | Edición | <16 | 24 | 32 | 40 | 0 | 0 | 0 |
+| 1 MB + Mermaid | Dividido | 16 | 32 | 56 | 64 | 2–4 | 0 | 0–54 |
+| 1 MB de encabezados | Edición | 16 | 56 | 64 | 72 | 0–63 | 0 | 0–63 |
+| 1 MB de encabezados | Dividido | 32 | 56 | 104 | 104 | 8–40 | 0–4 | 59–62 |
+
+Vista previa (Dividido, Chromium; mediana de 3–5 refrescos):
+
+| Caso | Desde | Espera | Procesamiento | Pintado | Total |
+|---|---|--:|--:|--:|--:|
+| 2 KB | última tecla | 202 | 5 | 1 | 208 |
+| 100 KB | última tecla | 202 | 129 | 5 | 335 |
+| 200 KB | última tecla | 203 | 213 | 9 | 425 |
+| 1 MB | clic en «Actualizar» (en pausa) | — | 1268 | 68 | 1344 |
+| 1 MB + KaTeX | clic en «Actualizar» (en pausa) | — | 1363 | 174 | 1537 |
+| 1 MB + Mermaid | clic en «Actualizar» (en pausa) | — | 1107 | 82 | 1188 |
+
+Las tablas de memoria, Mermaid, carga del editor y Firefox, y la propuesta de criterio, van
+en la entrada de la iteración 16 de [CHANGELOG.md](CHANGELOG.md).
+
+**Iteración 17 (*2026-10-03*).**
+- **Retención corregida.** Al cambiar de documento desde Dividido, el preview anterior
+  quedaba vivo: lo retenía el `Range` que CodeMirror guarda en una variable de módulo, a
+  través del ShadowRoot del editor. Ahora el ShadowRoot cuelga de un nodo propio que se
+  quita al desmontar (E2E `memoria.spec.ts`).
+- **Firefox medido sin el ruido de Playwright.** Las cifras de minutos al cambiar de modo
+  eran sus localizadores (perfil de Gecko). Teclear con 1 MB + KaTeX en Dividido: P95
+  56–72, máx. 88 ms; con 1 MB, máx. 24–32 ms.
+- **Pendiente para aprobar:** lo de Chromium de la iteración 16 (KaTeX en Dividido y 1 MB
+  de encabezados), KaTeX en Dividido en Firefox y WebKit sin medir. Detalle en la
+  bitácora.
+
 **Implementado hasta ahora** (todo verificado salvo el criterio anterior). Modos Lectura / Edición / Dividido (`ModeSwitch`); editor CodeMirror 6 a demanda
 (98 KB gzip, trozo propio) con Markdown (GFM), historial, teclado e indentación; vista
 previa con el mismo lector, 200 ms después de la última tecla; `SplitView` con separador

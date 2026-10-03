@@ -51,8 +51,18 @@ export default function EditorMarkdown({
   useEffect(() => {
     const el = anfitrion.current;
     if (!el) return;
-    // Con StrictMode el efecto se monta dos veces: el ShadowRoot ya existe.
-    const raiz = el.shadowRoot ?? el.attachShadow({ mode: "open" });
+    // El ShadowRoot cuelga de un nodo propio, que se quita al desmontar. CodeMirror
+    // guarda en una variable de módulo el último `Range` con el que midió texto
+    // (`scratchRange`, @codemirror/view) y no lo suelta: al destruir la vista, ese
+    // Range queda en el ShadowRoot. Si el ShadowRoot colgara del `div` de React, el
+    // Range retendría todo el árbol desmontado con él (en «Dividido», la vista previa
+    // entera) hasta la siguiente medida (medido con CDP, Fase 9). Así solo retiene
+    // este nodo vacío.
+    const nodo = document.createElement("div");
+    nodo.className = "h-full";
+    nodo.dataset.testid = "editor-markdown";
+    el.append(nodo);
+    const raiz = nodo.attachShadow({ mode: "open" });
     const previo = estado.actual instanceof EditorState ? estado.actual : null;
     const view = new EditorView({
       state:
@@ -67,18 +77,13 @@ export default function EditorMarkdown({
       estado.actual = view.state;
       manejador.current = null;
       view.destroy();
+      nodo.remove();
       alMontar?.(false);
     };
   }, []);
 
   // `contain: strict`: teclear no obliga a volver a maquetar ni pintar la vista previa.
-  return (
-    <div
-      ref={anfitrion}
-      className="min-h-0 flex-1 [contain:strict]"
-      data-testid="editor-markdown"
-    />
-  );
+  return <div ref={anfitrion} className="min-h-0 flex-1 [contain:strict]" />;
 }
 
 function manejadorDe(view: EditorView): ManejadorEditor {

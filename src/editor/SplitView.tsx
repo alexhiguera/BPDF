@@ -61,9 +61,14 @@ export function SplitView({
         ref={refIzquierda}
         id={idIzquierda}
         hidden={mostrar === "derecha"}
+        // Con los dos paneles, el izquierdo (el editor) va por encima en el orden de
+        // pintado. Tras cada tecla, Chrome repite el hit test del ratón; recorre las capas
+        // de arriba abajo, y con la vista previa encima recorría todo su árbol antes de
+        // llegar al editor (1 MB + KaTeX: ~30–50 ms por tecla, aunque sus bloques estén
+        // saltados). Los paneles no se solapan: no cambia qué se ve ni dónde se pulsa.
         className={
           ambos
-            ? "flex min-h-0 min-w-0 flex-1 flex-col md:flex-none md:basis-(--division)"
+            ? "relative z-1 flex min-h-0 min-w-0 flex-1 flex-col md:flex-none md:basis-(--division)"
             : "flex min-h-0 min-w-0 flex-1 flex-col"
         }
       >
