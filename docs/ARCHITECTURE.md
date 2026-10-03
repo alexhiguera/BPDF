@@ -314,8 +314,8 @@ lienzo es `aria-hidden` y el texto accesible es el de la capa de texto.
   documento (la mediana), no el de la página actual: una página apaisada no cambia el zoom
   de todas.
 - «Página a página» no pinta de antemano la página siguiente.
-- pdf.js 6 carga su worker como módulo ES: el visor necesita Firefox 114 o posterior,
-  aunque la app arranque en los navegadores mínimos de `build.target` (Firefox 111).
+- pdf.js 6 carga su worker como módulo ES: el visor necesita Firefox 114 o posterior, que
+  es el mínimo de `build.target` desde el *2026-10-03* (antes, Firefox 111).
 
 ### 4 quinquies. El visor Markdown (Fase 7)
 

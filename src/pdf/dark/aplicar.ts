@@ -158,23 +158,44 @@ export async function oscurecerLienzo(
   const escribirPrimera = async (): Promise<boolean> => {
     const primera = enVuelo.shift();
     if (!primera) return true;
-    const franja = await primera.hecha;
+    let franja: ImageData;
+    try {
+      franja = await primera.hecha;
+    } catch (error) {
+      // Con la página ya cancelada (liberada, otro render, o el documento cerrado:
+      // `destruir()` del worker rechaza lo pendiente con `worker-destruido`), que la
+      // franja no llegue no es un fallo: no hay nada que pintar. Con la página
+      // vigente, sí lo es, y quien llama repinta con el transformador local.
+      if (!vigente()) return false;
+      throw error;
+    }
     if (!vigente()) return false;
     medir(() => ctx.putImageData(franja, 0, primera.y0));
     return true;
   };
-  for (let y0 = 0; y0 < alto; y0 += filasPorFranja) {
-    if (!vigente()) return null;
-    const filas = Math.min(filasPorFranja, alto - y0);
-    const franja = medir(() => ctx.getImageData(0, y0, ancho, filas));
-    bytesFranja = Math.max(bytesFranja, franja.data.byteLength);
-    const t0 = performance.now();
-    const hecha = transformador.franja(franja, y0, conservar);
-    // Sin worker, `franja()` calcula antes de devolver: ese tiempo es del hilo principal.
-    if (transformador.tipo === "hilo-principal") principal += performance.now() - t0;
-    enVuelo.push({ y0, hecha });
-    if (enVuelo.length >= 2 && !(await escribirPrimera())) return null;
+  try {
+    for (let y0 = 0; y0 < alto; y0 += filasPorFranja) {
+      if (!vigente()) return null;
+      const filas = Math.min(filasPorFranja, alto - y0);
+      const franja = medir(() => ctx.getImageData(0, y0, ancho, filas));
+      bytesFranja = Math.max(bytesFranja, franja.data.byteLength);
+      const t0 = performance.now();
+      const hecha = transformador.franja(franja, y0, conservar);
+      // Sin worker, `franja()` calcula antes de devolver: ese tiempo es del hilo principal.
+      if (transformador.tipo === "hilo-principal") principal += performance.now() - t0;
+      enVuelo.push({ y0, hecha });
+      if (enVuelo.length >= 2 && !(await escribirPrimera())) return null;
+    }
+    while (enVuelo.length > 0) if (!(await escribirPrimera())) return null;
+    return resultado(null, bytesFranja);
+  } finally {
+    // Ninguna franja enviada queda sin esperar, termine como termine (completa,
+    // cancelada o con error). Antes solo se esperaba la primera: si la página se
+    // cancelaba o fallaba con dos en vuelo, la segunda quedaba suelta, y al cerrar el
+    // PDF `destruir()` la rechazaba sin que nadie la observara («Uncaught (in
+    // promise) worker-destruido»). Así tampoco queda trabajo de esta página en vuelo
+    // cuando `oscurecerLienzo` vuelve. En el camino normal no espera nada: ya están
+    // todas escritas.
+    await Promise.allSettled(enVuelo.map((e) => e.hecha));
   }
-  while (enVuelo.length > 0) if (!(await escribirPrimera())) return null;
-  return resultado(null, bytesFranja);
 }

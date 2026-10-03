@@ -35,9 +35,9 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   funciones serverless, ni variables de entorno.
 - **Entornos:** local y la **web publicada en Vercel** (`https://bpdf.r3zon.com`, la URL en uso), que
   despliega desde git lo que el usuario sube; sus cabeceras salen de `vercel.json`
-  (generado). D5 sigue abierta de forma oficial y el dominio de `project.ts` aún es el de
-  ejemplo ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). La distribución formal de la web
-  llega en la Fase 15.
+  (generado). **D5 confirmada**: Vercel, y `https://bpdf.r3zon.com` es la URL oficial. El
+  dominio de `project.ts` aún es el de ejemplo: cambiarlo es parte de la distribución formal
+  de la web, en la Fase 15 ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)).
 - **Datos de producción:** ninguno. La web publicada es estática: no guarda ni recibe
   datos de usuario (los documentos no salen del dispositivo) y no hay cuentas.
 - **Alcance:** **solo web** (D19, *2026-10-03*): sin versión de escritorio (Electron) ni

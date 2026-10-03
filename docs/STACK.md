@@ -19,8 +19,9 @@ Fase 7 el pipeline de Markdown (`react-markdown`, `remark-gfm`) y el resaltado d
 | CI | **GitHub Actions** | `ci.yml`, `e2e.yml`, `security.yml` |
 
 Plataforma fijada con `engines` (`node >=24 <25`) y `.nvmrc` (`24`). Navegadores mínimos
-en `build.target` de [`vite.config.ts`](../vite.config.ts) (Chrome/Edge 111, Firefox 111,
-Safari 16.4): los que exige Tailwind 4 (`color-mix`, `@property`). El `browserslist` de la
+en `build.target` de [`vite.config.ts`](../vite.config.ts) (Chrome/Edge 111, **Firefox 114**,
+Safari 16.4): los que exige Tailwind 4 (`color-mix`, `@property`), con Firefox subido a 114
+por el visor PDF (abajo, `pdfjs-dist`; decisión del *2026-10-03*). El `browserslist` de la
 plantilla se retiró en la Fase 2 porque ninguna herramienta del stack lo leía (Vite y
 Tailwind 4 usan sus propios objetivos); una configuración que nadie lee acaba mintiendo.
 
@@ -83,9 +84,9 @@ explica, para que el documento no se quede atrás.
   copia `copiar-pdfjs.mjs` y el módulo que importa `engine.ts` son de la misma build.
   - **Compatibilidad real.** La `legacy` transpila el JavaScript, pero pdf.js 6 crea su
     worker como **módulo ES** (`type: "module"`): el visor necesita Chrome/Edge 80,
-    Safari 15 y **Firefox 114**. Como `build.target` dice Firefox 111 (lo que exige
-    Tailwind 4), en Firefox 111–113 la app arranca pero un PDF no se abre (aviso de PDF
-    ilegible). Pendiente de decidir si se sube el mínimo (TAREAS).
+    Safari 15 y **Firefox 114**. Por eso el mínimo de Firefox de `build.target` es 114
+    (decisión del usuario, *2026-10-03*; antes era 111, lo de Tailwind 4, y en Firefox
+    111–113 la app arrancaba pero un PDF no se abría). No se añaden polyfills.
   - **CSP.** Sus polyfills detectan `globalThis` con `Function("return this")`, pero esa
     rama no se ejecuta en ningún navegador objetivo (los E2E dan cero violaciones sin
     `'unsafe-eval'`).

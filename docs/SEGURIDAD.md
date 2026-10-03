@@ -56,7 +56,7 @@ y solo abre lo que la app usa hoy. Vive en **un único fichero fuente**,
 
 - la cabecera de `vite preview` (lo que prueban los E2E);
 - un `<meta http-equiv>` en `dist/index.html`, para que la build lleve su política
-  aunque el hosting no mande cabeceras (el hosting está pendiente de D5);
+  aunque el hosting no mande cabeceras (D5: Vercel, que sí las manda);
 - las cabeceras de la web publicada: [`vercel.json`](../vercel.json), **generado** con
   `npm run cabeceras:vercel` (`reglasVercel`; un test comprueba que no se queda atrás) ✅
   (*2026-09-30*; [DEPLOYMENT.md](DEPLOYMENT.md)).
@@ -327,7 +327,7 @@ enlace bloqueado no hace nada. Casos:
 | PDF malformado o hostil al parser | pdf.js parsea **en su worker** (aislado del DOM de la app). Errores capturados y mostrados como «PDF dañado» (`PdfNoLegibleError`). Versión exacta (6.3.289) y actualización inmediata ante avisos (precedente: CVE-2024-4367, ejecución de JS mediante fuentes, corregida en 4.2.67) | ✅ 4 (motor, test de PDF dañado) · ✅ 5 (visor: aviso y liberación, E2E) |
 | JavaScript embebido (acciones de documento, de página, de campos) | **No se distribuyen** `pdf.sandbox*` ni `quickjs-eval.*` (el motor para ejecutarlo): un E2E comprueba que dan 404. El visor no usa la capa de anotaciones interactiva de pdf.js (donde vive `enableScripting`): no hay nada que pueda ejecutar un script del PDF. Las acciones JavaScript de los enlaces se descartan (`enlaces.ts`, test y fixture `visor.pdf`) | ✅ 4 · ✅ 5 |
 | Formularios XFA | `enableXfa: false` en `opcionesDocumento` (test) | ✅ 4 |
-| Formularios AcroForm y anotaciones | `AnnotationMode.ENABLE`: sus apariencias se **pintan en el lienzo**; no hay capa interactiva, así que no se pueden rellenar ni ejecutan nada (D14, pendiente de confirmar) | ✅ 5 |
+| Formularios AcroForm y anotaciones | `AnnotationMode.ENABLE`: sus apariencias se **pintan en el lienzo**; no hay capa interactiva, así que no se pueden rellenar ni ejecutan nada (D14, confirmada: se ven, no se rellenan en v1) | ✅ 5 |
 | Enlaces externos | Política propia ([`enlaces.ts`](../src/pdf/visor/enlaces.ts) + [`url-externa.ts`](../src/lib/url-externa.ts)): solo `http:`, `https:` y `mailto:`, absolutos y sin credenciales, hasta 2048 caracteres; abiertos por `Platform.openExternal` (pestaña nueva sin `opener` ni `Referer`). El `<a>` nunca navega la app (el clic se intercepta; el central se anula). Corpus de URLs hostiles en `tests/unit/pdf/enlaces.test.ts`; E2E con `window.open` interceptado | ✅ 5 |
 | Acciones `Launch`, `GoToR` (otro fichero), `ImportData`, `SubmitForm`, `file:`, adjuntos | No son enlaces para BPDF: solo se siguen destinos internos, cuatro acciones con nombre de navegación y URLs permitidas. Fixture `visor.pdf` con `javascript:`, `file:` y acción JavaScript: E2E comprueba que no hay `<a>` para ellas | ✅ 5 |
 | Ficheros adjuntos embebidos | No se exponen en v1 | ✅ 5 (no hay interfaz) |

@@ -25,8 +25,9 @@ export const project = {
     "Visor de PDF y Markdown para leer en modo oscuro. Los documentos no salen del dispositivo.",
   /**
    * Dominio de la web pública, sin protocolo: URL pública, `entidad.json`,
-   * `rutas-app.json`. PENDIENTE de la decisión D5 (docs/PLAN.md §14): mientras
-   * tanto es `example.com` a propósito, para que se note si llega a publicarse.
+   * `rutas-app.json`. D5 está confirmada (docs/PLAN.md §14: `bpdf.r3zon.com`), pero el
+   * cambio es parte de la Fase 15 (con `robots.txt`, `sitemap.xml` y `public_docs/_meta/`):
+   * hasta entonces es `example.com` a propósito, para que se note.
    */
   domain: "app.example.com",
   /** Organización que publica el producto: `entidad.json` (documentación pública). */

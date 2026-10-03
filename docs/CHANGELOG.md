@@ -10,6 +10,62 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 25 — *2026-10-03* — Antes de la Fase 12: arreglo de `worker-destruido`; D5, D14 y Firefox 114 confirmados
+
+**Contexto.** Un arreglo aislado de una deuda de la Fase 5 y tres decisiones del usuario,
+sin empezar la Fase 12. No se tocó Markdown, preferencias ni la Fase 11.
+
+**`worker-destruido`: la causa exacta.** `oscurecerLienzo` (`src/pdf/dark/aplicar.ts`)
+recolorea por franjas con **hasta dos en el worker a la vez**, pero solo esperaba la primera.
+Si la página dejaba de ser vigente (el visor la libera al cerrar o sustituir el documento) o
+la primera fallaba, la segunda promesa quedaba **sin observar**. Al cerrar el PDF, el
+controlador destruye el transformador, y `destruir()` del worker rechaza todo lo pendiente con
+`worker-destruido`: ese rechazo de la segunda franja no lo escuchaba nadie y el navegador lo
+anotaba como «Uncaught (in promise)». Además, si la primera era la rechazada, el visor lo
+tomaba por un fallo del worker y pasaba al modo oscuro en el hilo principal para un documento
+que se estaba cerrando.
+
+**Cambio** (solo `aplicar.ts`):
+- **Toda franja enviada se espera antes de que `oscurecerLienzo` vuelva**, termine como termine
+  (completa, cancelada o con error): `finally` con `Promise.allSettled` sobre las que queden en
+  vuelo. Ni rechazos sueltos ni trabajo de esa página pendiente cuando vuelve; con el documento
+  cerrado, el worker además se termina (`terminate`).
+- **Con la página ya cancelada, que una franja no llegue no es un fallo:** devuelve `null`
+  (cancelado) en vez de lanzar, así que no se pide el transformador local. Con la página
+  vigente, el error del worker se propaga como antes y el visor repinta en el hilo principal.
+- Nada se escribe en un lienzo cancelado (ya era así; ahora lo comprueba un test).
+- **Descartado:** un `catch` genérico sobre la segunda franja, que habría silenciado el aviso
+  dejando trabajo sin esperar.
+- Camino normal: con todas las franjas escritas, `allSettled` recibe una lista vacía. Sin
+  cambios de estrategia ni de rendimiento: sin benchmark.
+
+**Tests.** Primero, tres unitarios que reproducían el fallo con el código anterior (los tres
+fallaban, y Vitest detectaba el `Unhandled Rejection: worker-destruido`): cerrar con dos
+franjas en vuelo no deja rechazos sueltos y devuelve `null`; con la página cancelada espera
+las dos antes de terminar y no escribe nada; si el worker falla con dos en vuelo, lanza ese
+error y no deja la otra sin observar. Y un E2E en `visor-pdf.spec.ts` que cierra o sustituye
+el PDF a 0–220 ms de empezar a pintarse, con la consola limpia y sin páginas del documento
+anterior. Comprobado que el E2E detecta el fallo: en copias aparte, con 6 navegadores a la
+vez, **6 de 6 fallaban sin el arreglo** (29 `worker-destruido`) y **6 de 6 pasan con él**.
+Un primer intento del E2E esperaba ver una página «pintando» y fallaba si todas terminaban
+antes de mirar; se corrigió esperando al visor.
+
+**Decisiones confirmadas por el usuario:**
+- **D14:** los formularios PDF se muestran, pero no se rellenan ni se editan en v1 (como desde
+  la Fase 5). PLAN §14.0, SEGURIDAD §4; fuera de TAREAS.
+- **Firefox 114 como mínimo:** `build.target` pasa de `firefox111` a `firefox114`, porque pdf.js
+  6 crea su worker como módulo ES y en Firefox 111–113 el visor no abría un PDF. Sin
+  polyfills. STACK y ARCHITECTURE al día; fuera de TAREAS.
+- **D5:** hosting en **Vercel**, URL oficial **`https://bpdf.r3zon.com`**. PLAN §14.0, CLAUDE,
+  DEPLOYMENT, MODULES, SEGURIDAD y FASES (F15). **El dominio de `project.ts` no cambia**: la
+  especificación de la Fase 15 lo incluye, junto con `robots.txt`, `sitemap.xml` y
+  `public_docs/_meta/` (solo se actualizó su comentario). TAREAS ya no tiene decisiones
+  pendientes.
+
+**Verificación.** `lint`, `typecheck`, `npm test` **992/992** (53 ficheros), `test:e2e`
+**116/116**, `build`, `build:tamano` (94,8 KB), `docs:enlaces`, `docs:validar` y `npm audit`
+(0). La CSP y las cabeceras no cambian.
+
 ### Iteración 24 — *2026-10-03* — Fase 11 cerrada: mención a R3ZON y favicon aprobado
 
 **Contexto.** Tras revisar la implementación, el usuario añadió una decisión de producto

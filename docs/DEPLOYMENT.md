@@ -2,10 +2,10 @@
 
 **La web de BPDF está publicada en Vercel, en `https://bpdf.r3zon.com`** (comprobado el
 *2026-09-30*; la configuración del proyecto en Vercel no vive en este repositorio). La
-decisión **D5** (hosting y dominio, [PLAN.md](PLAN.md) §14) sigue abierta de forma
-oficial: esto recoge lo que hay, no la cierra. `src/config/project.ts` aún usa
+decisión **D5** (hosting y dominio, [PLAN.md](PLAN.md) §14) está **confirmada** desde el
+*2026-10-03*: hosting en Vercel y URL oficial `https://bpdf.r3zon.com`. `src/config/project.ts` aún usa
 `app.example.com` (el cambio afecta a `robots.txt`, `sitemap.xml` y `public_docs/`, y
-queda fuera de esta tarea). El documento completo se escribe en la Fase 15, «Distribución
+es parte de la Fase 15). El documento completo se escribe en la Fase 15, «Distribución
 web» ([FASES.md](FASES.md)). BPDF es solo web (D19, *2026-10-03*): no hay instaladores ni
 versión de escritorio.
 

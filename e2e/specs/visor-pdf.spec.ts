@@ -512,6 +512,40 @@ test("teclado: AvPág, RePág, Fin, Inicio, Ctrl+/−/0; nada se intercepta al e
 
 // ── 19. Abrir otro PDF ─────────────────────────────────────────────────────────
 
+// Regresión (deuda de la Fase 5): cerrar o sustituir un PDF con el modo oscuro a
+// mitad (franjas en el worker) dejaba un rechazo «worker-destruido» sin capturar en la
+// consola. Se cierra a distintos tiempos tras empezar a pintar, para cruzar la ventana
+// en la que hay franjas en vuelo; la vigilancia exige la consola limpia.
+test("cerrar o sustituir el PDF mientras se pintan páginas no deja errores ni rastro", async ({
+  page,
+}) => {
+  const v = await abrir(page);
+  for (const [i, espera] of [0, 20, 40, 60, 90, 120, 160, 220].entries()) {
+    await abrirPdf(page, OSCURO);
+    // En cuanto existe el visor, sus páginas empiezan a pintarse (render y modo oscuro).
+    await expect(page.getByTestId("visor-pdf")).toBeVisible({ timeout: 30_000 });
+    if (espera > 0) await page.waitForTimeout(espera);
+    if (i % 2 === 0) {
+      await boton(page, t.close).click();
+      await expect(page.getByTestId("visor-pdf")).toHaveCount(0);
+    } else {
+      // Sustituir: el anterior se destruye con el nuevo ya pedido.
+      await abrirPdf(page, VISOR_PDF);
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText("visor.pdf");
+      await expect(page.getByTestId("visor-pdf")).toHaveAttribute(
+        "data-paginas",
+        String(VISOR.paginas),
+      );
+      // Nada del documento anterior: solo las páginas del nuevo.
+      await expect(page.locator(`[data-pagina="${GEOMETRIA.paginas}"]`)).toHaveCount(0);
+      await boton(page, t.close).click();
+    }
+  }
+  // Los rechazos sueltos llegan a la consola en cuanto se vacían las microtareas.
+  await page.waitForTimeout(300);
+  limpia(v);
+});
+
 test("abrir otro PDF sustituye al anterior sin dejar rastro de él", async ({ page }) => {
   const v = await cargar(page, VISOR_PDF);
   await expect(marco(page, 1).locator(".textLayer")).toContainText("Manual de prueba");

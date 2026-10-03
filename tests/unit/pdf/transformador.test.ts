@@ -180,3 +180,112 @@ describe("transformadorEnWorker", () => {
     expect(falso.terminado).toBe(true);
   });
 });
+
+/**
+ * Regresión (deuda de la Fase 5, corregida antes de la Fase 12): cerrar un PDF con
+ * franjas en vuelo dejaba un rechazo `worker-destruido` sin capturar en la consola.
+ * `oscurecerLienzo` tiene hasta dos franjas en el worker y solo espera la primera:
+ * si la página deja de ser vigente o la primera falla, la segunda quedaba sin
+ * observar, y `destruir()` (al cerrar) la rechazaba sin que nadie la escuchara.
+ */
+describe("oscurecerLienzo con franjas en vuelo (cerrar o cambiar de PDF a mitad)", () => {
+  /** Rechazos que nadie observa, como los vería el navegador («Uncaught (in promise)»). */
+  async function sinObservar(prueba: () => Promise<void>): Promise<unknown[]> {
+    const sueltos: unknown[] = [];
+    const oyente = (motivo: unknown) => sueltos.push(motivo);
+    process.on("unhandledRejection", oyente);
+    try {
+      await prueba();
+      // Node informa de los rechazos sin observar al vaciar las microtareas.
+      await new Promise((r) => setTimeout(r, 20));
+    } finally {
+      process.off("unhandledRejection", oyente);
+    }
+    return sueltos;
+  }
+
+  /** Un worker que guarda las peticiones y no responde hasta que se le pida. */
+  function workerQueEspera() {
+    const falso = new WorkerFalso();
+    const peticiones: PeticionFranja[] = [];
+    falso.postMessage = (p: PeticionFranja, transferir: Transferable[]) => {
+      falso.transferidos.push(transferir);
+      peticiones.push(p);
+    };
+    const responder = (i: number) => {
+      const p = peticiones[i];
+      if (p)
+        falso.onmessage?.({ data: { id: p.id, datos: p.datos } } as MessageEvent<RespuestaFranja>);
+    };
+    return { falso, peticiones, responder };
+  }
+
+  it("cerrar el PDF (la página deja de ser vigente y se destruye el worker) no deja rechazos sueltos", async () => {
+    const { falso, peticiones } = workerQueEspera();
+    const t = transformadorEnWorker(COLORES, () => falso as unknown as Worker);
+    if (!t) throw new Error("sin transformador");
+    const { ctx } = contexto(2, 3);
+    let vigente = true;
+    let resultado: unknown = "sin terminar";
+    const sueltos = await sinObservar(async () => {
+      const pintando = oscurecerLienzo(ctx, [], t, {
+        ...noOscura,
+        filasPorFranja: 1,
+        vigente: () => vigente,
+      });
+      await vi.waitFor(() => expect(peticiones).toHaveLength(2)); // dos franjas en vuelo
+      vigente = false; // el visor libera la página…
+      t.destruir(); // …y al cerrar el documento se destruye el worker
+      resultado = await pintando;
+    });
+    expect(sueltos).toEqual([]);
+    // Cancelado, no fallido: sin resultado y sin pedir el transformador local.
+    expect(resultado).toBeNull();
+    expect(falso.terminado).toBe(true);
+  });
+
+  it("si la página deja de ser vigente con dos franjas en vuelo, espera las dos antes de terminar", async () => {
+    const { falso, peticiones, responder } = workerQueEspera();
+    const t = transformadorEnWorker(COLORES, () => falso as unknown as Worker);
+    if (!t) throw new Error("sin transformador");
+    const { ctx, px } = contexto(2, 3);
+    let vigente = true;
+    let terminado = false;
+    const pintando = oscurecerLienzo(ctx, [], t, {
+      ...noOscura,
+      filasPorFranja: 1,
+      vigente: () => vigente,
+    }).then((r) => {
+      terminado = true;
+      return r;
+    });
+    await vi.waitFor(() => expect(peticiones).toHaveLength(2));
+    vigente = false;
+    const antes = px.slice();
+    responder(0);
+    await new Promise((r) => setTimeout(r, 0));
+    // La segunda franja sigue en el worker: todavía no ha terminado (ningún trabajo suelto).
+    expect(terminado).toBe(false);
+    responder(1);
+    expect(await pintando).toBeNull();
+    // Nada se escribe en un lienzo que ya nadie va a mostrar.
+    expect(px).toEqual(antes);
+  });
+
+  it("si el worker falla con dos franjas en vuelo, lanza ese error y no deja la otra sin observar", async () => {
+    const { falso, peticiones } = workerQueEspera();
+    const t = transformadorEnWorker(COLORES, () => falso as unknown as Worker);
+    if (!t) throw new Error("sin transformador");
+    const { ctx } = contexto(2, 3);
+    let error: unknown = null;
+    const sueltos = await sinObservar(async () => {
+      const pintando = oscurecerLienzo(ctx, [], t, { ...noOscura, filasPorFranja: 1 });
+      await vi.waitFor(() => expect(peticiones).toHaveLength(2));
+      falso.onerror?.({ preventDefault() {} } as ErrorEvent); // el worker se cae
+      error = await pintando.catch((e: unknown) => e);
+    });
+    expect(sueltos).toEqual([]);
+    // Sigue siendo un fallo del worker: el visor repinta con el transformador local.
+    expect(String(error)).toContain("worker-modo-oscuro");
+  });
+});

@@ -1295,7 +1295,8 @@ conserva porque tiene sentido por sí mismo.
 un registro de cambios para usuarios.
 
 **Dependencias.** F12 (CSP y cabeceras finales; la publicación puede hacerse tras F13 si se
-quiere). **D5** confirmada (hosting y dominio). Ya no depende de la Fase 14 (cancelada).
+quiere). **D5** ✅ (confirmada el *2026-10-03*: Vercel, `https://bpdf.r3zon.com`). Ya no
+depende de la Fase 14 (cancelada).
 
 **Alcance**
 

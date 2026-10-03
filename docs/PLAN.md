@@ -489,7 +489,8 @@ con un bloque `[data-theme="light"]`.
 - **Mención al pie** (✅ F11), solo en la pantalla vacía: «BPDF · Gratis y open source ·
   Creado por R3ZON con ❤️», con «R3ZON» enlazado a `https://r3zon.com` por
   `Platform.openExternal`. Con un documento abierto no aparece: no quita espacio al visor.
-  BPDF se publica hoy en `https://bpdf.r3zon.com` (la URL en uso; formalizarla es D5, Fase 15).
+  BPDF se publica en `https://bpdf.r3zon.com`, la URL oficial (D5, confirmada; el cambio del
+  dominio de `project.ts` es de la Fase 15).
 - **Errores:** fichero no soportado, demasiado grande, PDF dañado, Markdown no UTF-8 y los
   de la apertura de varios ficheros o carpetas (F7 bis). Cada uno con texto claro y sin
   detalles técnicos crudos. Los de apertura (✅ F3) se muestran como aviso
@@ -640,7 +641,7 @@ terceros sin licencia clara.
 
 ## 14. Decisiones
 
-### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3; D17 y D18 al empezar la Fase 5; D6 y D7 con la Fase 7; D13 al especificar la Fase 6; D9 al empezar la Fase 9; D8 al especificar de nuevo la Fase 10; D19 el *2026-10-03*; D10 y D12 al empezar la Fase 11)
+### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3; D17 y D18 al empezar la Fase 5; D6 y D7 con la Fase 7; D13 al especificar la Fase 6; D9 al empezar la Fase 9; D8 al especificar de nuevo la Fase 10; D19 el *2026-10-03*; D10 y D12 al empezar la Fase 11; D14 y D5 antes de la Fase 12)
 
 | ID | Decisión | Dónde se aplica |
 |---|---|---|
@@ -659,15 +660,15 @@ terceros sin licencia clara.
 | **D8** | Recordar página y zoom **por PDF**: **activado por defecto**, con la huella de pdf.js (no el nombre), máx. 50 entradas (LRU), botón «Olvidar posiciones guardadas»; sin nombres ni contenido. Solo PDF: los Markdown no guardan posición (confirmada el *2026-10-03*) | Fase 10: `src/preferences/positions.ts` ([§8](#8-persistencia-y-privacidad), [FASES.md](FASES.md)) |
 | **D10** | **Sin tema claro en v1**: solo el tema oscuro (en PDF sigue la «página original»). Sin infraestructura para un tema claro (confirmada al empezar la Fase 11, *2026-10-03*) | Fase 11 |
 | **D12** | Móvil y tablet: **adaptación básica**, no una experiencia móvil propia: sin desplazamiento horizontal a 375 px, controles ≥ 24 px, barras que se reparten, sin gestos ni zoom con los dedos nuevos (confirmada al empezar la Fase 11) | Fase 11: E2E `interfaz.spec.ts` |
+| **D14** | Formularios y anotaciones de PDF: **se muestran, pero no se rellenan ni se editan en v1** (confirmada el *2026-10-03*; ya era así desde la Fase 5: apariencias pintadas en el lienzo, sin capa interactiva) | Fase 5: `src/pdf/render.ts` (`AnnotationMode.ENABLE`) |
+| **D5** | Hosting web: **Vercel**; URL oficial: **`https://bpdf.r3zon.com`** (confirmada el *2026-10-03*). Las cabeceras salen de `vercel.json`, generado desde la fuente única. Cambiar el dominio de `project.ts` (y con él `robots.txt`, `sitemap.xml` y `public_docs/_meta/`) es trabajo de la Fase 15 | Fases 12 y 15 ([DEPLOYMENT.md](DEPLOYMENT.md)) |
 | **D19** | **BPDF es solo una aplicación web: sin versión de escritorio (Electron) ni sustituto.** Decisión de producto del usuario (*2026-10-03*). Sustituye toda la planificación anterior de Electron | La Fase 14 se cancela; la 15 se reescribe solo para la web; D11 y T-5 dejan de aplicar; [ELECTRON.md](ELECTRON.md) queda como histórico |
 
 ### 14.1 Pendientes de confirmación (usuario)
 
 | ID | Decisión | Recomendación | Afecta a |
 |---|---|---|---|
-| **D5** | Hosting web y dominio | Hosting estático que permita cabeceras (Vercel o Cloudflare Pages). GitHub Pages **no** permite cabeceras (CSP solo por `<meta>`, sin `frame-ancestors`). *De hecho, la web ya está publicada en Vercel (`bpdf.r3zon.com`) con `vercel.json` generado ([DEPLOYMENT.md](DEPLOYMENT.md)); falta formalizarla y cambiar el dominio de `project.ts`* | Fases 12 y 15 |
 | ~~**D11**~~ | ~~Escritorio: plataformas, firma de código, auto-actualización~~ | **Ya no aplica** (D19: sin escritorio) | — |
-| **D14** | Formularios y anotaciones de PDF | Solo se muestran; no se rellenan ni se editan. *Aplicado así en la Fase 5 (apariencias pintadas en el lienzo, sin interacción), que excluía formularios: falta confirmarlo* | Fase 5 |
 
 ### 14.2 Técnicas, resueltas por una fase
 

@@ -5,7 +5,7 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 
 | Pieza | Estado | Dónde |
 |---|---|---|
-| Identidad del producto | ✅ (dominio pendiente de D5) | `src/config/project.ts` |
+| Identidad del producto | ✅ (D5 confirmada: el dominio se cambia en la F15) | `src/config/project.ts` |
 | SPA estática (Vite + React) y shell accesible | ✅ F2 | `index.html`, `vite.config.ts`, `src/main.tsx`, `src/app/` |
 | Tokens de diseño y primitivos (Button, Field, Input) | ✅ F2 (revisados en F11; lista en PLAN §9.5) | `src/styles/globals.css`, `src/components/ui/` |
 | Textos centralizados | ✅ F2 | `src/i18n/messages.ts` |

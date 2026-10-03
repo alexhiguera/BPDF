@@ -80,8 +80,10 @@ export default defineConfig(({ command }) => ({
     alias: { "@": path.resolve(import.meta.dirname, "src") },
   },
   build: {
-    // Navegadores mínimos: los que exige Tailwind 4 (`color-mix`, `@property`).
-    target: ["chrome111", "edge111", "firefox111", "safari16.4"],
+    // Navegadores mínimos: los que exige Tailwind 4 (`color-mix`, `@property`), con
+    // Firefox en 114: pdf.js 6 crea su worker como módulo ES y en Firefox 111–113 el
+    // visor no puede abrir un PDF (decisión del usuario, *2026-10-03*). Sin polyfills.
+    target: ["chrome111", "edge111", "firefox114", "safari16.4"],
     // Ningún recurso incrustado como `data:` (Vite lo hace por defecto con los de
     // menos de 4 KB): la CSP no admite `data:` en ningún `*-src`. Lo destapó la
     // Fase 8: las fuentes pequeñas de KaTeX se incrustaban y `font-src 'self'` las
