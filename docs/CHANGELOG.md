@@ -10,6 +10,69 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 22 — *2026-10-03* — Fase 10 cerrada; D19: BPDF es solo una aplicación web (Fase 14 cancelada, Fase 15 reescrita)
+
+**Contexto.** El usuario hizo las pruebas manuales 1–10 de la Fase 10 en la build de
+producción (posición real de un PDF, «recordar» desactivado, preferencias sin documento,
+diálogo solo con teclado, cabecera de 375 px, tipografía de Markdown, miniaturas y atajos,
+olvidar, restablecer, consola y almacenamiento) y todas salieron bien; aceptó el botón
+«Preferencias» solo con icono en pantalla estrecha. Pidió una corrección menor antes de
+cerrar, corregir la nota de rendimiento y cerrar la fase. Y decidió que **BPDF no tendrá
+versión Electron** (D19).
+
+**Fase 10: corrección antes de cerrar.** El inicializador de `useState` del visor escribía
+en `localStorage` (recuperar una posición actualizaba su `t`): una escritura durante el
+render, que StrictMode hace dos veces en desarrollo. Ahora `recuperarPosicion` **solo lee**
+y una función nueva, `marcarUso`, actualiza el `t` desde el efecto que ya restauraba la
+página. Mismo comportamiento observable: la restauración de página y zoom y el LRU de 50 no
+cambian (sus tests siguen igual, el de componente que comprueba el `t` incluido). Tests
+nuevos: recuperar no escribe; marcar el uso actualiza solo `t`; sin entrada, con una huella
+inválida o con una versión futura no escribe. El de las entradas corruptas ya no se apoyaba
+en una escritura de `recuperarPosicion` para limpiar: lo hace `marcarUso`.
+
+**Fase 10: la nota de rendimiento** de la iteración 21 se corrigió (conservando sus cifras):
+la comparación válida es la A/B alternada, y no muestra regresión atribuible a la fase.
+
+**La Fase 10 queda CERRADA / APROBADA** (FASES, TAREAS, PLAN §8, ARCHITECTURE §4 nonies,
+SEGURIDAD §6, MODULES, CLAUDE.md §0).
+
+**D19: BPDF es solo una aplicación web** (decisión de producto del usuario; sustituye toda la
+planificación anterior de Electron). Consecuencias, revisando todo el proyecto:
+- **Fase 14 (Electron): cancelada / no aplica.** Sin trabajo pendiente; conserva su número
+  y una referencia histórica en FASES.
+- **Fase 15: reescrita como «Distribución web».** Se conserva lo que vale para la web
+  (despliegue con las cabeceras de la Fase 12, dominio real en `project.ts`,
+  `cabeceras:verificar` y `curl -I`, E2E de humo contra la URL pública, `DEPLOYMENT.md`,
+  versión semver y registro de cambios para usuarios). Se retira, sin sustituirlo, lo que
+  solo tenía sentido con escritorio: instaladores, firma y notarización, fuses, asociación
+  de tipos, T-5, D11, release por etiqueta con matriz de SO y artefactos con SHA-256. Ya no
+  depende de la 14. Fijar las Actions por SHA pasa de requisito a mejora (`mejoras.md`).
+- **PLAN:** D19 en §14.0; D11 y T-5, «ya no aplica»; fuera la columna de Electron de §5,
+  la capa `electron.ts` de §4.1, la carpeta `electron/`, la fila de tests de Electron, el
+  escritorio de §13, el mantenimiento de Electron y su riesgo de seguridad. §2 y §3 (la
+  auditoría de la plantilla y la comparación con la que se decidió D1) se conservan como
+  historia, marcada.
+- **ELECTRON.md** se conserva como **histórico**, con un aviso arriba: explica decisiones que
+  sí quedaron en la web (la frontera `src/platform/`, la CSP en una fuente única). SEGURIDAD
+  §5 (Electron), igual: marcada como histórica, sin borrar su contenido.
+- **Resto de documentos** (CLAUDE, README, docs/README, STACK, ARCHITECTURE, SEGURIDAD,
+  STRUCTURE, MODULES, DEPLOYMENT, TAREAS, mejoras): fuera los planes de Electron; `zod` ya no
+  «volverá a usarse en IPC» (su único consumidor es `schema.ts`, y `jitless` se queda allí).
+- **Código:** solo comentarios que anunciaban Electron, y el nombre de un test
+  (`read.test.ts`). **No se borró código:** la capa `src/platform/` la usa la web. El
+  parámetro opcional `id` de `readDocument` se pensó para Electron y hoy solo lo usan los
+  tests: se conserva y su comentario lo dice (decisión pendiente del usuario).
+- **Se conservan sin tocar**, por ser historia: esta bitácora, `PDF_DARK_MODE_SPIKE.md` y las
+  especificaciones de las fases ya cerradas. «Escritorio» como pantalla de escritorio (frente a
+  móvil) no tiene que ver con Electron y se queda.
+- La CSP no cambia.
+
+**Verificación.** `lint`, `typecheck`, `npm test` **973/973** (50 ficheros), `test:e2e`
+**108/108**, `build`, `build:tamano` (93,3 KB gzip), `docs:enlaces` (260), `docs:validar` y
+`npm audit` (0 vulnerabilidades; sin overrides). Sin benchmark: el cambio del visor mueve una
+escritura de `localStorage` del render a un efecto al abrir un PDF, y no toca ningún
+recorrido que un benchmark mida.
+
 ### Iteración 21 — *2026-10-03* — Fase 10: preferencias y posición de lectura (implementada, pendiente de aprobación)
 
 **Contexto.** El usuario aprobó empezar la Fase 10 con la especificación de la iteración 20 y
@@ -102,11 +165,24 @@ juntó tres). Por pulsación, Event Timing (redondea a 8 ms):
 | 1 MB de encabezados | Dividido | P95 64 · P99 112 · máx. 120 | P95 40–64 · P99 56–128 · máx. 56–128 |
 
 Vista previa: 208 ms (2 KB) y 327 ms (100 KB) desde la última tecla, como antes.
-**Lectura:** todo igual salvo la cola de 1 MB + KaTeX en Dividido, un escalón de 8 ms en el
-P95 y algo más de eventos ≥ 100 ms, dentro de la variación de una excepción ya aceptada
-(máx. 208–288 frente a 256). En ese recorrido la Fase 10 no añade trabajo por tecla: dos
-atributos fijos en `.md-contenido` y una suscripción que no se dispara al teclear. Se
-reporta y no se toca (orden del usuario: no reabrir la Fase 9).
+**Lectura inicial, corregida después:** esta tabla compara con cifras de la iteración 18,
+medidas en otro momento, y la diferencia en 1 MB + KaTeX en Dividido (un escalón de 8 ms en
+el P95, algo más de eventos ≥ 100 ms) se leyó como una variación. **La comparación válida es
+la A/B posterior**, en la auditoría previa al cierre: `4210a78` (Fase 9) frente a `57e82e8`
+(Fase 10), en copias aparte, con las ejecuciones alternadas para que la deriva de la máquina
+afecte igual a las dos (1 MB + KaTeX en Dividido; Edición, idéntica):
+
+| Dividido, 1 MB + KaTeX | P95 | Máx. | Eventos ≥ 100 ms | Tarea larga |
+|---|--:|--:|--:|--:|
+| Fase 9, 3 ejecuciones | 88–96 ms | 176–272 ms | 3–12 | 164–256 ms |
+| Fase 10, 3 ejecuciones | 72–96 ms | 192–248 ms | 3–7 | 175–221 ms |
+
+Los rangos se solapan: **no hay regresión atribuible a la Fase 10**. La diferencia frente a
+la iteración 18 era variación entre ejecuciones de distinto momento: la propia Fase 9,
+medida otra vez, sale de los rangos de la iteración 18. (Un primer intento de esta A/B se
+descartó porque las dos copias tenían ya la Fase 10.) En el código tampoco hay causa: en
+ese recorrido la Fase 10 solo añade dos atributos fijos en `.md-contenido` y una
+suscripción que no se dispara al teclear.
 
 **Verificación.** `lint`, `typecheck`, `npm test` (971 tests en 50 ficheros), `build`, `build:tamano` (arranque 93,3 KB gzip; `zod` en un trozo a demanda de ~23 KB), `docs:enlaces` (264), `docs:validar` y `test:e2e` **108/108** (tres veces seguidas en verde al final), con cero errores de consola, cero violaciones de CSP y ninguna petición externa. `npm audit`: 0 vulnerabilidades. CSP y cabeceras sin cambios.
 

@@ -22,7 +22,7 @@ const MarkdownView = lazy(() => import("@/markdown/MarkdownView"));
 const PreferencesDialog = lazy(() => import("@/preferences/PreferencesDialog"));
 
 /**
- * La aplicación. Recibe la plataforma (web hoy, Electron en la Fase 14) desde
+ * La aplicación. Recibe la plataforma (la web) desde
  * `main.tsx`, y los tests una falsa.
  */
 export function App({ platform }: { platform: Platform }) {

@@ -1,10 +1,14 @@
-# BPDF — Versión de escritorio (Electron)
+# BPDF — Versión de escritorio (Electron) — HISTÓRICO, CANCELADO
 
-> **Estado: diseño objetivo** (Fase 0, *2026-09-29*). Nada de Electron existe todavía ni
-> se instala antes de la Fase 14. Lo que sí afecta desde ya: la capa `src/platform/`
-> (existe desde la Fase 3, con la implementación web), la regla de que el renderer nunca
-> ve rutas de disco y la CSP de `src/config/security-headers.ts` (Fase 2), que el
-> protocolo `app://` servirá tal cual.
+> **⚠️ Documento histórico. Esta versión NO se va a construir.** El *2026-10-03* el usuario
+> decidió que **BPDF es solo una aplicación web** (D19, [PLAN.md](PLAN.md) §14): la Fase 14
+> se canceló y la 15 se reescribió sin escritorio ([FASES.md](FASES.md)). Nada de lo que
+> sigue es un plan vigente ni trabajo pendiente; se conserva para entender decisiones que
+> sí quedaron en la web: la frontera `src/platform/` (§3), la regla de que la app nunca ve
+> rutas de disco y la CSP en una fuente única (`src/config/security-headers.ts`).
+>
+> Estado original: diseño objetivo (Fase 0, *2026-09-29*). Nada de Electron llegó a
+> instalarse.
 
 Versión de referencia al planificar: Electron **44.4.5** (npm, 2026-09-29). Electron da
 soporte a las tres últimas mayores (~8 semanas cada una): la Fase 14 toma la estable

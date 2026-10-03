@@ -16,8 +16,7 @@ type Props = ComponentProps<"a"> & ExtraProps;
  * - **Externo** (`http:`, `https:`, `mailto:`, validado por `url-policy.ts`):
  *   `target="_blank"` y `rel="noopener noreferrer"` como red, pero el clic se
  *   intercepta y lo abre la plataforma (`Platform.openExternal`: en web, una
- *   pestaña nueva sin `opener` ni `Referer`; en Electron, el navegador del
- *   sistema desde el main). El clic central se anula: abriría la URL fuera de
+ *   pestaña nueva sin `opener` ni `Referer`). El clic central se anula: abriría la URL fuera de
  *   ese mecanismo. Igual que los enlaces del PDF.
  * - **Ancla** (`#seccion`): `href` al id con prefijo; el clic desplaza dentro
  *   del documento y mueve el foco, sin tocar la URL de la app.

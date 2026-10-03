@@ -14,12 +14,12 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   objetivo en [`docs/PLAN.md`](docs/PLAN.md).
 - **Principio rector:** los documentos del usuario **no salen del dispositivo**. Sin
   backend, API, base de datos, cuentas, sincronización ni telemetría.
-- **Estado:** Fases 0–9 cerradas, 7 bis incluida (la 6 se hizo después de la 8 y conserva
+- **Estado:** Fases 0–10 cerradas, 7 bis incluida (la 6 se hizo después de la 8 y conserva
   su número). La 9 se aprobó (*2026-10-03*) con una **excepción de rendimiento
   documentada**: teclear en Dividido con 1 MB + KaTeX, o con 1 MB de encabezados, supera
   los objetivos de latencia (medido; [`docs/FASES.md`](docs/FASES.md), Fase 9). Siguiente:
-  **Fase 10** (preferencias; D8 confirmada, posición solo para PDF): **implementada y
-  pendiente de aprobación** (*2026-10-03*; ARCHITECTURE §4 nonies). La app es una SPA estática de Vite + React (D1)
+  **Fase 11** (UI/UX final). La 10 (preferencias, posición solo para PDF) se cerró el
+  *2026-10-03* (ARCHITECTURE §4 nonies). La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
   oscuro selectivo en un worker, búsqueda avanzada, pantalla completa, atajos de una tecla
@@ -35,12 +35,13 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
 - **Entornos:** local y la **web publicada en Vercel** (`https://bpdf.r3zon.com`), que
   despliega desde git lo que el usuario sube; sus cabeceras salen de `vercel.json`
   (generado). D5 sigue abierta de forma oficial y el dominio de `project.ts` aún es el de
-  ejemplo ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). El escritorio (Electron) llega en
-  la Fase 14; la distribución formal, en la 15.
+  ejemplo ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). La distribución formal de la web
+  llega en la Fase 15.
 - **Datos de producción:** ninguno. La web publicada es estática: no guarda ni recibe
   datos de usuario (los documentos no salen del dispositivo) y no hay cuentas.
-- **Alcance:** web primero, después Electron. Fuera de alcance: usuarios, auth, backend,
-  base de datos, almacenamiento remoto. Solo el usuario reabre lo que está fuera.
+- **Alcance:** **solo web** (D19, *2026-10-03*): sin versión de escritorio (Electron) ni
+  sustituto; la Fase 14 está cancelada. Fuera de alcance: usuarios, auth, backend, base de
+  datos, almacenamiento remoto. Solo el usuario reabre lo que está fuera.
 - **Decisiones pendientes:** las D-n abiertas de [`docs/PLAN.md`](docs/PLAN.md) §14.
   Ninguna fase empieza con una decisión que necesita sin confirmar.
 
@@ -127,8 +128,8 @@ no existía, que es peor que no tenerlos.
 - **No se persiste contenido de documentos**, ni nombres de fichero, ni rutas. Lo que se
   guarde en local (preferencias) está listado en [`docs/PLAN.md`](docs/PLAN.md) §8; un
   dato nuevo se añade ahí antes de guardarlo.
-- **El renderer nunca ve rutas de disco** (tampoco en Electron): ve documentos con un id
-  opaco ([`docs/ELECTRON.md`](docs/ELECTRON.md)).
+- **La app nunca ve rutas de disco**: ve documentos con un id opaco
+  ([`docs/PLAN.md`](docs/PLAN.md) §4.1).
 
 Motivo: es la razón de ser del producto. Una sola petición de red provocada por un
 documento revela a un tercero qué se lee y cuándo.
@@ -248,8 +249,7 @@ trae a mano, se revisa y se anota en la bitácora. Detalle:
   by allowScripts*: `npm install-scripts ls`, revisa qué ejecuta cada script y apruébalo
   con `npm install-scripts approve <paquete>` (o deniégalo si no hace falta). Commitea
   `package.json` y el lockfile juntos. Motivo: npm 11 **omite en silencio** los scripts no
-  aprobados, y la aprobación va ligada a la versión exacta. Electron (Fase 14) lo
-  necesitará. Detalle en [`docs/STACK.md`](docs/STACK.md).
+  aprobados, y la aprobación va ligada a la versión exacta. Detalle en [`docs/STACK.md`](docs/STACK.md).
 - Un `override` solo con motivo escrito en `docs/STACK.md`; `npm run deps:overrides` dice
   si sigue haciendo falta.
 

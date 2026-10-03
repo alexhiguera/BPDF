@@ -5,8 +5,9 @@
 decisión **D5** (hosting y dominio, [PLAN.md](PLAN.md) §14) sigue abierta de forma
 oficial: esto recoge lo que hay, no la cierra. `src/config/project.ts` aún usa
 `app.example.com` (el cambio afecta a `robots.txt`, `sitemap.xml` y `public_docs/`, y
-queda fuera de esta tarea). El documento completo se escribe en la Fase 15
-([FASES.md](FASES.md)).
+queda fuera de esta tarea). El documento completo se escribe en la Fase 15, «Distribución
+web» ([FASES.md](FASES.md)). BPDF es solo web (D19, *2026-10-03*): no hay instaladores ni
+versión de escritorio.
 
 ## Web
 
@@ -36,11 +37,6 @@ queda fuera de esta tarea). El documento completo se escribe en la Fase 15
   https://bpdf.r3zon.com` pide `/`, `/mermaid.html` y un módulo del marco y compara cada
   cabecera con la fuente. Sale con error si falta o difiere alguna. Tras cada despliegue que
   toque cabeceras, CSP o rutas.
-
-## Escritorio
-
-Instaladores de Electron publicados como releases, con checksums. Firma y plataformas
-pendientes de **D11** ([ELECTRON.md](ELECTRON.md) §8).
 
 ## Documentación pública
 

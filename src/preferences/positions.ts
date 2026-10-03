@@ -40,17 +40,26 @@ function guardar(docs: Record<string, Posicion>): void {
 }
 
 /**
- * La posición guardada de un PDF, o `null`. Recuperarla cuenta como uso: su `t`
- * pasa a `ahora` (la última en olvidarse por antigüedad).
+ * La posición guardada de un PDF, o `null`. **Solo lee**: se puede llamar al
+ * renderizar (el estado inicial del visor). Que abrirla cuente como uso lo hace
+ * `marcarUso`, desde un efecto.
  */
-export function recuperarPosicion(huella: string, ahora = Date.now()): Posicion | null {
+export function recuperarPosicion(huella: string): Posicion | null {
   if (!esHuella(huella)) return null;
+  return leer().valor?.docs[huella] ?? null;
+}
+
+/**
+ * Abrir un PDF con posición guardada cuenta como uso: su `t` pasa a `ahora` (la
+ * última en olvidarse por antigüedad). Sin entrada, o con una versión futura, no
+ * escribe nada.
+ */
+export function marcarUso(huella: string, ahora = Date.now()): void {
+  if (!esHuella(huella)) return;
   const lectura = leer();
-  if (!lectura.valor) return null;
-  const guardada = lectura.valor.docs[huella];
-  if (!guardada) return null;
+  const guardada = lectura.valor?.docs[huella];
+  if (!lectura.valor || !guardada) return;
   guardar({ ...lectura.valor.docs, [huella]: { ...guardada, t: ahora } });
-  return guardada;
 }
 
 export function guardarPosicion(

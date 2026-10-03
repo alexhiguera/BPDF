@@ -78,8 +78,7 @@ const INVISIBLE = /[\p{Cc}\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/gu;
  *
  * Solo se corta por `/`, que ningún sistema admite dentro de un nombre. `\`
  * sí es válido en Linux (`a\b.md`) y se conserva; las rutas de Windows no
- * llegan aquí (web da el nombre sin ruta, y en Electron el main manda solo el
- * nombre).
+ * llegan aquí (el navegador da el nombre sin ruta).
  */
 export function displayName(raw: string, fallback: string): string {
   const base = raw.slice(raw.lastIndexOf("/") + 1);

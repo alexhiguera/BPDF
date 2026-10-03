@@ -16,20 +16,17 @@ export type Soltado = {
 };
 
 /**
- * Frontera entre BPDF y la plataforma en la que corre (docs/ELECTRON.md §3).
- * Solo `src/platform/` sabe si es web o Electron; el resto de la app recibe
+ * Frontera entre BPDF y la plataforma en la que corre: el navegador (D19: solo
+ * web). Solo `src/platform/` toca sus APIs de ficheros; el resto de la app recibe
  * `OpenedDocument` (o una elección de Markdown), nunca rutas ni APIs de la
  * plataforma.
  *
  * Contiene solo lo que la app usa hoy. Cada fase añade el método que necesite
- * cuando lo necesite: guardar (`saveText`, Fase 9, ya aquí) y «Abrir con…» del
- * sistema (`onExternalOpen`, Fase 14).
+ * cuando lo necesite (guardar, `saveText`, llegó con la Fase 9).
  *
- * Por qué devuelve documentos y no `File`: en Electron el diálogo lo abre el
- * proceso main, que lee los ficheros y asigna un id ligado a su ruta (para
- * poder guardar después sin que el renderer la vea). Las dos implementaciones
- * terminan en `abrirSeleccion`/`readDocument`, así que la validación es la
- * misma.
+ * Devuelve documentos y no `File`: todo termina en `abrirSeleccion`/
+ * `readDocument`, así que la validación es una sola. (Se diseñó así también
+ * para una versión Electron, cancelada: D19.)
  */
 export interface Platform {
   /**
@@ -53,7 +50,7 @@ export interface Platform {
    * recibe URLs que ya han pasado la política del motor (`http:`, `https:`,
    * `mailto:`), y aun así la plataforma no se fía: vuelve a comprobarla. Nunca
    * navega la ventana de la app. En web, una pestaña nueva sin `opener` ni
-   * `Referer`; en Electron (Fase 14), `shell.openExternal` desde el main.
+   * `Referer`.
    */
   openExternal(url: string): void;
 
@@ -66,8 +63,6 @@ export interface Platform {
    *   las siguientes vuelven a escribir en el que eligió, mientras la sesión
    *   dure (el `FileSystemFileHandle` vive en memoria, nunca se guarda).
    * - Web sin él: una descarga con el nombre del documento (siempre una copia).
-   * - Electron (Fase 14): el proceso main, por su id, sin que el renderer vea
-   *   rutas.
    *
    * `"cancelado"` si el usuario cierra el diálogo sin elegir. Rechaza si no se
    * pudo escribir (sin permiso, disco lleno…): el texto sigue sin guardar.

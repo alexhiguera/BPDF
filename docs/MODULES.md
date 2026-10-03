@@ -15,19 +15,20 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 | `public_docs/` con contrato y validador | ✅ (portada «próximamente») | `public_docs/`, `scripts/validar-public-docs.mjs` |
 | Documentación interna y plan | ✅ | `docs/` |
 | Apertura de archivos (selector, `Ctrl/Cmd+O`, arrastre, validación) | ✅ F3 | `src/documents/`, `src/app/DropZone.tsx`, `src/app/DocumentErrorAlert.tsx` |
-| Capa de plataforma (web) | ✅ F3 (Electron en F14) | `src/platform/` |
-| Preferencias y posición de lectura (solo PDF) | 🚧 F10 (implementada, pendiente de aprobación) | `src/preferences/`, `src/app/App.tsx` (botón), `src/app/pdf/Visor.tsx`, `src/markdown/MarkdownView.tsx` |
+| Capa de plataforma (web) | ✅ F3 (la única: sin escritorio, D19) | `src/platform/` |
+| Preferencias y posición de lectura (solo PDF) | ✅ F10 | `src/preferences/`, `src/app/App.tsx` (botón), `src/app/pdf/Visor.tsx`, `src/markdown/MarkdownView.tsx` |
 | Visor PDF | ✅ F4–F6 (la F6: pantalla completa, atajos, búsqueda avanzada y contraseña) | `src/pdf/`, `src/app/pdf/` |
 | Lector de Markdown | ✅ F7 | `src/markdown/`, `src/styles/markdown.css` |
 | Fórmulas (KaTeX) y diagramas (Mermaid, en un marco aislado) | ✅ F8 | `src/markdown/matematicas.ts`, `mermaid*.ts`, `marco-mermaid.ts`, `svg-seguro.ts`, `mermaid.html` |
 | Recursos locales de Markdown (varios ficheros, carpeta, imágenes) | ✅ F7 bis | `src/documents/recursos.ts`, `src/documents/seleccion.ts`, `src/markdown/imagenes.ts`, `src/platform/web.ts` |
 | Editor de Markdown (CodeMirror 6, vista previa, dividido, guardar) | ✅ F9 (aprobada con una excepción de rendimiento: Dividido con 1 MB + KaTeX o 1 MB de encabezados; FASES, Fase 9) | `src/editor/`, `src/markdown/MarkdownView.tsx`, `src/platform/guardar-web.ts` |
-| Escritorio (Electron) | ⬜ F14 | |
+| Escritorio (Electron) | ❌ F14 cancelada (D19: BPDF es solo web) | |
 
 ## Módulos de la plantilla
 
 La plantilla R3ZON trae un catálogo de módulos opcionales (`multi-tenancy`,
 `billing-stripe`, `auth-advanced`, etc.). **Ninguno aplica a BPDF**, que no tiene base de
 datos, usuarios ni backend, y el directorio `modules/` se retiró en la Fase 1 (D15). El
-más cercano, `desktop-electron`, recomendaba cargar la URL remota; BPDF hace lo contrario
-(bundle local) por privacidad: [ELECTRON.md](ELECTRON.md) §1.
+más cercano, `desktop-electron`, recomendaba cargar la URL remota; BPDF iba a hacer lo
+contrario (bundle local) por privacidad ([ELECTRON.md](ELECTRON.md) §1). Hoy no aplica:
+BPDF es solo web (D19).

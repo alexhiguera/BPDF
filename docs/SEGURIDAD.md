@@ -20,7 +20,8 @@ privilegio que no necesite.
 
 **Qué se protege**
 
-1. Los **ficheros del usuario** en disco (sobre todo en Electron).
+1. Los **ficheros del usuario** en disco (en web, el navegador solo da los que el usuario
+   elige).
 2. La **privacidad de la lectura**: qué documentos abre, cuándo y desde dónde. Una sola
    petición de red provocada por un documento ya lo revela.
 3. La **integridad de la app**: que un documento no pueda ejecutar código en su origen.
@@ -43,8 +44,6 @@ un sistema operativo comprometido.
 
 ```text
 documento (no confiable) ──► motor (worker pdf.js / pipeline MD) ──► DOM de la app
-                                                                   │
-                                   Electron: renderer (sin Node) ──► preload (mínimo) ──► main (privilegiado)
 ```
 
 ## 2. Aplicación web
@@ -60,8 +59,7 @@ y solo abre lo que la app usa hoy. Vive en **un único fichero fuente**,
   aunque el hosting no mande cabeceras (el hosting está pendiente de D5);
 - las cabeceras de la web publicada: [`vercel.json`](../vercel.json), **generado** con
   `npm run cabeceras:vercel` (`reglasVercel`; un test comprueba que no se queda atrás) ✅
-  (*2026-09-30*; [DEPLOYMENT.md](DEPLOYMENT.md));
-- el protocolo `app://` de Electron (Fase 14).
+  (*2026-09-30*; [DEPLOYMENT.md](DEPLOYMENT.md)).
 
 En `vite dev` **no hay CSP**: Vite inyecta scripts y estilos en línea para desarrollar.
 Nada se da por bueno por funcionar en `dev`.
@@ -187,8 +185,8 @@ necesidad; se revisa en la Fase 12.
 - Ningún fichero de `src/` lleva marcas bidireccionales invisibles («Trojan Source»: el
   código se lee distinto de como se ejecuta); donde hacen falta se escriben como escapes
   `\uXXXX`. Mismo test ✅ (Fase 3).
-- Trusted Types (`require-trusted-types-for 'script'`) como defensa en Chromium y
-  Electron, si pdf.js y Mermaid lo permiten (T-4, Fase 12).
+- Trusted Types (`require-trusted-types-for 'script'`) como defensa en Chromium, si
+  pdf.js y Mermaid lo permiten (T-4, Fase 12).
 - ids generados desde contenido (encabezados de Markdown) con prefijo `md-`: evita que un
   `id="location"` o `id="__proto__"` pise propiedades globales (DOM clobbering).
 
@@ -207,8 +205,7 @@ necesidad; se revisa en la Fase 12.
   (`/assets/trabajador-*.js`, empaquetado por Vite), los dos servidos desde `'self'` y como
   módulos ES. Sin workers creados desde `blob:`. El del modo oscuro solo recibe píxeles
   (nunca el documento) ✅ (Fase 5).
-- **Sin service worker en v1**: no hace falta (sin backend que cachear; offline lo da
-  Electron) y añade superficie (caché envenenada, actualizaciones que no llegan). Se
+- **Sin service worker en v1**: no hace falta (sin backend que cachear) y añade superficie (caché envenenada, actualizaciones que no llegan). Se
   reevalúa si se quiere PWA.
 - Sin permisos del navegador salvo portapapeles (escritura) y pantalla completa, siempre
   tras un gesto del usuario.
@@ -222,8 +219,8 @@ necesidad; se revisa en la Fase 12.
 - `npm ci` en CI; `allowScripts` de npm 11 revisado paquete a paquete (CLAUDE.md §11 bis).
 - `npm audit --audit-level=high` en cada PR y cada lunes (`security.yml`, ya existe).
 - Nada se carga de CDN: todo se sirve desde el propio origen (sin SRI que mantener).
-- Actions de GitHub fijadas por SHA (propuesta ya existente en `mejoras.md`) antes de
-  publicar releases (Fase 15).
+- Actions de GitHub fijadas por SHA: mejora propuesta en `mejoras.md` (antes era requisito
+  para firmar releases de escritorio, que ya no existen: D19).
 
 ### 2.6 Apertura de ficheros ✅ (Fase 3)
 
@@ -236,7 +233,7 @@ del documento.
 | Un fichero que miente sobre su tipo (`.pdf` que es un PNG, `.md` binario) | Tipo por extensión **y** contenido: firma `%PDF-` en los primeros 1024 bytes; Markdown en UTF-8 estricto sin NUL. **Nunca** `file.type` (MIME), que el navegador saca de la extensión | `tests/unit/documents/detect.test.ts`, `read.test.ts` («no se fía del MIME») |
 | Nombre de fichero con HTML o scripts (`<img onerror>`, `"><svg onload>`) | El nombre solo se pinta como texto de React (escapado); ninguna API que interprete HTML (§2.3) | `tests/components/App.test.tsx`, `DocumentErrorAlert.test.tsx`, `e2e/specs/abrir.spec.ts` (nombres hostiles: sin `img`/`svg`/`script` en el DOM, sin diálogos) |
 | Nombre que finge otra extensión con marcas bidireccionales (`U+202E`) o lleva controles | `displayName` los quita y la extensión se valida sobre el nombre resultante, el mismo que se ve | `detect.test.ts`, `read.test.ts` |
-| Rutas de disco en el estado | El documento guarda un nombre sin ruta, nunca una ruta ni un `FileSystemHandle` (en web el navegador no las da; en Electron, el mapa `id → ruta` vive solo en el main) | `detect.test.ts` («quita cualquier ruta») |
+| Rutas de disco en el estado | El documento guarda un nombre sin ruta, nunca una ruta ni un `FileSystemHandle` (el navegador no las da) | `detect.test.ts` («quita cualquier ruta») |
 | Agotamiento de memoria | Límites por tipo con su justificación en `src/documents/limits.ts` (PDF 512 MiB, Markdown 20 MiB), comprobados **antes** de leer; un PDF solo se lee en sus primeros 1024 bytes; Markdown se queda solo con el texto | `read.test.ts` (justo en el límite y 1 byte por encima; «solo lee la cabecera»); prueba manual con un PDF disperso de 513 MiB (rechazo en ~60 ms sin leerlo) |
 | Contenido que se ejecute al abrir | Nada se interpreta: un Markdown con `<script>`, `<img onerror>`, `<iframe>` remoto y enlaces `javascript:` es solo texto en memoria (desde la Fase 7 se renderiza, con los controles de §3) | `read.test.ts`, `App.test.tsx`, `markdown.spec.ts` (`seguridad.md`: nada se ejecuta ni se pide a la red) |
 | Peticiones de red o URL que sobrevivan al documento | Lectura con `Blob.arrayBuffer()`; sin `fetch` ni subida. Abrir no crea URL de objeto: las crea el visor de Markdown al pintar una imagen local y las revoca al desmontarse (se monta con `key={document.id}`; §3.1) | `tests/unit/platform/web.test.ts`, `tests/components/DocumentProvider.test.tsx` (ni `fetch` ni `createObjectURL`); `abrir.spec.ts` (ninguna petición fuera del origen) |
@@ -262,7 +259,7 @@ La CSP no cambia en esta fase: leer ficheros locales no necesita ninguna directi
 | Imágenes remotas (píxeles espía, fuga de IP) | Bloqueadas (D7): **ningún `<img>` con URL remota**; marcador con el texto alternativo y un enlace para abrirla fuera si se quiere. La CSP (`img-src 'self' blob:`, sin `https:`) es la segunda red | ✅ 7 (E2E: el píxel nunca se pide) · 12 |
 | Imágenes locales | Solo las entregadas con el `.md` (ARCHITECTURE §4 sexies). `resolverRecurso` decodifica una vez, rechaza `\`, rutas absolutas y esquemas, normaliza segmento a segmento y busca exactamente en el mapa. Formato por extensión (PNG, JPEG, GIF, WebP, SVG) y tipo MIME fijado por BPDF; máximo 50 MiB. URL `blob:` solo para lo que se pinta, una por recurso, revocadas al desmontar | ✅ 7 bis (`recursos.test.ts`, `imagenes.test.ts`, `imagenes.test.tsx`, `recursos.spec.ts`) |
 | SVG con scripts o recursos externos | Solo como `<img>` (el navegador no ejecuta scripts ni carga recursos de un SVG en una imagen). Abierta como página, la URL `blob:` hereda la CSP de BPDF: medido en Chromium, ni el `<script>` ni el `onload` se ejecutan y sus imágenes externas las corta la CSP antes de la red | ✅ 7 bis (`malicioso.svg` en `recursos.spec.ts`, también abierto en otra pestaña) |
-| Rutas relativas con `..` (también codificadas: `%2e%2e`, `..%2f`, `%5c`) | Normalización tras decodificar una vez; un `..` que sale de la entrega es `fuera` y no se busca. Enlaces a otros ficheros: inertes. En Electron, nunca fuera de la raíz del documento | ✅ 7 bis (`recursos.test.ts`, 25 variantes), 14 |
+| Rutas relativas con `..` (también codificadas: `%2e%2e`, `..%2f`, `%5c`) | Normalización tras decodificar una vez; un `..` que sale de la entrega es `fuera` y no se busca. Enlaces a otros ficheros: inertes | ✅ 7 bis (`recursos.test.ts`, 25 variantes) |
 | DOM clobbering con ids | Prefijo `md-` en los encabezados y en las notas al pie (`clobberPrefix`); un ancla del documento solo busca ids con prefijo dentro del documento | ✅ 7 (`toc.test.ts`, corpus `encabezados-clobbering.md`) |
 | KaTeX: `\href`, `\url`, `\includegraphics`, `\htmlClass`, `\htmlId`, `\htmlStyle`, `\htmlData`, macros, `\rule` gigante, colores inyectados | `trust: false` (se pintan como texto, sin enlace ni atributo), `maxExpand: 1000`, `maxSize: 20`, macros nuevas por fórmula (un `\gdef` no pasa a otra), `throwOnError` (lo inválido se ve como código). **Sin HTML**: nodos creados con el `toNode()` de KaTeX, nunca `innerHTML` ni `rehype-katex`; el atributo `style` que KaTeX pone por `setAttribute` se quita (la CSP lo bloquearía). Versión exacta | ✅ 8 (`matematicas.test.ts`, `formulas-diagramas.test.tsx`, E2E con `katex-hostil.md`) |
 | Mermaid: etiquetas HTML, `click`/`callback`/`link` con `javascript:`, `%%{init}%%` que relaja la seguridad o inyecta `themeCSS`, `<foreignObject>`, imágenes en nodos, ids hostiles, diagramas enormes | Corre **fuera de la app**, en el marco aislado (iframe `sandbox` sin `allow-same-origin`, CSP sin red). `securityLevel: "strict"`, `htmlLabels: false`, `secure` con todas las claves de seguridad y aspecto, `maxTextSize`/`maxEdges`, nodos con imagen rechazados antes de dibujar. SVG saneado en el marco (`sanearSvg`, lista blanca) y **verificado en la app** sin DOM (`verificarSvg`, rechaza lo que no cumpla); se muestra como `<img src="blob:…">` | ✅ 8 (`svg-seguro.test.ts`, `mermaid.test.ts`, E2E con `mermaid-hostil.md`, aislamiento del marco comprobado desde dentro) |
@@ -276,14 +273,11 @@ La CSP no cambia en esta fase: leer ficheros locales no necesita ninguna directi
 
 - Externos: `target="_blank"` y `rel="noopener noreferrer"` como red, pero el clic se
   intercepta y lo abre `Platform.openExternal`, que revalida la URL (web: pestaña nueva
-  sin `opener` ni `Referer`). El clic central se anula. En Electron: nunca navegan la
-  ventana; el main los abre con `shell.openExternal` tras validar el protocolo
-  ([ELECTRON.md](ELECTRON.md) §4). Tests: `MarkdownView.test.tsx`, `markdown.spec.ts`
+  sin `opener` ni `Referer`). El clic central se anula. Tests: `MarkdownView.test.tsx`, `markdown.spec.ts`
   (con `window.open` interceptado).
 - Anclas internas (`#seccion`): desplazamiento dentro de la hoja y foco en la sección,
   resolviendo al id con prefijo; la URL de la app no cambia.
-- Relativos a otros ficheros: texto con aviso, sin `href`. En Electron se podrán abrir en
-  BPDF si están dentro de la raíz del documento (después de v1).
+- Relativos a otros ficheros: texto con aviso, sin `href`.
 
 ### 3.3 Corpus de XSS ✅ (Fase 7)
 
@@ -334,7 +328,7 @@ enlace bloqueado no hace nada. Casos:
 | JavaScript embebido (acciones de documento, de página, de campos) | **No se distribuyen** `pdf.sandbox*` ni `quickjs-eval.*` (el motor para ejecutarlo): un E2E comprueba que dan 404. El visor no usa la capa de anotaciones interactiva de pdf.js (donde vive `enableScripting`): no hay nada que pueda ejecutar un script del PDF. Las acciones JavaScript de los enlaces se descartan (`enlaces.ts`, test y fixture `visor.pdf`) | ✅ 4 · ✅ 5 |
 | Formularios XFA | `enableXfa: false` en `opcionesDocumento` (test) | ✅ 4 |
 | Formularios AcroForm y anotaciones | `AnnotationMode.ENABLE`: sus apariencias se **pintan en el lienzo**; no hay capa interactiva, así que no se pueden rellenar ni ejecutan nada (D14, pendiente de confirmar) | ✅ 5 |
-| Enlaces externos | Política propia ([`enlaces.ts`](../src/pdf/visor/enlaces.ts) + [`url-externa.ts`](../src/lib/url-externa.ts)): solo `http:`, `https:` y `mailto:`, absolutos y sin credenciales, hasta 2048 caracteres; abiertos por `Platform.openExternal` (web: pestaña nueva sin `opener` ni `Referer`; Electron: `shell.openExternal` desde el main, Fase 14). El `<a>` nunca navega la app (el clic se intercepta; el central se anula). Corpus de URLs hostiles en `tests/unit/pdf/enlaces.test.ts`; E2E con `window.open` interceptado | ✅ 5 |
+| Enlaces externos | Política propia ([`enlaces.ts`](../src/pdf/visor/enlaces.ts) + [`url-externa.ts`](../src/lib/url-externa.ts)): solo `http:`, `https:` y `mailto:`, absolutos y sin credenciales, hasta 2048 caracteres; abiertos por `Platform.openExternal` (pestaña nueva sin `opener` ni `Referer`). El `<a>` nunca navega la app (el clic se intercepta; el central se anula). Corpus de URLs hostiles en `tests/unit/pdf/enlaces.test.ts`; E2E con `window.open` interceptado | ✅ 5 |
 | Acciones `Launch`, `GoToR` (otro fichero), `ImportData`, `SubmitForm`, `file:`, adjuntos | No son enlaces para BPDF: solo se siguen destinos internos, cuatro acciones con nombre de navegación y URLs permitidas. Fixture `visor.pdf` con `javascript:`, `file:` y acción JavaScript: E2E comprueba que no hay `<a>` para ellas | ✅ 5 |
 | Ficheros adjuntos embebidos | No se exponen en v1 | ✅ 5 (no hay interfaz) |
 | Recursos remotos | Worker, `cmaps/`, `standard_fonts/` y los decodificadores en JavaScript se sirven **desde el propio origen** (`scripts/copiar-pdfjs.mjs`); `useWasm: false`. El documento se pasa como bytes (`data`), nunca como URL (test). E2E: ninguna petición fuera del propio origen en todos los recorridos del visor, también con PDF reales | ✅ 4 · ✅ 5 |
@@ -343,9 +337,11 @@ enlace bloqueado no hace nada. Casos:
 | Texto del documento en la interfaz | Capa de texto de pdf.js y resaltado de la búsqueda solo con `textContent`/`createElement` (test con texto hostil en `tests/unit/pdf/capas.test.ts`); nada de HTML en crudo | ✅ 5 |
 | Post-proceso del modo oscuro | Trabaja sobre píxeles del lienzo propio (mismo origen, sin `crossOrigin`); no interpreta contenido. Por franjas, sin copiar la página entera. En un worker que solo recibe bytes RGBA | ✅ 4 · ✅ 5 |
 
-## 5. Electron
+## 5. Electron — histórico, cancelado
 
-Resumen; el diseño completo está en [ELECTRON.md](ELECTRON.md).
+> **No aplica.** BPDF es solo una aplicación web (D19, *2026-10-03*): la Fase 14 se canceló
+> y nada de esta sección se va a implementar. Se conserva como registro del diseño que se
+> descartó; el completo está en [ELECTRON.md](ELECTRON.md), también histórico.
 
 - `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`,
   `webSecurity: true`, sin `webviewTag`, sin `allowRunningInsecureContent`, sin
@@ -374,7 +370,7 @@ Resumen; el diseño completo está en [ELECTRON.md](ELECTRON.md).
   retiraron Sentry y Speed Insights de la plantilla, y no queda ninguna dependencia que
   envíe datos (`docs/STACK.md` → Observabilidad).
 - **Ninguna petición de red provocada por un documento** (CSP + `url-policy`). La única red
-  es cargar la propia app (web) o ninguna (Electron). Desde la Fase 3 los E2E de apertura
+  es cargar la propia app. Desde la Fase 3 los E2E de apertura
   lo comprueban en cada recorrido (§2.6).
 - **Abrir un documento no guarda nada**: ni nombre, ni contenido, ni ruta, ni historial.
   Solo vive en memoria mientras está abierto (D16: uno a la vez, sin recientes).
@@ -383,8 +379,7 @@ Resumen; el diseño completo está en [ELECTRON.md](ELECTRON.md).
   destino elegido (`FileSystemFileHandle`) solo se recuerda en memoria mientras ese
   documento sigue abierto. Los tests comprueban que no se toca `localStorage` ni
   `sessionStorage`.
-- Persistencia mínima ([PLAN.md](PLAN.md) §8; **Fase 10**, implementada y pendiente de
-  aprobación; [ARCHITECTURE.md](ARCHITECTURE.md) §4 nonies): solo
+- Persistencia mínima ([PLAN.md](PLAN.md) §8; **Fase 10**, cerrada el *2026-10-03*; [ARCHITECTURE.md](ARCHITECTURE.md) §4 nonies): solo
   dos claves de `localStorage`. `bpdf:prefs`: preferencias (valores por defecto del PDF,
   panel de miniaturas, tipografía de Markdown, atajos de una tecla, recordar posición).
   `bpdf:positions`: página y zoom por PDF (D8 ✅, activado por defecto), indexados por la

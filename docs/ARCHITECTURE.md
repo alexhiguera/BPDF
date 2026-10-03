@@ -22,7 +22,7 @@ y pueda juzgar si sigue aplicando.
 
 ### 1. Los documentos no salen del dispositivo
 
-Todo se procesa en el navegador (o en el proceso de Electron) del usuario. No hay
+Todo se procesa en el navegador del usuario. No hay
 backend, API, base de datos, cuentas, sincronización ni telemetría, y ningún documento
 puede provocar una petición de red.
 
@@ -40,21 +40,21 @@ casos maliciosos por motor. Detalle: [SEGURIDAD.md](SEGURIDAD.md).
 ### 3. Ningún privilegio que no se necesite
 
 El renderer no tiene Node, no ve rutas de disco y solo llama a funciones con propósito;
-los motores corren aislados cuando pueden (pdf.js en su worker). Se diseña así desde la
-web para que Electron no obligue a rehacer nada ([ELECTRON.md](ELECTRON.md)).
+los motores corren aislados cuando pueden (pdf.js en su worker). (Se diseñó así también
+pensando en una versión Electron, cancelada el *2026-10-03*: D19; el principio sigue.)
 
 ### 4. Una sola frontera de plataforma
 
-Solo `src/platform/` sabe si la app corre en web o en Electron. El resto del código
-recibe documentos (`OpenedDocument`), no ficheros ni rutas.
+Solo `src/platform/` toca las APIs de ficheros del navegador. El resto del código recibe
+documentos (`OpenedDocument`), no ficheros ni rutas. La web es la única plataforma (D19:
+sin escritorio); la frontera se conserva porque aísla esas APIs y facilita los tests.
 
 **Cómo es hoy (Fases 3 y 5).** La interfaz `Platform` tiene tres métodos, los únicos que
 se usan: `pickDocument()`, `openDroppedFile(file)` y, desde el visor PDF,
 `openExternal(url)` (enlaces de un documento, que la plataforma revalida y abre fuera). La web los implementa con APIs
-estándar (`<input type="file">` y `Blob.arrayBuffer()`); Electron (Fase 14) lo hará con
-IPC. Las dos terminan en la misma función, `readDocument`, que valida y construye el
-documento: la plataforma aporta el fichero y, si quiere, el id; la validación no se
-duplica. Cada método nuevo llega con la fase que lo usa ([ELECTRON.md](ELECTRON.md) §3).
+estándar (`<input type="file">` y `Blob.arrayBuffer()`), y todo termina en la misma
+función, `readDocument`, que valida y construye el documento: la validación no se duplica.
+Cada método nuevo llega con la fase que lo usa.
 
 **Por qué no más.** Un contrato con métodos que nadie llama se diseña a ciegas y se
 equivoca; el de la Fase 0 tenía cinco, y el primer uso real ya cambió dos (un documento
@@ -349,7 +349,7 @@ cualquier etiqueta que no produzca Markdown + GFM.
 
 | Destino | Qué pasa |
 |---|---|
-| `http:`, `https:`, `mailto:` absolutas (política común de `src/lib/url-externa.ts`) | `<a target="_blank" rel="noopener noreferrer">`; el clic se intercepta y lo abre `Platform.openExternal` (web: pestaña nueva sin `opener` ni `Referer`; Electron, Fase 14: el navegador del sistema desde el main). El clic central se anula |
+| `http:`, `https:`, `mailto:` absolutas (política común de `src/lib/url-externa.ts`) | `<a target="_blank" rel="noopener noreferrer">`; el clic se intercepta y lo abre `Platform.openExternal` (pestaña nueva sin `opener` ni `Referer`). El clic central se anula |
 | `#fragmento` | `href="#md-…"`; el clic desplaza dentro del documento y mueve el foco a la sección, sin cambiar la URL. Solo se buscan ids con prefijo y dentro del documento |
 | Ruta relativa (`otro.md`) | Texto con subrayado punteado y el motivo (información emergente y texto para lectores de pantalla). No se sigue aunque el fichero se haya entregado con el documento (§4 sexies) |
 | Todo lo demás (`javascript:`, `data:`, `file:`, `vbscript:`, `//host`, `/ruta`, `C:\…`, credenciales en la URL…) | Texto, igual que la anterior, con otro motivo |
@@ -451,8 +451,7 @@ terminar, el navegador invalida `DataTransfer`. Si no hay entradas, se usan los 
 planos. Una carpeta soltada junto con otras cosas es un error (`mixed-drop`): no se sabría
 cuál es la raíz.
 
-**Qué se abre** (`abrirSeleccion`, [`src/documents/seleccion.ts`](../src/documents/seleccion.ts),
-común a web y Electron):
+**Qué se abre** (`abrirSeleccion`, [`src/documents/seleccion.ts`](../src/documents/seleccion.ts)):
 
 - Ficheros: exactamente un `.md` y el resto imágenes admitidas. Ningún `.md`
   (`no-markdown`), varios (`several-markdown`) o un fichero de otro tipo, PDF incluido
@@ -478,7 +477,7 @@ type RecursoLocal = { ruta: string; tipo: "png" | "jpeg" | "gif" | "webp" | "svg
 ```
 
 Rutas **relativas a la entrega**, con `/`, normalizadas y en NFC: nunca una ruta de disco
-(el navegador no las da, y en Electron el main no las mandará). `blob` es
+(el navegador no las da). `blob` es
 `file.slice(0, size, mime)`: un trozo del propio `File`, con el tipo MIME de su extensión
 (nunca el `file.type` del navegador) y **sin copiar bytes**. Un `.md` suelto lleva
 `SIN_RECURSOS`. No es un sistema de ficheros: es un mapa de lo entregado.
@@ -529,8 +528,7 @@ el contexto de imagen bastan, y rasterizar perdería la nitidez.
 
 **Enlaces a otros ficheros** (a `otro.md` o a una imagen): siguen siendo
 texto inerte, aunque el fichero esté entre lo entregado. Abrir otro documento desde un
-enlace cambiaría el documento abierto sin que el usuario lo elija; queda para Electron,
-dentro de la raíz del documento (SEGURIDAD §3.2).
+enlace cambiaría el documento abierto sin que el usuario lo elija (SEGURIDAD §3.2).
 
 **Rendimiento (medido).** Resolver una ruta: ~1,5 µs (100 000 en 147 ms); construir el
 conjunto: ~3,4 µs por fichero (5000 en 17 ms). Con 50 imágenes de 3000×2000 elegidas junto
@@ -887,7 +885,7 @@ en Dividido (iteraciones 16–18).
 
 ### 4 nonies. Preferencias y posición de lectura (Fase 10)
 
-> **Implementada el *2026-10-03*, pendiente de la aprobación del usuario.** Especificación:
+> **Cerrada y aprobada el *2026-10-03*** (iteraciones 21 y 22). Especificación:
 > [FASES.md](FASES.md), Fase 10; qué se guarda: [PLAN.md](PLAN.md) §8.
 
 | Pieza | Dónde | Qué hace |
@@ -938,7 +936,9 @@ cuando no queda ningún suscriptor.
 **Posición (D8).** Huella: `fingerprints[0]` de pdf.js (`DocumentoVisor.huella`). Al abrir,
 si «recordar» está activado y hay entrada, el zoom guardado manda sobre el de por defecto y
 la página se restaura con un salto, como cualquier «ir a» (los tamaños reales llegan
-después y el ancla mantiene esa página arriba); recuperarla actualiza su `t`. Se guarda 1 s
+después y el ancla mantiene esa página arriba). El render **solo lee** la posición
+(`recuperarPosicion`); que abrir el PDF cuente como uso para el LRU lo hace `marcarUso`
+(actualiza su `t`) desde un efecto del visor (iteración 22). Se guarda 1 s
 después del último cambio de página o zoom, al desmontar el visor (cerrar, abrir otro) y en
 `pagehide`; abrir un PDF y no moverse no escribe nada. Desactivar «recordar» deja de leer y
 escribir, sin borrar. LRU de 50 por `t`.
@@ -954,13 +954,13 @@ visor PDF, el lector de Markdown o el diálogo. El arranque solo suma el botón 
 **Límites conocidos.**
 - La huella de pdf.js sale del ID del fichero: dos copias del mismo PDF comparten posición, y
   un PDF editado que conserva su ID también.
-- Los orígenes son distintos en `vite dev`, `vite preview`, la web publicada y (Fase 14)
-  Electron: cada uno tiene sus propias preferencias.
+- Los orígenes son distintos en `vite dev`, `vite preview` y la web publicada: cada uno
+  tiene sus propias preferencias.
 
 ### 5. La menor complejidad que cumpla los requisitos
 
 Ante dos soluciones válidas: menos código, menos dependencias, menos superficie de ataque,
-menos mantenimiento y mejor encaje con Electron. Sin router ni librería de estado mientras
+y menos mantenimiento. Sin router ni librería de estado mientras
 haya una sola vista; cada dependencia de runtime justificada en [STACK.md](STACK.md).
 
 ## Heredados de la plantilla

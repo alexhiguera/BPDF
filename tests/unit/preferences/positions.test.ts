@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import {
   guardarPosicion,
+  marcarUso,
   olvidarPosiciones,
   recortar,
   recuperarPosicion,
@@ -26,17 +27,43 @@ describe("posiciones de PDF", () => {
       v: 1,
       docs: { [huella(1)]: { page: 7, zoom: { tipo: "fijo", valor: 1.5 }, t: 100 } },
     });
-    expect(recuperarPosicion(huella(1), 200)).toEqual({
+    expect(recuperarPosicion(huella(1))).toEqual({
       page: 7,
       zoom: { tipo: "fijo", valor: 1.5 },
       t: 100,
     });
   });
 
-  it("recuperar cuenta como uso: actualiza `t`", () => {
+  it("recuperar solo lee: no escribe nada (se puede llamar al renderizar)", () => {
     guardarPosicion(huella(1), { page: 2, zoom: ANCHO }, 100);
-    recuperarPosicion(huella(1), 500);
-    expect(registro().docs[huella(1)].t).toBe(500);
+    const antes = localStorage.getItem(CLAVE_POSICIONES);
+    expect(recuperarPosicion(huella(1))?.t).toBe(100);
+    expect(recuperarPosicion(huella(2))).toBeNull();
+    expect(localStorage.getItem(CLAVE_POSICIONES)).toBe(antes);
+  });
+
+  it("marcar el uso actualiza `t` y nada más", () => {
+    guardarPosicion(huella(1), { page: 2, zoom: { tipo: "fijo", valor: 2 } }, 100);
+    marcarUso(huella(1), 500);
+    expect(registro().docs[huella(1)]).toEqual({
+      page: 2,
+      zoom: { tipo: "fijo", valor: 2 },
+      t: 500,
+    });
+  });
+
+  it("marcar el uso sin entrada, con una huella inválida o con una versión futura no escribe", () => {
+    marcarUso(huella(1), 500);
+    marcarUso("informe.pdf", 500);
+    expect(localStorage.getItem(CLAVE_POSICIONES)).toBeNull();
+    guardarPosicion(huella(1), { page: 2, zoom: ANCHO }, 100);
+    const antes = localStorage.getItem(CLAVE_POSICIONES);
+    marcarUso(huella(2), 500);
+    expect(localStorage.getItem(CLAVE_POSICIONES)).toBe(antes);
+    const futura = JSON.stringify({ v: 2, docs: { [huella(1)]: { page: 4 } } });
+    localStorage.setItem(CLAVE_POSICIONES, futura);
+    marcarUso(huella(1), 500);
+    expect(localStorage.getItem(CLAVE_POSICIONES)).toBe(futura);
   });
 
   it("guardar otra vez la misma huella la sustituye", () => {
@@ -51,7 +78,7 @@ describe("posiciones de PDF", () => {
       guardarPosicion(huella(i), { page: i, zoom: ANCHO }, i);
     expect(Object.keys(registro().docs)).toHaveLength(MAX_POSICIONES);
     // La 1 se usa: deja de ser la más antigua; la 2 pasa a serlo.
-    recuperarPosicion(huella(1), 1000);
+    marcarUso(huella(1), 1000);
     guardarPosicion(huella(999), { page: 1, zoom: ANCHO }, 1001);
     const docs = registro().docs;
     expect(Object.keys(docs)).toHaveLength(MAX_POSICIONES);
@@ -86,7 +113,9 @@ describe("posiciones de PDF", () => {
       }),
     );
     expect(recuperarPosicion(huella(2))).toBeNull();
-    expect(recuperarPosicion(huella(1), 5)?.page).toBe(4);
+    expect(recuperarPosicion(huella(1))?.page).toBe(4);
+    // La siguiente escritura deja solo las buenas.
+    marcarUso(huella(1), 5);
     expect(Object.keys(registro().docs)).toEqual([huella(1)]);
   });
 

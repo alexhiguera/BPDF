@@ -30,7 +30,7 @@ import {
   zoomEfectivo,
 } from "@/pdf/visor/disposicion";
 import type { DestinoEnlace } from "@/pdf/visor/enlaces";
-import { guardarPosicion, recuperarPosicion } from "@/preferences/positions";
+import { guardarPosicion, marcarUso, recuperarPosicion } from "@/preferences/positions";
 import { cambiarPreferencias, obtenerPreferencias } from "@/preferences/store";
 import { usePreferences } from "@/preferences/usePreferences";
 import { AyudaAtajos } from "./AyudaAtajos";
@@ -86,7 +86,8 @@ export function Visor({
   const total = controlador.total;
   const huella = controlador.documento.huella;
   // Lo que se lee al abrir: las preferencias de ese momento y la posición
-  // guardada. Cambiarlas después no mueve el documento abierto.
+  // guardada. Cambiarlas después no mueve el documento abierto. Solo lee: el
+  // render no escribe en `localStorage` (el uso se marca en un efecto, abajo).
   const [inicial] = useState(() => {
     const prefs = obtenerPreferencias();
     const posicion = prefs.recordarPosicion && huella ? recuperarPosicion(huella) : null;
@@ -419,11 +420,13 @@ export function Visor({
   );
 
   // La página guardada se restaura con un salto, como cualquier «ir a»: los
-  // tamaños reales llegan después y el ancla mantiene esa página arriba.
+  // tamaños reales llegan después y el ancla mantiene esa página arriba. Y abrir un
+  // PDF con posición guardada cuenta como uso para el LRU (`marcarUso`).
   useEffect(() => {
-    const pagina = inicial.posicion?.page ?? 1;
-    if (pagina > 1) despachar({ tipo: "ir", pagina });
-  }, [inicial]);
+    if (!inicial.posicion) return;
+    if (huella) marcarUso(huella);
+    if (inicial.posicion.page > 1) despachar({ tipo: "ir", pagina: inicial.posicion.page });
+  }, [inicial, huella]);
 
   // Guardar la posición: 1 s después del último cambio de página o zoom, al
   // cerrar el documento (desmontar) y al salir de la página (`pagehide`). Solo si

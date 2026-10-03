@@ -5,13 +5,15 @@
 > (*2026-09-29*). Revisado el *2026-09-30* con las Fases 5, 7, 7 bis, 8 y 6 cerradas (D13
 > confirmada e implementada en la 6), el *2026-10-01* con la 9 (D9: CodeMirror 6), y el
 > *2026-10-03* con la 9 cerrada y aprobada (con una excepción de rendimiento) y D8
-> confirmada para la Fase 10. Este documento describe **cómo será** BPDF. Cómo es hoy:
+> confirmada para la Fase 10; también el *2026-10-03*, la Fase 10 cerrada y aprobada y
+> **D19: BPDF es solo una aplicación web** (sin Electron: la Fase 14 se canceló y la 15 se
+> reescribió). Este documento describe **cómo será** BPDF. Cómo es hoy:
 > `ARCHITECTURE.md`, `STACK.md` y `STRUCTURE.md`.
 >
-> Documentos hermanos: [SEGURIDAD.md](SEGURIDAD.md) (modelo de amenazas y controles),
-> [ELECTRON.md](ELECTRON.md) (versión de escritorio) y [FASES.md](FASES.md) (plan de
-> implementación). El estado de cada fase está en
-> [TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md).
+> Documentos hermanos: [SEGURIDAD.md](SEGURIDAD.md) (modelo de amenazas y controles) y
+> [FASES.md](FASES.md) (plan de implementación). El estado de cada fase está en
+> [TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md). [ELECTRON.md](ELECTRON.md) es
+> **histórico**: el diseño de una versión de escritorio que se canceló (D19).
 
 Las decisiones marcadas **D-n** necesitan confirmación del usuario (CLAUDE.md §1) y están
 reunidas en [§14](#14-decisiones). Las marcadas **T-n** son decisiones técnicas que resuelve
@@ -22,15 +24,15 @@ una fase concreta con evidencia (spike o medición).
 ## 1. Qué es BPDF
 
 Visor gratuito y open source de **PDF** y **Markdown** para leer cómodamente en modo
-oscuro. Web primero; después escritorio con Electron.
+oscuro. **Aplicación web**, sin versión de escritorio (D19).
 
 **Principio rector: los documentos del usuario no salen del dispositivo.** No hay
 backend, API, base de datos, cuentas, sincronización, telemetría ni subida de ficheros.
-Todo se procesa en el navegador (o en el proceso de Electron) del usuario.
+Todo se procesa en el navegador del usuario.
 
 **Prioridades**, en este orden: legibilidad · simplicidad · consistencia · accesibilidad ·
 rendimiento. Ante dos soluciones válidas: menos código, menos dependencias, menos
-superficie de ataque, menos mantenimiento y mejor encaje con Electron.
+superficie de ataque y menos mantenimiento.
 
 ## 2. Auditoría de la plantilla
 
@@ -73,10 +75,10 @@ hacer con ella; la Fase 1 lo ejecutó (bitácora, iteración 3).
 | Tailwind 4 + tokens RGB en `:root` | **Conservar y adaptar** | El patrón de tokens es justo lo que pide el diseño; se sustituye la paleta ([§9](#9-uiux-y-sistema-de-diseño)) |
 | `Button`, `Field`, `Input`, `cn()` | **Conservar** | Accesibles y probados con jest-axe |
 | `lucide-react`, `clsx`, `tailwind-merge` | **Conservar** | Iconos; `cn()` |
-| `zod` | **Retirado en la Fase 1** | Al borrar la auth y `env.ts` se quedó sin uso, y no se guardan dependencias «para más adelante». Vuelve con lo primero que valide: preferencias guardadas (Fase 10) o argumentos IPC de Electron (Fase 14) |
+| `zod` | **Retirado en la Fase 1** | Al borrar la auth y `env.ts` se quedó sin uso, y no se guardan dependencias «para más adelante». Volvió en la Fase 10 con lo primero que valida: las preferencias guardadas |
 | `vercel.json` | **Eliminar** (Fase 1) | Solo fijaba la región de las funciones de servidor; el hosting depende de D5 |
 | Vitest + Testing Library + jest-axe + jsdom | **Conservar** | Base de tests de lógica y componentes |
-| Playwright | **Conservar y adaptar** | Único sitio donde se prueba el render real (canvas) y, después, Electron (`_electron`) |
+| Playwright | **Conservar y adaptar** | Único sitio donde se prueba el render real (canvas) |
 | `src/config/project.ts` | **Conservar y adaptar** | Identidad de BPDF; se retira `homePath` (no hay zona con sesión) |
 | `security.yml` + `scripts/verificar-overrides.mjs` | **Conservar** | Auditoría de dependencias semanal |
 | `ci.yml` / `e2e.yml` | **Adaptar** | Sin pasos de Supabase ni Prisma |
@@ -110,7 +112,8 @@ Server Actions, route handlers, `proxy.ts`, ISR, SEO por página). Las dos opcio
 
 **Recomendación: Vite + React.** El precio (salir del stack de la plantilla) ya se paga al
 retirar Supabase, auth y observabilidad; lo que queda de Next no aporta nada y complica
-la CSP y Electron. **Confirmada** el 2026-09-29 y **aplicada en la Fase 2**.
+la CSP y Electron. **Confirmada** el 2026-09-29 y **aplicada en la Fase 2**. *(Las menciones
+a Electron de esta sección son históricas: Electron se canceló el 2026-10-03, D19.)*
 
 ## 4. Arquitectura
 
@@ -125,17 +128,16 @@ la CSP y Electron. **Confirmada** el 2026-09-29 y **aplicada en la Fase 2**.
 │ pdf/ (pdf.js + modo oscuro)       markdown/ (pipeline unified)        │
 ├──────────────────── plataforma (única frontera) ─────────────────────┤
 │ web.ts: <input type=file> (F3) · descarga para guardar (F9)           │
-│ electron.ts: window.bpdf (preload) → IPC validado → proceso main      │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
 Reglas:
 
 1. **Solo `src/platform/` sabe en qué plataforma corre.** El resto del código recibe un
-   objeto `Platform` y nunca toca `window.bpdf`, rutas de disco ni APIs de Electron.
+   objeto `Platform` y nunca toca rutas de disco ni las APIs de ficheros del navegador.
 2. **Los motores no conocen React.** `pdf/engine.ts` y `markdown/pipeline.ts` son módulos
    puros o casi (entrada: bytes/texto; salida: objetos), probables sin montar nada.
-3. **El renderer nunca ve rutas de ficheros** ni en web ni en Electron: ve
+3. **La app nunca ve rutas de ficheros**: ve
    `OpenedDocument` (nombre visible + contenido + un identificador opaco).
 4. **Sin librería de estado ni router.** Estado con React (`useState`/`useReducer` +
    un contexto para el documento abierto y otro para preferencias). Una sola vista;
@@ -151,7 +153,7 @@ type DocumentKind = "pdf" | "markdown";
 type OpenedDocument =
   | { id: string; name: string; size: number; kind: "pdf"; blob: Blob }
   | { id: string; name: string; size: number; kind: "markdown"; text: string };
-// id: opaco, válido solo en esta sesión (contador en web; en Electron, el que asigne el main)
+// id: opaco, válido solo en esta sesión (un contador)
 // name: nombre visible ya saneado, nunca una ruta · size: bytes
 ```
 
@@ -221,7 +223,7 @@ src/
 ├── styles/                  ✅ globals.css (tokens + Tailwind) · visor-pdf.css · markdown.css
 ├── components/ui/           ✅ primitivos accesibles (Button, Field, Input)
 ├── documents/               ✅ F3, F7 bis: tipos, detección, límites, errores, lectura, recursos, estado
-├── platform/                ✅ F3: types.ts · web.ts · index.ts (electron.ts en F14)
+├── platform/                ✅ F3: types.ts · web.ts · guardar-web.ts (F9) · index.ts
 ├── pdf/                     ✅ F4–F5, sin React: engine.ts · render.ts · dark/ (modo oscuro) ·
 │                            visor/ (disposición, búsqueda, enlaces, controladores)
 ├── markdown/                ✅ F7–F8: pipeline.ts · MarkdownView.tsx · url-policy.ts · toc.ts ·
@@ -229,27 +231,25 @@ src/
 │                            components/ (BloqueCodigo, Enlace, Imagen, Formula, Diagrama, Indice…)
 ├── editor/                  ✅ F9: EditorMarkdown.tsx (CodeMirror 6, a demanda) · ModeSwitch.tsx ·
 │                            SplitView.tsx · sincronia.ts · tipos.ts
-└── preferences/             F10: esquema zod, almacén versionado, hook
-electron/                    F14: main.ts · preload.ts · protocol.ts · ipc.ts
+└── preferences/             ✅ F10: esquema zod, almacén versionado, hook, posiciones, diálogo
 ```
 
 ## 5. Apertura de documentos
 
-| Vía | Web | Electron |
-|---|---|---|
-| Selector | ✅ F3: `<input type="file">` creado al vuelo (fuera del DOM) por el botón «Abrir archivo»; `Ctrl/Cmd+O`. ✅ F7 bis: **selección múltiple** (un documento suelto, o un `.md` con sus imágenes; el filtro admite también PNG, JPEG, GIF, WebP y SVG) | Diálogo nativo en el proceso main (`dialog.showOpenDialog`) vía IPC |
-| Carpeta | ✅ F7 bis: botón «Abrir carpeta», `<input type="file" webkitdirectory>`; con varios `.md`, el usuario elige | Diálogo nativo de carpeta en el main; el main entrega rutas relativas |
-| Arrastrar y soltar | ✅ F3: zona a pantalla completa con manejadores de React sobre la raíz de la app (sin listeners en `window`). ✅ F7 bis: varios ficheros (un `.md` con sus imágenes) o una carpeta (`webkitGetAsEntry`, capturado dentro del evento) | Igual (DOM); `webUtils.getPathForFile` en el preload solo si hace falta guardar o resolver relativos |
-| Argumentos / «Abrir con…» | No aplica | `process.argv` (Windows/Linux), `open-file` (macOS), `second-instance` con bloqueo de instancia única; el main lee y valida, y envía el contenido |
-| Guardar (Markdown) | ✅ F9: `showSaveFilePicker` si existe (Chromium; el usuario elige destino la primera vez, el handle vive en memoria), si no descarga con `<a download>` y Blob. Nunca se sobrescribe en silencio el fichero abierto | IPC `saveDocument(id, texto)`: el main solo escribe en ficheros que el usuario abrió o eligió con «Guardar como» |
+| Vía | Web |
+|---|---|
+| Selector | ✅ F3: `<input type="file">` creado al vuelo (fuera del DOM) por el botón «Abrir archivo»; `Ctrl/Cmd+O`. ✅ F7 bis: **selección múltiple** (un documento suelto, o un `.md` con sus imágenes; el filtro admite también PNG, JPEG, GIF, WebP y SVG) |
+| Carpeta | ✅ F7 bis: botón «Abrir carpeta», `<input type="file" webkitdirectory>`; con varios `.md`, el usuario elige |
+| Arrastrar y soltar | ✅ F3: zona a pantalla completa con manejadores de React sobre la raíz de la app (sin listeners en `window`). ✅ F7 bis: varios ficheros (un `.md` con sus imágenes) o una carpeta (`webkitGetAsEntry`, capturado dentro del evento) |
+| Guardar (Markdown) | ✅ F9: `showSaveFilePicker` si existe (Chromium; el usuario elige destino la primera vez, el handle vive en memoria), si no descarga con `<a download>` y Blob. Nunca se sobrescribe en silencio el fichero abierto |
 
-La interfaz `Platform` ([ELECTRON.md](ELECTRON.md) §3) existe desde la Fase 3 con la
+La interfaz `Platform` existe desde la Fase 3 con la
 implementación web ([`src/platform/`](../src/platform/)). Hoy: `pickDocument()`,
-`pickFolder()`, `openDropped(soltado)` y `openExternal(url)`. Las implementaciones terminan
+`pickFolder()`, `openDropped(soltado)`, `openExternal(url)` y `saveText` (Fase 9). Todo termina
 en la misma validación (`abrirSeleccion` → `readDocument`, [ARCHITECTURE.md](ARCHITECTURE.md)
-§4 sexies); la de Electron llega en la Fase 14 sin tocar el
-resto de la app. Guardar, enlaces externos y «Abrir con…» se añaden en las fases que los
-usan. **Abrir desde una URL no se hará:** rompería el principio de privacidad.
+§4 sexies). La web es la única implementación (D19: sin escritorio); la frontera se
+conserva porque aísla las APIs de ficheros del navegador del resto de la app. **Abrir desde
+una URL no se hará:** rompería el principio de privacidad.
 
 ## 6. Visor PDF
 
@@ -360,14 +360,12 @@ Diseño implementado: [ARCHITECTURE.md](ARCHITECTURE.md) §4 quinquies.
 ### 7.2 Imágenes
 
 **Estado: implementado en la Fase 7 bis** para web ([ARCHITECTURE.md](ARCHITECTURE.md)
-§4 sexies), salvo lo de Electron. Resumen:
+§4 sexies). Resumen:
 
 - **Locales en web:** un fichero suelto no da acceso a sus hermanos. Se resuelven si el
   usuario **suelta o elige varios ficheros** (el `.md` y sus imágenes) o una carpeta
   (`webkitdirectory` / `webkitGetAsEntry`). Rutas relativas normalizadas; nunca salen
   del conjunto entregado. Si no está, un marcador «imagen no disponible».
-- **Locales en Electron:** protocolo propio de solo lectura limitado al directorio del
-  documento ([ELECTRON.md](ELECTRON.md) §5).
 - **SVG:** solo como `<img>` (nunca en línea): en `<img>` un SVG no ejecuta scripts ni
   carga recursos externos.
 - **Remotas (`https://…`): bloqueadas en v1** (D7). Cargar una imagen remota revela a un
@@ -390,12 +388,9 @@ latencia (cifras en [FASES.md](FASES.md), Fase 9).
 
 ## 8. Persistencia y privacidad
 
-Todo en `localStorage` del origen de la app (en Electron también: el protocolo propio es un
-origen estándar y seguro, así que **no hace falta IPC para preferencias**). Sin cookies: no
-hay servidor que las lea.
+Todo en `localStorage` del origen de la app. Sin cookies: no hay servidor que las lea.
 
-Implementación: **Fase 10** (*2026-10-03*; implementada y pendiente de la aprobación del
-usuario). Especificación y esquemas exactos en [FASES.md](FASES.md), Fase 10; diseño en
+Implementación: **Fase 10**, cerrada y aprobada el *2026-10-03*. Especificación y esquemas exactos en [FASES.md](FASES.md), Fase 10; diseño en
 [ARCHITECTURE.md](ARCHITECTURE.md) §4 nonies. Decisiones del *2026-10-03* reflejadas en la
 tabla.
 
@@ -506,14 +501,13 @@ los dos visores existían.
 | Ir a página | `Ctrl/Cmd+G` (enfoca el campo de página) | ✅ F6 |
 | Girar a la derecha / a la izquierda | `R` / `Shift+R` * | ✅ F6 |
 | Mostrar u ocultar miniaturas (PDF) | `T` * | ✅ F6 |
-| Pantalla completa (entrar o salir) | `F` * (salir también con `Esc`, del navegador) y `F11` (Electron) | ✅ F6 (`F11`: F14) |
+| Pantalla completa (entrar o salir) | `F` * (salir también con `Esc`, del navegador) | ✅ F6 |
 | Ayuda de atajos | `?` * | ✅ F6 |
 | Guardar (Markdown) | `Ctrl/Cmd+S` | ✅ F9 |
 
 \* Atajos de una tecla (WCAG 2.1.4): solo actúan con el foco fuera de campos de texto y
 elementos editables, y se pueden **desactivar** con un interruptor en la ayuda (`?`, que
-también se abre desde un botón de la barra); en memoria hasta la Fase 10, que los lleva a
-preferencias. En web, `Ctrl/Cmd +/−` sustituyen al zoom del navegador **solo dentro del
+también se abre desde un botón de la barra); guardado en las preferencias desde la Fase 10. En web, `Ctrl/Cmd +/−` sustituyen al zoom del navegador **solo dentro del
 visor**. Reglas completas y excepciones (`F3` en el campo de búsqueda, `Espacio` sobre un
 botón): [FASES.md](FASES.md), Fase 6.
 
@@ -522,8 +516,8 @@ incluye): `I` para página oscura/original, y `T` para el índice de un Markdown
 solo con una fase que los especifique.
 
 **Estado (*2026-10-03*).** Implementados los marcados ✅ (tabla y motivo en
-[ARCHITECTURE.md](ARCHITECTURE.md) §4 quater), los de las Fases 6 y 9 incluidos. Queda
-`F11` (Electron, Fase 14).
+[ARCHITECTURE.md](ARCHITECTURE.md) §4 quater), los de las Fases 6 y 9 incluidos. No queda ninguno (`F11` era de la versión de escritorio,
+cancelada: D19).
 
 ## 10. Accesibilidad
 
@@ -573,13 +567,12 @@ grandes):
 
 | Nivel | Herramienta | Qué se prueba |
 |---|---|---|
-| Unitario | Vitest (`node`) | Detección de tipo y límites; política de URLs; slugs y TOC; esquema y migración de preferencias; huellas; mapeo de color del modo oscuro (función pura); cálculo de regiones de imagen a partir de un operator list sintético; contraste de tokens; validadores IPC (Fase 14) |
+| Unitario | Vitest (`node`) | Detección de tipo y límites; política de URLs; slugs y TOC; esquema y migración de preferencias; huellas; mapeo de color del modo oscuro (función pura); cálculo de regiones de imagen a partir de un operator list sintético; contraste de tokens |
 | Componentes | Vitest + jsdom + Testing Library + jest-axe | Barra de herramientas, estado vacío, errores, `MarkdownView` con el corpus de XSS, `CodeBlock` (copiar), TOC, preferencias |
 | Seguridad | Vitest | **Corpus de XSS de Markdown** ([SEGURIDAD.md](SEGURIDAD.md) §3.3): el DOM resultante no contiene `<script>`, atributos `on*`, `href`/`src` con protocolos no permitidos, `<iframe>`, `<object>`, `<embed>`, `<svg>` en línea |
 | Render real | Playwright (Chromium) | PDF: páginas, navegación, zoom, búsqueda, selección y copia, enlaces, rotación; **muestreo de píxeles** del modo oscuro (fondo oscuro, texto claro, región de imagen con sus colores originales) sobre fixtures conocidos |
 | Casos límite | Vitest + Playwright | PDF vacío, truncado, no-PDF con extensión `.pdf`, cifrado, con JavaScript, con enlaces `javascript:`/`file:`/`launch`; Markdown no UTF-8, enorme, con anidamiento patológico |
 | E2E | Playwright | Recorridos: abrir por selector y por arrastre; PDF → buscar → ir a página; Markdown → editar → guardar (descarga); CSP sin violaciones (escucha de `securitypolicyviolation`) |
-| Electron | Playwright `_electron` + Vitest | `contextIsolation`, `sandbox`, sin `require` en el renderer, navegación bloqueada, `window.open` denegado, IPC rechaza argumentos inválidos, protocolo no sirve fuera de su raíz |
 
 **Fixtures** en `tests/fixtures/` (PDF y Markdown pequeños, generados o creados a mano,
 con su procedencia y licencia en un `README.md` del directorio). Nunca documentos de
@@ -590,8 +583,8 @@ terceros sin licencia clara.
 - **Build web:** `vite build` → `dist/` estático + recursos de pdf.js copiados. Hosting
   estático con cabeceras (D5): la CSP y demás cabeceras se definen en un único fichero
   fuente (`src/config/security-headers.ts`) y se generan para el hosting (`vercel.json`,
-  `npm run cabeceras:vercel`, desde la iteración 11) y, en la Fase 14, para Electron.
-- **Escritorio:** [ELECTRON.md](ELECTRON.md) §8.
+  `npm run cabeceras:vercel`, desde la iteración 11).
+- **Sin escritorio** (D19): ni empaquetado, ni instaladores, ni firma de binarios.
 - **Open source** (Fase 16): `LICENSE` (D3), `README.md` del producto, `CONTRIBUTING.md`,
   `SECURITY.md` (reporte privado por GitHub Security Advisories), `CODE_OF_CONDUCT.md`
   (Contributor Covenant), plantillas de issue/PR, `docs/` como documentación de
@@ -600,15 +593,14 @@ terceros sin licencia clara.
 - **Política de dependencias:** cada dependencia de runtime justificada en `STACK.md` (el
   test `tests/unit/docs.test.ts` ya lo exige); versiones **exactas** para los motores que
   procesan contenido no confiable (`pdfjs-dist`, `katex`, `mermaid`, `highlight.js`);
-  `npm ci` siempre; `allowScripts` de npm 11 (Electron descarga su binario en
-  `postinstall`); `npm audit` semanal; actualizar pdf.js en cuanto publique una
+  `npm ci` siempre; `allowScripts` de npm 11 (cada script de instalación se aprueba o se
+  deniega a mano); `npm audit` semanal; actualizar pdf.js en cuanto publique una
   corrección de seguridad.
-- **Mantenimiento:** revisar avisos de seguridad de pdf.js, KaTeX, Mermaid y Electron;
-  Electron tiene soporte de ~8 semanas por versión mayor: hay que seguir las mayores.
+- **Mantenimiento:** revisar avisos de seguridad de pdf.js, KaTeX y Mermaid.
 
 ## 14. Decisiones
 
-### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3; D17 y D18 al empezar la Fase 5; D6 y D7 con la Fase 7; D13 al especificar la Fase 6; D9 al empezar la Fase 9; D8 al especificar de nuevo la Fase 10)
+### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3; D17 y D18 al empezar la Fase 5; D6 y D7 con la Fase 7; D13 al especificar la Fase 6; D9 al empezar la Fase 9; D8 al especificar de nuevo la Fase 10; D19 el *2026-10-03*)
 
 | ID | Decisión | Dónde se aplica |
 |---|---|---|
@@ -619,12 +611,13 @@ terceros sin licencia clara.
 | **D15** | BPDF **se separa del core SaaS** de la plantilla; conserva solo infraestructura, tooling y componentes útiles | Fase 1: registro de origen en `docs/TEMPLATE.md` (el manifiesto `r3zon-template.json` se retiró antes de publicar) |
 | **D16** | **Un documento abierto a la vez**: sin pestañas, varios documentos, historial, recientes ni gestor de documentos. La arquitectura no lo impide más adelante | Fase 3: `DocumentProvider` guarda uno; abrir otro lo sustituye ([§4.2](#42-modelo-de-documento)) |
 | **D17** | **Visor PDF propio** sobre la API núcleo de pdf.js, sin `PDFViewer` ni `pdfjs-dist/web/pdf_viewer` (confirmada al empezar la Fase 5) | Fase 5: `src/pdf/visor/`, `src/app/pdf/` ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quater) |
-| **D18** | Build **`legacy`** de pdf.js en web (confirmada al empezar la Fase 5) | Fase 5: `engine.ts` y el worker copiado; revisable si solo se publica Electron ([STACK.md](STACK.md)) |
+| **D18** | Build **`legacy`** de pdf.js en web (confirmada al empezar la Fase 5) | Fase 5: `engine.ts` y el worker copiado ([STACK.md](STACK.md)) |
 | **D6** | HTML embebido en Markdown **no se interpreta** en v1: se **muestra como texto** (los comentarios `<!-- -->` se quitan). Confirmada con el encargo de la Fase 7, y la forma («mostrarlo como texto», no «ignorarlo») con el de la Fase 7 bis | Fase 7: `src/markdown/pipeline.ts` |
 | **D7** | Imágenes remotas en Markdown **bloqueadas** en v1: marcador y enlace para abrirla fuera (confirmada con el encargo de la Fase 7) | Fase 7: `components/Imagen.tsx`; CSP `img-src 'self'` |
 | **D13** | PDFs con contraseña **soportados** con un diálogo accesible: reintento, cancelar cierra el documento, la contraseña no se guarda (confirmada al especificar la Fase 6, *2026-09-30*) | Fase 6: `engine.ts`, `VisorPdf.tsx` ([FASES.md](FASES.md)) |
 | **D9** | Editor de Markdown: **CodeMirror 6** (frente a `<textarea>`; confirmada al empezar la Fase 9, *2026-10-01*) | Fase 9: `src/editor/` ([ARCHITECTURE.md](ARCHITECTURE.md) §4 octies) |
 | **D8** | Recordar página y zoom **por PDF**: **activado por defecto**, con la huella de pdf.js (no el nombre), máx. 50 entradas (LRU), botón «Olvidar posiciones guardadas»; sin nombres ni contenido. Solo PDF: los Markdown no guardan posición (confirmada el *2026-10-03*) | Fase 10: `src/preferences/positions.ts` ([§8](#8-persistencia-y-privacidad), [FASES.md](FASES.md)) |
+| **D19** | **BPDF es solo una aplicación web: sin versión de escritorio (Electron) ni sustituto.** Decisión de producto del usuario (*2026-10-03*). Sustituye toda la planificación anterior de Electron | La Fase 14 se cancela; la 15 se reescribe solo para la web; D11 y T-5 dejan de aplicar; [ELECTRON.md](ELECTRON.md) queda como histórico |
 
 ### 14.1 Pendientes de confirmación (usuario)
 
@@ -632,8 +625,8 @@ terceros sin licencia clara.
 |---|---|---|---|
 | **D5** | Hosting web y dominio | Hosting estático que permita cabeceras (Vercel o Cloudflare Pages). GitHub Pages **no** permite cabeceras (CSP solo por `<meta>`, sin `frame-ancestors`). *De hecho, la web ya está publicada en Vercel (`bpdf.r3zon.com`) con `vercel.json` generado ([DEPLOYMENT.md](DEPLOYMENT.md)); falta formalizarla y cambiar el dominio de `project.ts`* | Fases 12 y 15 |
 | **D10** | Tema claro de interfaz | **No en v1** (solo «página original» en PDF) | Fase 11 |
-| **D11** | Escritorio: plataformas, firma de código, auto-actualización | Windows, macOS y Linux; **sin auto-actualización en v1**; firma según presupuesto (sin firma, SmartScreen y Gatekeeper avisan) | Fase 15 |
 | **D12** | Móvil / tablet en web | Escritorio como objetivo; diseño adaptable básico sin optimizar gestos | Fase 11 |
+| ~~**D11**~~ | ~~Escritorio: plataformas, firma de código, auto-actualización~~ | **Ya no aplica** (D19: sin escritorio) | — |
 | **D14** | Formularios y anotaciones de PDF | Solo se muestran; no se rellenan ni se editan. *Aplicado así en la Fase 5 (apariencias pintadas en el lienzo, sin interacción), que excluía formularios: falta confirmarlo* | Fase 5 |
 
 ### 14.2 Técnicas, resueltas por una fase
@@ -644,7 +637,7 @@ terceros sin licencia clara.
 | **T-2** | `@vitejs/plugin-react` sí o no. **Resuelta en la Fase 2: no** (Vite transforma el JSX solo; se renuncia a Fast Refresh; [STACK.md](STACK.md)) | Fase 2 ✅ |
 | **T-3** | `style-src` sin `'unsafe-inline'`. **Desde la Fase 2 la CSP ya no lo lleva.** pdf.js y KaTeX no lo necesitan (KaTeX, quitando el `style` que pone por atributo). **Mermaid sí**: resuelto en la Fase 8 sin tocar la CSP de la app, con un marco aislado que tiene su propia política (confirmado al empezar la fase; [SEGURIDAD.md](SEGURIDAD.md) §2.1) | Fases 4–8 ✅; cierre en la 12 |
 | **T-4** | Trusted Types (`require-trusted-types-for 'script'`) viable con pdf.js y Mermaid | Fase 12 |
-| **T-5** | Electron Forge frente a electron-builder | Fase 15 |
+| ~~**T-5**~~ | ~~Electron Forge frente a electron-builder~~. **Ya no aplica** (D19: sin escritorio) | — |
 
 ## 15. Riesgos
 
@@ -656,13 +649,12 @@ terceros sin licencia clara.
 | Coste del post-proceso por píxel en páginas grandes o zoom alto | Media | Medio | Medido (F4 y F5): recoloreado en un Web Worker con franjas transferidas; tope de 16,7 Mpx por lienzo y DPR ≤ 2 |
 | Cambios de API de pdf.js entre mayores (6.x → 7.x) | Alta a medio plazo | Medio | Versión exacta; todo el acoplamiento en `src/pdf/`; tests de render en Playwright |
 | Peso de Mermaid (varios MB) y KaTeX | Alta | Medio | Carga diferida; fase aparte; medir |
-| TypeScript 7 con alguna herramienta nueva (Vite, Electron) | Baja | Bajo | Salida documentada en la plantilla: fijar TS 6 |
-| Imágenes locales de Markdown en web (sin acceso a hermanos) | Cierta | Bajo | Soltar varios ficheros o carpeta; Electron lo resuelve |
+| TypeScript 7 con alguna herramienta nueva (Vite) | Baja | Bajo | Salida documentada en la plantilla: fijar TS 6 |
+| Imágenes locales de Markdown en web (sin acceso a hermanos) | Cierta | Bajo | Soltar varios ficheros o carpeta (✅ Fase 7 bis) |
 
 ### De seguridad
 
 Detalle en [SEGURIDAD.md](SEGURIDAD.md). Los principales: XSS vía Markdown (Mermaid y
 KaTeX son los puntos débiles históricos), vulnerabilidades del parser de pdf.js
-(precedente: CVE-2024-4367, ejecución de JS por fuentes, corregida en 4.2.67), fuga de
-privacidad por recursos remotos, y en Electron un renderer comprometido que intente leer o
-escribir ficheros arbitrarios mediante IPC.
+(precedente: CVE-2024-4367, ejecución de JS por fuentes, corregida en 4.2.67) y fuga de
+privacidad por recursos remotos.

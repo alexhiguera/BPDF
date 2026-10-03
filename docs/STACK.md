@@ -2,14 +2,15 @@
 
 Estado tras la Fase 10 (*2026-10-03*; la Fase 10 reinstaló `zod` para las preferencias guardadas; la Fase 9 añadió el editor, CodeMirror 6: `@codemirror/*` y `@lezer/highlight`; la Fase 8, `remark-math`, `katex` y `mermaid`): la Fase 4 añadió `pdfjs-dist` (el motor de PDF) y la
 Fase 7 el pipeline de Markdown (`react-markdown`, `remark-gfm`) y el resaltado de código
-(`lowlight`, `highlight.js`). El stack **objetivo** (pipeline de Markdown, Electron) y el motivo
-de cada pieza están en [PLAN.md](PLAN.md); cada fase añade aquí lo que instala.
+(`lowlight`, `highlight.js`). El stack **objetivo** y el motivo de cada pieza están en
+[PLAN.md](PLAN.md); cada fase añade aquí lo que instala. BPDF es solo web (D19,
+*2026-10-03*): no hay ni habrá Electron.
 
 ## Capas
 
 | Capa | Tecnología | Por qué |
 |---|---|---|
-| Build | **Vite 8** (Rolldown), SPA **estática** en `dist/` | D1 ([PLAN.md](PLAN.md) §3): sin servidor, `index.html` sin scripts en línea (CSP estricta) y encaje directo con Electron. Sustituyó a Next.js 16 en la Fase 2 |
+| Build | **Vite 8** (Rolldown), SPA **estática** en `dist/` | D1 ([PLAN.md](PLAN.md) §3): sin servidor e `index.html` sin scripts en línea (CSP estricta). Sustituyó a Next.js 16 en la Fase 2 |
 | UI | **React 19** + **Tailwind CSS 4** «CSS-first» (`@tailwindcss/vite`) + **lucide-react** | Tokens en `:root` como tripletes RGB: tema cambiable en runtime y modificadores de opacidad que siguen funcionando |
 | Lenguaje | **TypeScript 7** estricto, con `noUncheckedIndexedAccess` | |
 | Lint y formato | **Biome 2** | Un binario, sin ESLint ni Prettier |
@@ -26,8 +27,8 @@ Tailwind 4 usan sus propios objetivos); una configuración que nadie lee acaba m
 ### Decisiones de versión y de configuración
 
 - **TypeScript 7** (el compilador nativo): Vite no lo usa para compilar (transforma con
-  Oxc), solo `npm run typecheck`. Si una herramienta futura (Electron) necesita la API
-  JavaScript clásica del compilador y falla, la salida es fijar TypeScript 6.
+  Oxc), solo `npm run typecheck`. Si una herramienta futura necesita la API JavaScript
+  clásica del compilador y falla, la salida es fijar TypeScript 6.
 - **Sin `@vitejs/plugin-react` (T-2, resuelta en la Fase 2).** Vite transforma el JSX por
   su cuenta con el runtime automático (`"jsx": "react-jsx"`). El plugin solo aportaría
   Fast Refresh (conservar el estado al editar), a cambio de una dependencia y de un
@@ -63,7 +64,7 @@ explica, para que el documento no se quede atrás.
 | `@codemirror/state`, `@codemirror/view`, `@codemirror/commands`, `@codemirror/language` | Fase 9 (D9): el editor de Markdown, CodeMirror 6. **Versiones exactas** (6.7.6, 6.43.13, 6.11.1, 6.12.4): trabaja con texto no confiable. Lo mínimo: estado y vista, historial y teclado (`commands`) y resaltado (`language`). **Sin** el paquete `codemirror` (su `basicSetup` trae autocompletado, lint y búsqueda). Se carga a demanda al entrar en «Edición» o «Dividido»; montado en un Shadow DOM por la CSP (abajo) |
 | `@codemirror/lang-markdown` | Fase 9: la gramática de Markdown del editor (con GFM). **Versión exacta** (6.5.2). Se importan solo `markdownLanguage` y `markdownKeymap` (continuar listas y citas con Intro): así no entra en el trozo `lang-html` con CSS y JavaScript, que arrastra como dependencia para el HTML incrustado (comprobado en la build) |
 | `@lezer/highlight` | Fase 9: las etiquetas de sintaxis (`tags`) del tema del editor. **Versión exacta** (1.2.5). Ya llegaba de rebote; es directa porque se importa |
-| `zod` | Fase 10: valida lo que BPDF lee de `localStorage` (`bpdf:prefs`, `bpdf:positions`), que se trata como dato hostil: campo a campo, con su valor por defecto si no vale (`src/preferences/schema.ts`). **Versión exacta** (4.6.5; sin dependencias ni scripts de instalación). Con **`z.config({ jitless: true })`**: sin eso, zod prueba `new Function("")` y la CSP (sin `eval`) informa una violación aunque zod capture el error (medido en los E2E). Fuera del arranque: llega con el visor, el lector o el diálogo de preferencias (trozo a demanda, ~23 KB gzip). Volverá a usarse en los argumentos IPC de Electron (Fase 14) |
+| `zod` | Fase 10: valida lo que BPDF lee de `localStorage` (`bpdf:prefs`, `bpdf:positions`), que se trata como dato hostil: campo a campo, con su valor por defecto si no vale (`src/preferences/schema.ts`). **Versión exacta** (4.6.5; sin dependencias ni scripts de instalación). Con **`z.config({ jitless: true })`**: sin eso, zod prueba `new Function("")` y la CSP (sin `eval`) informa una violación aunque zod capture el error (medido en los E2E). Fuera del arranque: llega con el visor, el lector o el diálogo de preferencias (trozo a demanda, ~23 KB gzip). Su único consumidor es `src/preferences/schema.ts`, que fija `jitless` |
 | `pdfjs-dist` | El motor de PDF (pdf.js de Mozilla). **Versión exacta** (6.3.289): procesa contenido no confiable. Build **`legacy`** (D18). Se carga a demanda, con `useWasm: false` y sus recursos servidos desde el propio origen ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §3). El visor usa solo sus APIs núcleo y `TextLayer` (D17, [ARCHITECTURE.md](ARCHITECTURE.md) §4 quater) |
 
 ### `pdfjs-dist`: qué trae y qué implica
@@ -78,7 +79,7 @@ explica, para que el documento no se quede atrás.
   `Uint8Array.prototype.toHex`…) que **no están en los navegadores mínimos de
   `build.target`**. La `legacy` (`pdfjs-dist/legacy/build/pdf.mjs` y su worker
   `legacy/build/pdf.worker.min.mjs`) las trae con polyfills. Una sola build para todo:
-  navegador, tests de Node (Node 24 tampoco tiene esas APIs) y Electron; el worker que
+  navegador y tests de Node (Node 24 tampoco tiene esas APIs); el worker que
   copia `copiar-pdfjs.mjs` y el módulo que importa `engine.ts` son de la misma build.
   - **Compatibilidad real.** La `legacy` transpila el JavaScript, pero pdf.js 6 crea su
     worker como **módulo ES** (`type: "module"`): el visor necesita Chrome/Edge 80,
@@ -90,8 +91,6 @@ explica, para que el documento no se quede atrás.
     `'unsafe-eval'`).
   - **Peso.** `pdf-*.js` 488 KB (148 KB gzip) y el worker 1,3 MB, los dos cargados a
     demanda al abrir el primer PDF; no cuentan para `build:tamano`.
-  - **Electron.** Su Chromium podría usar la moderna, pero se usa la misma build: sin
-    bifurcación ([ELECTRON.md](ELECTRON.md) §3.1).
 - **Recursos en tiempo de ejecución** (worker, fuentes estándar, cmaps y decodificadores
   en JavaScript): los copia `scripts/copiar-pdfjs.mjs` a `public/pdfjs/` en `predev` y
   `prebuild`, sin los `.wasm`, el motor de JavaScript de PDF (`quickjs-eval`) ni el sandbox.
@@ -150,9 +149,8 @@ el validador de `public_docs/`).
 
 **Retiradas en la Fase 1:** `@supabase/ssr`, `@supabase/supabase-js`, `@sentry/nextjs`,
 `@vercel/speed-insights` y `zod` (runtime); `prisma`, `supabase`, `pg`, `@types/pg`
-(desarrollo). `zod` se quedó sin uso al borrar la auth y las variables de entorno; vuelve
-cuando haya algo que validar: las preferencias guardadas (Fase 10) y los argumentos IPC
-de Electron (Fase 14).
+(desarrollo). `zod` se quedó sin uso al borrar la auth y las variables de entorno; volvió
+en la Fase 10, con lo primero que valida: las preferencias guardadas.
 
 **Reinstalada en la Fase 10:** `zod` 4.6.5 (runtime, versión exacta; `npm audit` limpio, sin scripts de instalación que aprobar). La 4.6.5 llevaba tres semanas publicada.
 
@@ -240,7 +238,7 @@ paquetes.
 
 npm 11 **omite en silencio** los scripts de instalación de paquetes no aprobados en el
 campo `allowScripts` de `package.json`, y cada aprobación va ligada a una **versión
-exacta**. Electron (Fase 14) descarga su binario en `postinstall` y lo necesitará.
+exacta**.
 
 **Procedimiento al añadir o actualizar un paquete con scripts de instalación:**
 

@@ -159,7 +159,7 @@ describe("readDocument: errores comunes", () => {
     expect(a.id).not.toContain("mismo");
   });
 
-  it("usa el id que le dé la plataforma (Electron lo asigna el proceso main)", async () => {
+  it("usa el id que se le dé, en vez del suyo", async () => {
     const doc = await readDocument(fichero("a.md", "a"), "id-del-main");
     expect(doc.id).toBe("id-del-main");
   });

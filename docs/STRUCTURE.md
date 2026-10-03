@@ -51,11 +51,11 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   ├── seleccion.ts      abrirSeleccion(): varios ficheros o carpeta → documento o elección (F7 bis)
 │   │   ├── recursos.ts       recursos de un Markdown: construcción y resolverRecurso() (F7 bis)
 │   │   └── DocumentProvider.tsx  estado (un documento, D16), cambios sin guardar y su confirmación (F9)
-│   ├── platform/             ÚNICA frontera web/Electron
+│   ├── platform/             ÚNICA frontera con las APIs de ficheros del navegador
 │   │   ├── types.ts          interfaz Platform (pickDocument, pickFolder, openDropped, openExternal, saveText)
 │   │   ├── web.ts            implementación con APIs estándar (selector múltiple, carpetas, entradas)
 │   │   ├── guardar-web.ts    saveText en web: showSaveFilePicker (destino en memoria) o descarga (F9)
-│   │   └── index.ts          createPlatform() (la rama de Electron llega en F14)
+│   │   └── index.ts          createPlatform(): la web (única plataforma: D19)
 │   ├── lib/                  utils.ts (cn()) · format.ts (tamaños legibles) · url-externa.ts (política de URLs)
 │   ├── vite-env.d.ts         tipos de Vite (imports de CSS)
 │   │
@@ -93,7 +93,6 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │       ├── usePreferences.ts el gancho (useSyncExternalStore)
 │       ├── positions.ts      página y zoom por huella de PDF, LRU de 50
 │       └── PreferencesDialog.tsx  el diálogo, a demanda desde la cabecera
-├── electron/                 llega en F14 (proceso main y preload; fuera de src/)
 ├── tests/
 │   ├── unit/                 lógica pura y guardarraíles (tokens, CSP, textos, identidad)
 │   ├── components/           Testing Library + jest-axe
@@ -132,11 +131,11 @@ versionan.
 | Primitivo de UI reutilizable | `src/components/ui/` | Con su test de jest-axe |
 | Texto visible | `src/i18n/messages.ts` | D2; un test lo vigila |
 | Color | un token en `src/styles/globals.css` | Nunca un color en un componente; el contraste lo vigila un test |
-| Directiva de CSP o cabecera | `src/config/security-headers.ts` | Fuente única para `preview`, build, hosting y Electron |
+| Directiva de CSP o cabecera | `src/config/security-headers.ts` | Fuente única para `preview`, build y hosting |
 | Identidad (nombre, dominio, idioma) | `src/config/project.ts` | Los JSON que la repiten los valida `docs:validar` |
 | Motor de un tipo de documento | `src/<motor>/` (`pdf/`, `markdown/`), sin React en su núcleo | [PLAN.md](PLAN.md) §4.1: se prueba sin montar nada |
-| Modelo, validación y estado del documento abierto | `src/documents/` | Sin UI ni plataforma: lo usan las dos plataformas y los visores |
-| Acceso a ficheros, diálogos, enlaces externos | `src/platform/` | Única frontera con la plataforma: el resto del código nunca ve rutas ni `window.bpdf` ([ELECTRON.md](ELECTRON.md) §3) |
+| Modelo, validación y estado del documento abierto | `src/documents/` | Sin UI ni plataforma: lo usan la plataforma y los visores |
+| Acceso a ficheros, diálogos, enlaces externos | `src/platform/` | Única frontera con la plataforma: el resto del código nunca ve rutas ni APIs de ficheros |
 | Documento de prueba | `tests/fixtures/<tipo>/`, con su fila en `tests/fixtures/README.md` | Procedencia y licencia conocidas (CLAUDE.md §6). Mejor generado por script (`tests/fixtures/pdf/modo-oscuro/generar.mjs`) |
 | Recurso de un motor que se pide en tiempo de ejecución (worker, fuentes) | copiado por un script a `public/<motor>/`, sin versionar | Se sirve desde el propio origen (CSP) y sale de la versión exacta instalada |
 | Lógica pura genérica | `src/lib/` | |

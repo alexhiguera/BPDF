@@ -26,8 +26,9 @@ export type LocalFile = Pick<File, "name" | "size" | "slice" | "arrayBuffer">;
  * - Markdown: se lee entero, se decodifica y solo se conserva el texto.
  *
  * Nada del contenido se interpreta ni se ejecuta aquí, y nada sale del
- * dispositivo. La plataforma (web o Electron) solo aporta el fichero y, si
- * quiere, su propio id.
+ * dispositivo. La plataforma solo aporta el fichero. (`id` admite uno dado: se
+ * pensó para que una versión Electron, cancelada (D19), asignara el suyo; hoy solo
+ * lo usan los tests.)
  */
 export async function readDocument(
   file: LocalFile,

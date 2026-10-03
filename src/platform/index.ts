@@ -4,9 +4,9 @@ import { createWebPlatform } from "./web";
 export type { DocumentoAGuardar, Platform, ResultadoGuardado, Soltado } from "./types";
 
 /**
- * La plataforma en la que corre la app. Hoy solo existe la web; la Fase 14
- * añadirá aquí la rama de Electron (según exista `window.bpdf`, que expone su
- * preload). No se simula antes: no hay IPC ni preload que detectar.
+ * La plataforma en la que corre la app: la web, la única (D19: BPDF no tiene
+ * versión de escritorio). La frontera se mantiene porque aísla las APIs de
+ * ficheros del navegador del resto de la app y deja usar una falsa en los tests.
  */
 export function createPlatform(): Platform {
   return createWebPlatform();

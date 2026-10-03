@@ -11,7 +11,7 @@ cuentas, sin sincronización, sin telemetría.
 > El plan completo está en [`docs/FASES.md`](docs/FASES.md) y el estado en
 > [`docs/TAREAS_PENDIENTES.md`](docs/TAREAS_PENDIENTES.md).
 
-Primero será una aplicación web; después, una app de escritorio con Electron.
+BPDF es una aplicación web: no tendrá versión de escritorio.
 
 ## Desarrollo
 

@@ -1,7 +1,7 @@
 /**
  * Modelo del documento abierto (docs/PLAN.md §4.2). Es lo único que el resto de
  * la app sabe de un fichero: nunca una ruta de disco, un `FileSystemHandle` ni
- * nada de la plataforma (docs/ELECTRON.md: el renderer no ve rutas).
+ * nada de la plataforma (docs/PLAN.md §4.1: la app no ve rutas).
  *
  * BPDF abre un documento a la vez (D16). El modelo no lo impone: la regla vive
  * en `DocumentProvider`, que guarda uno solo. Así, unas pestañas futuras
@@ -56,8 +56,7 @@ export type TipoImagen = "png" | "jpeg" | "gif" | "webp" | "svg";
  *
  * `blob`: el fichero como `Blob` con el tipo MIME que corresponde a su
  * extensión, sin leerlo (en web, un trozo del propio `File`: no ocupa memoria
- * hasta que el navegador pinta la imagen). En Electron (Fase 14) el main
- * entregará lo mismo, o una URL de su protocolo `bpdf-res://` (ELECTRON.md §5).
+ * hasta que el navegador pinta la imagen).
  */
 export type RecursoLocal = {
   readonly ruta: string;

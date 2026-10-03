@@ -2,8 +2,8 @@
  * CSP y cabeceras de seguridad: la ÚNICA fuente (docs/SEGURIDAD.md §2).
  *
  * La consumen `vite.config.ts` (cabeceras de `vite preview` y `<meta>` de la
- * build) y los tests; la configuración del hosting (D5) y el protocolo de
- * Electron (Fase 14) las generarán desde aquí. No se copian a mano a ningún
+ * build) y los tests, y de aquí se genera la configuración del hosting
+ * (`vercel.json`, `npm run cabeceras:vercel`). No se copian a mano a ningún
  * otro sitio: dos copias de una CSP divergen, y la que se relaja es la que
  * nadie mira.
  *

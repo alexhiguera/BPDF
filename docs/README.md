@@ -10,9 +10,10 @@ está en [`public_docs/`](../public_docs/README.md).
   accesibilidad, rendimiento, testing, distribución y decisiones (D-n, T-n).
 - [FASES.md](FASES.md) — plan de implementación: cada fase con alcance, archivos, tests y
   criterios de aceptación.
-- [SEGURIDAD.md](SEGURIDAD.md) — modelo de amenazas y controles de web, Markdown, PDF y
-  Electron, con la fase que implementa cada uno.
-- [ELECTRON.md](ELECTRON.md) — versión de escritorio: procesos, preload, IPC, protocolos.
+- [SEGURIDAD.md](SEGURIDAD.md) — modelo de amenazas y controles de web, Markdown y PDF,
+  con la fase que implementa cada uno.
+- [ELECTRON.md](ELECTRON.md) — **histórico**: el diseño de una versión de escritorio que
+  se canceló (D19: BPDF es solo web).
 - [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) — resultado del spike de la Fase 4: cómo
   se consigue el PDF en modo oscuro, con qué evidencia, qué cuesta y qué limitaciones tiene.
 
@@ -50,5 +51,5 @@ está en [`public_docs/`](../public_docs/README.md).
 2. El estado real está en [TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md) («Estado hoy») y en
    las últimas entradas de [CHANGELOG.md](CHANGELOG.md).
 3. Si vas a ejecutar una fase: [FASES.md](FASES.md) → «Cómo usar este documento», y las
-   secciones de PLAN, SEGURIDAD y ELECTRON que cite.
+   secciones de PLAN y SEGURIDAD que cite.
 4. Antes de tocar `public_docs/`: su [README](../public_docs/README.md).

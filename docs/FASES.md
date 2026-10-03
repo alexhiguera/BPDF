@@ -2,13 +2,13 @@
 
 > **Fuente de verdad del desarrollo** junto con [TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md)
 > (qué fase está abierta, en curso o cerrada). Escrito en la Fase 0 (*2026-09-29*). El
-> diseño que estas fases construyen está en [PLAN.md](PLAN.md), [SEGURIDAD.md](SEGURIDAD.md)
-> y [ELECTRON.md](ELECTRON.md).
+> diseño que estas fases construyen está en [PLAN.md](PLAN.md) y [SEGURIDAD.md](SEGURIDAD.md).
+> [ELECTRON.md](ELECTRON.md) es histórico: BPDF es solo web (D19, *2026-10-03*).
 
 ## Cómo usar este documento (para cada sesión)
 
 1. Lee [`CLAUDE.md`](../CLAUDE.md), después la fase que vas a ejecutar **entera** y las
-   secciones de PLAN/SEGURIDAD/ELECTRON que cita.
+   secciones de PLAN/SEGURIDAD que cita.
 2. Comprueba en [TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md) que sus dependencias están
    cerradas y que las decisiones **D-n** que necesita están confirmadas. Si una no lo
    está, **pregunta antes de empezar** (CLAUDE.md §1).
@@ -30,15 +30,18 @@ visibles para el usuario anunciados al entregar (CLAUDE.md §8).
 ```text
 F0 ─► F1 ─► F2 ─┬─► F3 ─┬─► F5 ─► F6 ──────────────┐
                 │       │    ▲                     │
-                └─► F4 ─┼────┘                     ├─► F10 ─► F11 ─► F12 ─► F13 ─► F14 ─► F15 ─► F16
+                └─► F4 ─┼────┘                     ├─► F10 ─► F11 ─► F12 ─► F13 ─► F15 ─► F16
                         └─► F7 ─► F8 ─► F9 ────────┘
 ```
+
+La Fase 14 (Electron) se **canceló** el *2026-10-03* (D19: BPDF es solo una aplicación
+web); conserva su número, sin trabajo pendiente.
 
 | # | Fase | Cambio respecto al orden propuesto y motivo |
 |---|---|---|
 | 0 | Auditoría y planificación | — |
 | 1 | Limpieza de la plantilla | Igual. Incluye el fichero `LICENSE` (D3): el repo no debe crecer sin licencia |
-| 2 | Base de la app | Absorbe la **CSP base** y la estructura preparada para Electron. La capa `platform/` y la infraestructura de preferencias, previstas aquí, se aplazaron a su primer uso (F3 y F10) |
+| 2 | Base de la app | Absorbe la **CSP base** y la estructura preparada para Electron (cancelado después: D19). La capa `platform/` y la infraestructura de preferencias, previstas aquí, se aplazaron a su primer uso (F3 y F10) |
 | 3 | Apertura local de archivos | Igual |
 | 4 | **Spike: modo oscuro de PDF** | **Nueva.** Es el mayor riesgo técnico y decide la arquitectura del visor (T-1). Se hace antes de construir el visor, no después |
 | 5 | Visor PDF funcional | El visor propuesto se divide en dos sesiones (5 y 6) por tamaño. Al ejecutarla, la F5 absorbió miniaturas, búsqueda y atajos con modificador |
@@ -50,8 +53,8 @@ F0 ─► F1 ─► F2 ─┬─► F3 ─┬─► F5 ─► F6 ─────
 | 11 | UI/UX final | Igual |
 | 12 | Seguridad: endurecimiento y auditoría | Ya no «añade» seguridad: cada fase implementa la suya. Aquí se verifica, se endurece (CSP final, Trusted Types) y se audita |
 | 13 | Accesibilidad y rendimiento | Los tests viven en cada fase; esta fase **mide** con el corpus grande y corrige |
-| 14 | Electron: aplicación | «Preparación» + «implementación» se funden: la preparación ya se hizo en F2 |
-| 15 | Distribución: web y escritorio | Incluye la publicación web (antes no tenía fase) |
+| 14 | ~~Electron: aplicación~~ | **Cancelada** el *2026-10-03*: BPDF es solo una aplicación web (D19) |
+| 15 | Distribución web | Incluye la publicación web (antes no tenía fase). **Reescrita** el *2026-10-03* sin la parte de escritorio (D19) |
 | 16 | Open source y documentación final | Igual; la licencia ya existe desde F1 |
 
 Paralelizables (si hay dos sesiones a la vez): **F7–F9** con **F5–F6**. Todas tocan
@@ -872,9 +875,15 @@ retraso perceptible al teclear (medir en F13 si hay duda). *Al cerrar: se cumple
 
 ---
 
-## Fase 10 — Preferencias 🚧
+## Fase 10 — Preferencias ✅
 
-**IMPLEMENTADA, PENDIENTE DE APROBACIÓN** (*2026-10-03*, iteración 21). Diseño:
+**CERRADA / APROBADA** el *2026-10-03* (implementada en la iteración 21; cerrada en la
+22). Al cerrar: 973/973 tests unitarios y 108/108 E2E en verde; el usuario hizo las pruebas
+manuales 1–10 en la build de producción (posición real de PDF, «recordar» desactivado, sin
+documento, diálogo con teclado, cabecera de 375 px, tipografía, miniaturas y atajos,
+olvidar, restablecer) y todas salieron bien; el botón solo con icono en pantalla estrecha
+quedó aceptado; y una comparación A/B alternada con la Fase 9 no muestra regresión de
+rendimiento atribuible (bitácora, iteración 21). Diseño:
 [ARCHITECTURE.md](ARCHITECTURE.md) §4 nonies. Tipografía confirmada por el usuario al
 empezar: 15, 16, 17, 18, 20 y 22 px; 60, 72 y 90 ch; por defecto 17 px y 72 ch.
 
@@ -889,6 +898,10 @@ empezar: 15, 16, 17, 18, 20 y 22 px; 60, 72 y 90 ch; por defecto 17 px y 72 ch.
   exactamente ese y su retirada.
 - **En pantalla estrecha, el botón «Preferencias» es solo un icono** (con nombre accesible y
   `title`): con el texto, la cabecera desbordaba en 375 px (E2E de ventana estrecha).
+  **Aceptado por el usuario** al cerrar la fase.
+- **El render solo lee la posición** (iteración 22): `recuperarPosicion` no escribe, y que
+  abrir un PDF cuente como uso (`t`, para el LRU) lo hace `marcarUso` desde un efecto del
+  visor. Mismo comportamiento observable.
 - La posición solo se guarda si cambia: abrir un PDF y no moverse no escribe nada.
 - **Hallazgo fuera de alcance:** cerrar un PDF mientras se pintan páginas deja a veces un
   rechazo `worker-destruido` en consola. Es **anterior** a la Fase 10 (6 de 24 ejecuciones
@@ -1127,14 +1140,16 @@ quede y registrar una auditoría.
 - Cabeceras servidas frente a la fuente única: ya existen `tests/unit/vercel.test.ts` (el
   fichero generado) y `npm run cabeceras:verificar` (un despliegue real); la fase los
   revisa y los completa si falta algo.
-- Recorrer SEGURIDAD §2–§6 control a control: cada uno tiene test o queda como hallazgo.
+- Recorrer SEGURIDAD §2–§4 y §6 control a control: cada uno tiene test o queda como
+  hallazgo (§5, Electron, es histórico: D19).
 - `npm audit`, revisión de `allowScripts`, versiones exactas de los motores, avisos
   publicados de pdf.js/KaTeX/Mermaid/highlight.js desde la última actualización.
 - Revisión manual del código buscando `innerHTML`, `eval`, `Function`, `postMessage`,
   `window.open` y `target="_blank"` sin `rel`.
 - Registrar en [auditoria.md](auditoria.md) (formato existente: ID, severidad, estado).
 
-**Fuera de alcance.** Electron (su auditoría va en F14).
+**Fuera de alcance.** Nada de escritorio: la auditoría de Electron que preveía la Fase 14
+se canceló con ella (D19).
 
 **Archivos esperados.** `src/config/security-headers.ts`, `vercel.json` (regenerado, nunca
 a mano),
@@ -1190,77 +1205,64 @@ larga > 200 ms al teclear o navegar; memoria estable); axe sin violaciones.
 
 ---
 
-## Fase 14 — Electron: aplicación
+## Fase 14 — Electron: aplicación ❌ CANCELADA
 
-**Objetivo.** BPDF de escritorio funcional y seguro en desarrollo (sin empaquetar para
-distribución).
+**Cancelada / no aplica** desde el *2026-10-03*: decisión de producto del usuario, **BPDF es
+solo una aplicación web** (D19, [PLAN.md](PLAN.md) §14). No se implementó nada de ella y no
+queda trabajo pendiente. Se conserva el número para no renumerar las fases.
 
-**Dependencias.** F13 (o F12 como mínimo). Leer [ELECTRON.md](ELECTRON.md) entero.
-
-**Alcance.** ELECTRON §2–§7: `electron/main.ts`, `preload.ts`, `protocol.ts` (`app://` y
-`bpdf-res://`), `ipc.ts`, `validation.ts` (esquemas `zod` compartidos); instancia única,
-argv y `open-file`; `src/platform/electron.ts` completo (implementa `pickDocument`,
-`pickFolder`, `openDropped` y `saveText`, terminando en `abrirSeleccion`/`readDocument`
-con el id del main, más `onExternalOpen`; ELECTRON §3); imágenes locales de Markdown por
-`bpdf-res://`; guardar en el mismo fichero; CSP de escritorio (fuente única +
-`bpdf-res:`); scripts `electron:dev` y `electron:build` (sin instaladores); `allowScripts`
-de `electron`.
-
-**Fuera de alcance.** Instaladores, firma, fuses en el binario empaquetado,
-auto-actualización (F15).
-
-**Archivos esperados.** `electron/*`, `src/platform/electron.ts`, `src/platform/index.ts`,
-`package.json`, `tsconfig.electron.json`, `vite.config.ts` (base relativa si hace falta),
-`tests/unit/electron/*`, `e2e/electron/*.spec.ts`, `playwright.config.ts` (proyecto
-Electron).
-
-**Seguridad.** SEGURIDAD §5 y ELECTRON completos; revisión con la checklist oficial de
-seguridad de Electron registrada en auditoria.md.
-
-**Tests.** ELECTRON §9 entero.
-
-**Criterios de aceptación.** Definición de hecho común; todos los tests de ELECTRON §9 en
-verde; abrir por argumento, por diálogo y por arrastre; guardar un `.md` en su sitio.
-
-**Documentación.** ELECTRON (implementado), SEGURIDAD §5, STACK, STRUCTURE, DEVELOPMENT
-(cómo arrancar la versión de escritorio), auditoria.md, bitácora, TAREAS.
-
-**Resultado esperado.** App de escritorio que se ejecuta desde el repo con la misma UI.
+Referencia histórica: preveía una app de escritorio con Electron (proceso main, preload,
+protocolos `app://` y `bpdf-res://`, IPC validado, guardar en el mismo fichero), diseñada en
+[ELECTRON.md](ELECTRON.md), que queda como documento histórico. Lo que la web ya usa y se
+pensó también para Electron (la frontera `src/platform/`, la CSP en una fuente única) se
+conserva porque tiene sentido por sí mismo.
 
 ---
 
-## Fase 15 — Distribución: web y escritorio
+## Fase 15 — Distribución web
 
-**Objetivo.** Publicar la web y producir instaladores de escritorio.
+> **Reescrita el *2026-10-03*** (D19: BPDF es solo web). Antes era «Distribución: web y
+> escritorio». Se retiró todo lo que solo tenía sentido con una app de escritorio, sin
+> sustituirlo: instaladores por plataforma, firma y notarización de binarios, fuses,
+> asociación de tipos `.pdf`/`.md`, **T-5** (Forge o electron-builder), **D11**
+> (plataformas, firma, auto-actualización) y el workflow de release por etiqueta con matriz
+> de SO y artefactos con SHA-256. Fijar las Actions por SHA deja de ser requisito de esta
+> fase (era para firmar releases de escritorio); sigue como mejora en [mejoras.md](mejoras.md).
 
-**Dependencias.** F14 (escritorio) y F12 (web; la publicación web puede adelantarse tras
-F13 si se quiere). **D5** y **D11** confirmadas.
+**Objetivo.** Dejar la web publicada de forma formal y verificada, con versión de producto y
+un registro de cambios para usuarios.
+
+**Dependencias.** F12 (CSP y cabeceras finales; la publicación puede hacerse tras F13 si se
+quiere). **D5** confirmada (hosting y dominio). Ya no depende de la Fase 14 (cancelada).
 
 **Alcance**
 
-- **Web:** despliegue en el hosting de D5 con las cabeceras de F12; comprobación con
-  `curl -I` (CSP, HSTS, etc.) y E2E de humo contra la URL pública; `DEPLOYMENT.md`.
-- **Escritorio:** resolver **T-5** (Forge o electron-builder); instaladores por plataforma
-  (D11); fuses; asociación de tipos `.pdf`/`.md` opcional; firma y notarización si D11
-  lo decide; workflow de release por etiqueta con matriz de SO, artefactos con SHA-256 y
-  Actions fijadas por SHA.
+- **Web:** despliegue en el hosting de D5 (hoy Vercel desde git, `bpdf.r3zon.com`) con las
+  cabeceras de F12, generadas de la fuente única; el dominio real en
+  `src/config/project.ts` (y con él `robots.txt`, `sitemap.xml` y `public_docs/_meta/`);
+  comprobación con `npm run cabeceras:verificar -- <url>` y `curl -I` (CSP, HSTS, etc., de
+  `/` y `/mermaid.html`); E2E de humo contra la URL pública; `DEPLOYMENT.md` reescrito.
 - Versionado del producto (`package.json` → `version`, semver) y registro de cambios para
   usuarios (distinto de la bitácora `docs/CHANGELOG.md`; nombre y ubicación a decidir).
 
-**Fuera de alcance.** Auto-actualización (salvo que D11 cambie), tiendas de aplicaciones.
+**Fuera de alcance.** Versión de escritorio o cualquier sustituto (D19); tiendas de
+aplicaciones.
 
-**Archivos esperados.** Configuración del hosting, `.github/workflows/release.yml`,
-configuración del empaquetador, `docs/DEPLOYMENT.md`, registro de cambios de usuario.
+**Archivos esperados.** Configuración del hosting (`vercel.json`, generado, nunca a mano),
+`src/config/project.ts`, `public_docs/_meta/`, `package.json` (versión),
+`docs/DEPLOYMENT.md`, registro de cambios de usuario y el E2E de humo.
 
-**Seguridad.** Integridad de artefactos (checksums, firma), fuses verificados en el
-binario (`npx @electron/fuses read`), secretos de firma solo en el entorno de CI.
+**Seguridad.** Las cabeceras servidas coinciden con la fuente única (comprobado contra el
+despliegue real, no solo en local). Sin secretos: no hay binarios que firmar.
 
-**Criterios de aceptación.** Web pública con cabeceras correctas; instaladores que
-arrancan en cada SO objetivo en una máquina limpia (registrar cómo se probó).
+**Criterios de aceptación.** Web pública con las cabeceras correctas
+(`cabeceras:verificar` en verde contra producción); E2E de humo en verde contra la URL
+pública, con cero errores de consola, cero violaciones de CSP y ninguna petición externa;
+el dominio de `project.ts` es el real; versión y registro de cambios publicados.
 
-**Documentación.** DEPLOYMENT (reescrito), ELECTRON §8, bitácora, TAREAS.
+**Documentación.** DEPLOYMENT (reescrito), CLAUDE.md §0 (entornos), bitácora, TAREAS.
 
-**Resultado esperado.** BPDF disponible para usuarios.
+**Resultado esperado.** BPDF disponible para usuarios en la web.
 
 ---
 
