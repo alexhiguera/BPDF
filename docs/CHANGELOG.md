@@ -10,6 +10,114 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 27 — *2026-10-03* — Fase 12: seguridad, endurecimiento y auditoría (implementada, pendiente de revisión)
+
+**Contexto.** La Fase 12 según su especificación (FASES): recorrer SEGURIDAD control a
+control, cerrar la CSP, decidir T-3 y T-4, revisar cabeceras, dependencias y CI, y dejar la
+auditoría escrita ([auditoria.md](auditoria.md), Auditoría 1). Sin funciones nuevas y sin
+reabrir fases cerradas: no apareció ningún fallo de seguridad que lo pidiera. **Queda
+IMPLEMENTADA / PENDIENTE DE REVISIÓN** con el usuario (cabeceras, CSP,
+`Permissions-Policy`, producción, dependencias y riesgos aceptados).
+
+**Hecho, y por qué así:**
+- **CSP: sin cambios, y congelada.** Revisada directiva a directiva (tabla en SEGURIDAD
+  §2.1: qué la necesita, si se puede quitar, qué amenaza limita). Ninguna sobra: `img-src
+  'self'` es el favicon, `connect-src` los cmaps, `frame-src` el marco, y así las demás.
+  `frame-src` no se puede acotar a `/mermaid.html` (`'self'` no admite rutas). Un unitario
+  fija la política entera de la app y del marco: cambiarla obliga a cambiar el test y la
+  tabla. **T-3 cerrada.**
+- **`Permissions-Policy`**: `clipboard-read=()` (BPDF nunca lee el portapapeles) y, de la
+  familia del hardware, `serial`, `hid` y `midi` junto al `usb` que ya estaba. Quedan
+  permitidos `clipboard-write` («Copiar») y `fullscreen` (visor PDF). La lista vive en
+  `CAPACIDADES_NEGADAS`, con el motivo de cada una. **`bluetooth` se probó y se quitó**:
+  Chrome no lo reconoce en esta cabecera y da un error en consola en todas las páginas (lo
+  cazó la vigilancia de los E2E). `vercel.json` regenerado.
+- **Cabeceras revisadas una a una** (SEGURIDAD §2.2). Ninguna añadida por lista: COEP no
+  hace falta (sin `SharedArrayBuffer`) y podría romper el marco; `X-DNS-Prefetch-Control`
+  no aporta (los navegadores ya no hacen prefetch de los enlaces en HTTPS);
+  `X-XSS-Protection` está retirada. `X-Frame-Options` es redundante con `frame-ancestors`
+  y se conserva (no cuesta nada). Cada una lleva su motivo en `security-headers.ts`.
+- **T-4 (Trusted Types): medida y no adoptada en v1**, pendiente de confirmar. En una copia
+  con `require-trusted-types-for 'script'`, 49 de 116 E2E fallan: 220 bloqueos
+  `TrustedScriptURL` (el worker de pdf.js y el del modo oscuro). Además el decodificador de
+  entidades de micromark usa `innerHTML`, sin E2E que lo pise. Adoptarla exige una política
+  `default` propia para esos tres casos. Los sumideros de la build están inventariados y
+  ninguno recibe HTML del documento, y Safari 26 la aplicaría en rutas de código probadas
+  solo en Chromium. Se reevalúa tras la F13.
+- **Portapapeles en los E2E.** Dos tests comprobaban «Copiar» leyendo el portapapeles desde
+  la app, que ahora no puede (y es lo que se quería). En vez de debilitarlos o interceptar
+  `writeText`, se lee el portapapeles **del sistema** desde una página auxiliar del mismo
+  origen que sirve Playwright sin esa cabecera (`e2e/portapapeles.ts`). Pegar con Ctrl+V en
+  el editor sigue funcionando sin tocar su test: es el `paste` del usuario, que la política
+  no afecta.
+- **`e2e/specs/seguridad.spec.ts`** (huecos reales, nada repetido):
+  - **cabeceras**: las de la fuente, todas, en siete rutas (`/`, `/mermaid.html`, un
+    módulo, el worker de pdf.js, el favicon, `robots.txt` y un 404). Antes los E2E miraban
+    5 de 8 y solo en `/`;
+  - **portapapeles**: la app no puede leerlo aunque el contexto tenga el permiso (y Chrome
+    dice que lo bloquea la política), pero sí escribir;
+  - **almacenamiento**: tras un recorrido completo (PDF con posición y miniaturas, Markdown
+    con KaTeX y Mermaid, editor), solo `bpdf:prefs` y `bpdf:positions`. Ni cookies, ni
+    `sessionStorage`, ni IndexedDB, ni cachés, ni service workers;
+  - **D14**: un PDF con campo de texto, casilla y JavaScript al abrir y en el campo
+    (`crearPdfFormulario()`, en memoria). Sus apariencias se pintan, no hay capa de
+    anotaciones ni controles, teclear no escribe nada y no se abre ningún diálogo. Un
+    unitario con pdf.js real asegura la premisa: ve los dos campos y su JavaScript.
+- **Los tests nuevos detectan el fallo**, comprobado con dos mutaciones en copias aparte:
+  con pdf.js sin pintar las anotaciones falla el de D14, y sin `clipboard-read` el del
+  portapapeles.
+- **`fsevents` resuelto sin tocar `allowScripts`** (STACK). Con npm 11.19 `npm ci` no avisa
+  (npm/cli#9562: las opcionales que no aplican a la plataforma no cuentan). En macOS npm
+  solo miraría `preinstall`/`install`/`postinstall` o un `binding.gyp`, y el tarball no trae
+  ninguno. Comprobado con un `npm ci` aislado, el tarball y el código de npm. STACK y CLAUDE
+  ya documentaban el comando bueno (`npm install-scripts`); `npm approve-scripts` también
+  existe, pero solo aprueba.
+- **Dependencias.** `npm audit` 0 (también solo runtime). Lockfile: 531 entradas, todas del
+  registro oficial y con `integrity`. Avisos publicados de pdf.js (CVE-2026-16633), KaTeX y
+  Mermaid: todos corregidos antes de las versiones fijadas. Hay versiones nuevas (pdf.js
+  6.4.299, KaTeX 0.19.0); no se actualizan en esta fase porque ningún aviso lo pide.
+  Mermaid se queda en 11.17.2.
+- **CI**: los tres workflows con `permissions: contents: read`. Actions por etiqueta y
+  `persist-credentials` por defecto, que quedan como mejora ([mejoras.md](mejoras.md)).
+- **Producción** (`https://bpdf.r3zon.com`, versión desplegada anterior a la F11):
+  - `cabeceras:verificar` en verde, y `/mermaid.html` responde 200 con su CSP; la tarea
+    antigua de «sin cabeceras en producción» estaba superada;
+  - un recorrido con Mermaid, Mermaid hostil, KaTeX y un PDF con cmaps da **cero errores,
+    cero violaciones y ninguna petición externa**, y no crea almacenamiento;
+  - encontrado: Vercel manda `Access-Control-Allow-Origin: *` en todas las rutas (aceptado,
+    A1-6);
+  - **lo nuevo no está desplegado**: se repite tras el push.
+
+**Descartado.**
+- Interceptar `writeText` en los E2E de «Copiar», porque no comprobaría el portapapeles real.
+- Denegar `fsevents` «por si acaso», que es una entrada que no cambia nada.
+- Subir pdf.js o KaTeX sin un aviso que lo pida.
+- Una lista larga de `Permissions-Policy`.
+
+**Verificación.** `lint`, `typecheck`, `npm test` **1001/1001**
+(53 ficheros), `test:e2e` **120/120**, `build`, `build:tamano` (94,8 KB, sin cambios),
+`docs:enlaces` (282), `docs:validar` y `npm audit` (0). En la primera pasada completa de
+los E2E falló uno del editor de la F9 («la vista previa se refresca 200 ms después…»): exige
+que la vista previa aún NO se haya refrescado y, con la suite entera cargando el equipo, los
+pasos del propio test tardaron más de 200 ms. Pasa 8 de 8 aislado y no toca nada de esta
+fase; anotado en TAREAS, sin debilitarlo.
+
+### Iteración 26 — *2026-10-03* — El mínimo de Firefox es 128 (Tailwind 4), no 114
+
+**Contexto.** Corrección del usuario a la iteración 25: el soporte oficial de Tailwind CSS
+4 es Chrome 111, Safari 16.4 y **Firefox 128**, así que ese es el mínimo de BPDF.
+Firefox 114 era solo lo que pide pdf.js 6 (su worker es un módulo ES).
+
+- `build.target`: `firefox114` → `firefox128`, con el motivo en `vite.config.ts`. Sin
+  polyfills ni compatibilidad artificial con versiones anteriores.
+- STACK, ARCHITECTURE y FASES (Fase 5) dicen que el mínimo global lo fija Tailwind 4 y que
+  pdf.js por sí solo funcionaría desde Firefox 114. El spike de modo oscuro anota el
+  valor de hoy.
+- **Error propio:** en la iteración 25 apunté la duda («STACK dice Firefox 111 por Tailwind,
+  pero su documentación cita 128») y no la comprobé antes de fijar 114. La entrada de la
+  iteración 25 no se reescribe: esta la corrige.
+- D14, D5 y D19 siguen confirmadas.
+
 ### Iteración 25 — *2026-10-03* — Antes de la Fase 12: arreglo de `worker-destruido`; D5, D14 y Firefox 114 confirmados
 
 **Contexto.** Un arreglo aislado de una deuda de la Fase 5 y tres decisiones del usuario,

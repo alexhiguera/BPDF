@@ -11,7 +11,11 @@ import {
 } from "@/pdf/engine";
 import { ANOTACIONES_EN_LIENZO } from "@/pdf/render";
 import { crearPdfModoOscuro, GEOMETRIA } from "../../fixtures/pdf/modo-oscuro/generar.mjs";
-import { crearPdfProtegido } from "../../fixtures/pdf/visor/generar.mjs";
+import {
+  crearPdfFormulario,
+  crearPdfProtegido,
+  FORMULARIO,
+} from "../../fixtures/pdf/visor/generar.mjs";
 import { cargarPdfjsNode as cargarPdfjs, RUTAS } from "../../helpers/pdfjs";
 
 const FIXTURE = "tests/fixtures/pdf/modo-oscuro/modo-oscuro.pdf";
@@ -196,5 +200,21 @@ describe("configuración segura (docs/SEGURIDAD.md §4)", () => {
     const pdfjs = await cargarPdfjs();
     expect(ANOTACIONES_EN_LIENZO).toBe(pdfjs.AnnotationMode.ENABLE);
     expect(VERBOSIDAD_SOLO_ERRORES).toBe(pdfjs.VerbosityLevel.ERRORS);
+  });
+
+  // Premisa del E2E de D14 (e2e/specs/seguridad.spec.ts): pdf.js ve los dos campos
+  // del formulario de prueba con su apariencia; si no los viera, que no se puedan
+  // rellenar en el visor no demostraría nada.
+  it("el formulario de prueba (D14): pdf.js ve sus dos campos y su JavaScript", async () => {
+    const { doc } = await abrir(crearPdfFormulario());
+    const anotaciones = await (await doc.getPage(1)).getAnnotations();
+    const campos = anotaciones.filter((a) => a.subtype === "Widget");
+    expect(campos.map((a) => [a.fieldType, a.fieldName])).toEqual([
+      ["Tx", "nombre"],
+      ["Btn", "acepto"],
+    ]);
+    expect(campos[0]?.fieldValue).toBe(FORMULARIO.valor);
+    expect(campos.map((a) => a.hasAppearance)).toEqual([true, true]);
+    expect(await doc.getJSActions()).not.toBeNull();
   });
 });

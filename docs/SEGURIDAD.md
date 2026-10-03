@@ -3,7 +3,8 @@
 > **Estado: diseño objetivo** (Fase 0, *2026-09-29*); implementados los controles de las
 > Fases 2 (CSP, cabeceras, DOM), 3 (apertura de ficheros, §2.6), 4 (motor de PDF), 5
 > (visor PDF, §4), 7 (Markdown, §3), 7 bis (recursos locales de Markdown, §2.6 y §3) y 8
-> (fórmulas y diagramas, §2.1 y §3; *2026-09-30*). Cada control indica la
+> (fórmulas y diagramas, §2.1 y §3; *2026-09-30*); la Fase 12 los recorrió todos (*2026-10-03*,
+> [auditoria.md](auditoria.md), Auditoría 1: **implementada, pendiente de revisión**). Cada control indica la
 > fase que lo implementa ([FASES.md](FASES.md)). Cuando un control exista, esa fase lo marca aquí como
 > implementado y enlaza su test. Las auditorías realizadas van a
 > [auditoria.md](auditoria.md).
@@ -83,9 +84,34 @@ frame-ancestors 'none'        ← solo en la cabecera: en <meta> no existe
 
 Sin `'unsafe-inline'`, `'unsafe-eval'` ni ningún origen externo. `style-src` ya **no**
 lleva `'unsafe-inline'` (el diseño de la Fase 0 lo daba por necesario): Vite emite la CSS
-como fichero y React fija estilos por CSSOM, que la CSP no bloquea. T-3 queda así: cada
-fase que añada una librería comprueba que no lo necesita; si lo necesitara, se pide
-aprobación antes de añadirlo.
+como fichero y React fija estilos por CSSOM, que la CSP no bloquea. **T-3, cerrada en la
+Fase 12**: la app no lo lleva y el único `'unsafe-inline'` es el del marco de Mermaid
+(abajo). Una librería nueva que lo necesitara pide aprobación antes de entrar.
+
+**CSP definitiva (Fase 12, *2026-10-03*).** Revisada directiva a directiva: **ninguna se
+puede quitar** sin romper algo medido, y ninguna admite más de lo que su consumidor
+necesita. La política entera está congelada en `tests/unit/seguridad.test.ts` («CSP
+definitiva»): cambiarla obliga a cambiar el test y esta tabla.
+
+| Directiva | Qué la necesita | ¿Se puede quitar? | Qué amenaza limita |
+|---|---|---|---|
+| `default-src 'none'` | La base: todo lo no listado se deniega (medios, manifiesto, `child-src`…) | No: es la red | Cualquier tipo de recurso que nadie previó |
+| `script-src 'self'` | Los módulos de la build (`/assets/`) | No | Scripts en línea, `eval`, `new Function` y scripts de otros orígenes: un documento no puede ejecutar código |
+| `style-src 'self'` | La CSS de la build y la de KaTeX (`/assets/`). Los estilos de React y CodeMirror van por CSSOM y hojas construibles, que la CSP no bloquea | No | Estilos inyectados (`<style>`, `style=`): exfiltración por CSS, engaños visuales |
+| `img-src 'self' blob:` | `'self'`: el favicon (`/favicon.svg`). `blob:`: imágenes locales de un Markdown y los diagramas de Mermaid (SVG verificado como `<img src="blob:…">`) | No (ninguna de las dos) | Imágenes remotas (píxeles espía, D7) y `data:` |
+| `worker-src 'self'` | Worker de pdf.js (`/pdfjs/`) y worker del modo oscuro (`/assets/`) | No | Workers creados desde `blob:` o de otro origen |
+| `font-src 'self'` | Fuentes de KaTeX (`/assets/`) y sustitutas de las 14 fuentes estándar de PDF (`/pdfjs/standard_fonts/`) | No | Fuentes remotas (seguimiento) |
+| `connect-src 'self'` | `fetch` del worker de pdf.js: los cmaps (`/pdfjs/cmaps/`) de las fuentes CID no incrustadas | No: el texto CJK desaparecería en silencio (E2E) | `fetch`/XHR/WebSocket a otro origen: nada puede sacar un documento |
+| `frame-src 'self'` | El marco aislado de Mermaid (`/mermaid.html`) | No; tampoco se puede acotar a una ruta (`'self'` no admite rutas y un origen escrito rompería `preview` y los E2E) | Enmarcar otra web dentro de BPDF |
+| `object-src 'none'` | — | Redundante con `default-src`, pero se deja explícita | `<object>`/`<embed>` |
+| `base-uri 'none'` | — | No (`default-src` no la cubre) | Un `<base>` inyectado que cambie a dónde apuntan las rutas relativas |
+| `form-action 'none'` | — | No (`default-src` no la cubre) | Que un formulario envíe nada (el de la contraseña de un PDF nunca se envía) |
+| `frame-ancestors 'none'` | — (solo en la cabecera) | No | Clickjacking: nadie puede enmarcar BPDF |
+
+**Revisadas y no añadidas:** `upgrade-insecure-requests` (no hay ninguna petición
+`http:` que subir), `report-uri`/`report-to` (sería enviar datos a un servicio: sin
+telemetría), `require-trusted-types-for` (T-4, §2.3), `sandbox` (rompería la app) y
+`script-src-attr`/`style-src-attr` (ya cubiertas por `script-src` y `style-src`).
 
 **Añadidas en la Fase 4, medidas** (el E2E de pdf.js da cero violaciones con ellas):
 
@@ -126,6 +152,12 @@ object-src 'none'; base-uri 'none'; form-action 'none';
 frame-ancestors 'self'              ← solo en la cabecera; X-Frame-Options: SAMEORIGIN
 ```
 
+Directiva a directiva (Fase 12): `script-src 'self'`, los módulos de Mermaid desde
+`/assets/`; `style-src 'self' 'unsafe-inline'`, sus estilos en línea; `img-src`,
+`font-src`, `connect-src` y `worker-src` a `'none'`, sin red; `frame-ancestors 'self'`,
+solo BPDF lo enmarca. Nada se puede quitar: sin `script-src` no corre y sin
+`'unsafe-inline'` no dibuja.
+
 `'unsafe-inline'` queda confinado a un documento de **origen opaco** (el iframe no tiene
 `allow-same-origin`): no alcanza el DOM, el almacenamiento ni las cookies de BPDF (E2E), no
 puede pedir nada a la red, y solo recibe el texto del diagrama. Como sus módulos se piden
@@ -158,22 +190,61 @@ un **control** que inyecta un script en línea y comprueba que se bloquea y se d
 
 ### 2.2 Otras cabeceras
 
-Vigentes desde la Fase 2 en `vite preview` ✅ (misma fuente): `X-Content-Type-Options:
-nosniff`, `X-Frame-Options: DENY` (redundante con `frame-ancestors`, para navegadores
-antiguos), `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy: same-origin`,
-`Cross-Origin-Resource-Policy: same-origin`, HSTS sin `preload` (decisión del dominio) y
-`Permissions-Policy` negando `camera`, `microphone`, `geolocation`, `payment`,
-`usb` y `display-capture`. Solo se listan características que Chrome reconoce: una
-desconocida produce un error en consola. **`fullscreen` (Fase 6) no necesita cambio**: su
+Vigentes desde la Fase 2 en `vite preview` ✅ (misma fuente), revisadas una a una en la
+Fase 12 (*2026-10-03*). Ninguna está «porque lo dice una lista»: cada una tiene su motivo
+en BPDF.
+
+| Cabecera | Valor | Motivo en BPDF |
+|---|---|---|
+| `Content-Security-Policy` | §2.1 | La red de todo lo demás |
+| `X-Content-Type-Options` | `nosniff` | Ningún fichero se interpreta como otro tipo (un `.js` o un `.svg` servidos solo valen como lo que dicen ser) |
+| `X-Frame-Options` | `DENY` (`SAMEORIGIN` en `/mermaid.html`) | **Redundante** con `frame-ancestors` en todos los navegadores mínimos; se conserva porque no cuesta nada y cubre a quien no aplique CSP 2 |
+| `Referrer-Policy` | `no-referrer` | Ninguna petición ni enlace abierto revela desde dónde se hizo |
+| `Cross-Origin-Opener-Policy` | `same-origin` | Ninguna ventana de otro origen conserva referencia a la de BPDF |
+| `Cross-Origin-Resource-Policy` | `same-origin` | Otras webs no pueden incrustar los ficheros de BPDF como recurso; `/assets/` lleva además CORS para el marco |
+| `Strict-Transport-Security` | 2 años, `includeSubDomains`, sin `preload` | Siempre HTTPS; la precarga es un compromiso del dominio y no se toma aquí |
+| `Permissions-Policy` | abajo | Capacidades que nadie, ni BPDF, puede pedir |
+| `Access-Control-Allow-Origin` | `*`, solo `/assets/` | El marco de Mermaid (origen opaco) pide sus módulos en modo CORS |
+
+**Revisadas y no añadidas:** `Cross-Origin-Embedder-Policy` (solo hace falta para el
+aislamiento entre orígenes, `SharedArrayBuffer`, que BPDF no usa, y podría romper el
+marco); `X-DNS-Prefetch-Control` (los tres motores ya no hacen prefetch de DNS de los
+enlaces en páginas HTTPS, que es lo único que un documento podría provocar);
+`X-XSS-Protection` (obsoleta y retirada de los navegadores); `Cache-Control` (no es de
+seguridad: no hay nada privado que cachear).
+
+**Vercel añade de suyo** `Access-Control-Allow-Origin: *` en **todas** las rutas, no solo
+en `/assets/` (medido en producción, *2026-10-03*). Aceptado: son ficheros públicos sin
+credenciales ni datos ([auditoria.md](auditoria.md), A1-6).
+
+**`Permissions-Policy`** (`CAPACIDADES_NEGADAS` en `security-headers.ts`): todas se niegan
+a todos (`=()`), también al propio origen. Si un fallo dejara correr código ajeno en la
+app, no podría ni pedirlas.
+
+- `clipboard-read` (**Fase 12**): BPDF nunca lee el portapapeles. Pegar en el editor es el
+  evento `paste` del usuario, que esta política no toca (E2E).
+- `camera`, `microphone`, `geolocation`, `payment`, `display-capture`: un visor no los usa.
+- Hardware conectado: `usb`, y desde la **Fase 12** `serial`, `hid` y `midi` (la familia
+  entera). `bluetooth` **no**: Chrome no lo reconoce en esta cabecera y da un error en
+  consola (lo cazó la vigilancia de los E2E).
+
+Solo se listan características que Chrome reconoce: una desconocida produce un error en
+consola, y los E2E lo detectan. **`fullscreen` (Fase 6) no necesita cambio**: su
 valor por defecto ya es el propio origen (`self`), así que la pantalla completa del área
 de lectura funciona con la política actual y ningún marco ajeno puede pedirla (el de
 Mermaid, con origen opaco, tampoco); un E2E lo comprueba con las cabeceras reales ✅
 (Fase 6). Se decidió no declararlo para no tocar las cabeceras (ni `vercel.json`) sin
 necesidad.
-**`clipboard-write` (Fase 7, copiar código) no necesitó cambio**: su valor por defecto
-ya es el propio origen, y la escritura solo ocurre tras un clic. No se niega
-`clipboard-read` (BPDF nunca lee el portapapeles) para no tocar las cabeceras sin
-necesidad; se revisa en la Fase 12.
+**`clipboard-write` (Fase 7, copiar código) no se niega**: su valor por defecto ya es el
+propio origen, y la escritura solo ocurre tras un clic. `clipboard-read` sí se niega
+desde la Fase 12 (arriba).
+
+**Cómo se prueba** ✅ (Fase 12): `tests/unit/seguridad.test.ts` (lista exacta de cabeceras
+por ruta, `Permissions-Policy` con `clipboard-read` y sin `clipboard-write` ni
+`fullscreen`); `e2e/specs/seguridad.spec.ts` (cada cabecera de la fuente en siete rutas
+servidas, también un 404; la app no puede leer el portapapeles aunque el contexto tenga el
+permiso, y escribir sí); `app.spec.ts` (cero errores de consola al cargar: ninguna
+característica desconocida).
 
 ### 2.3 DOM e inyección
 
@@ -185,8 +256,15 @@ necesidad; se revisa en la Fase 12.
 - Ningún fichero de `src/` lleva marcas bidireccionales invisibles («Trojan Source»: el
   código se lee distinto de como se ejecuta); donde hacen falta se escriben como escapes
   `\uXXXX`. Mismo test ✅ (Fase 3).
-- Trusted Types (`require-trusted-types-for 'script'`) como defensa en Chromium, si
-  pdf.js y Mermaid lo permiten (T-4, Fase 12).
+- **Trusted Types (T-4): no se adopta en v1** (Fase 12, *2026-10-03*; pendiente de que el
+  usuario lo confirme). Medido con la build y todos los E2E: con
+  `require-trusted-types-for 'script'` fallan 49 de 116 (220 bloqueos `TrustedScriptURL`:
+  el worker de pdf.js y el del modo oscuro), y el decodificador de entidades de micromark
+  escribe `&nombre;` con `innerHTML`. Adoptarlo exige una política `default` propia que
+  deje pasar esos tres casos y se cargue antes que nada. Ninguno de los sumideros
+  inventariados recibe HTML del documento ([auditoria.md](auditoria.md), A1-5), y Safari 26
+  aplicaría la política en rutas de código que solo se han probado en Chromium. Se
+  reevalúa tras la F13 (compatibilidad) o si una dependencia trae sumideros nuevos.
 - ids generados desde contenido (encabezados de Markdown) con prefijo `md-`: evita que un
   `id="location"` o `id="__proto__"` pise propiedades globales (DOM clobbering).
 
@@ -220,7 +298,14 @@ necesidad; se revisa en la Fase 12.
 - `npm audit --audit-level=high` en cada PR y cada lunes (`security.yml`, ya existe).
 - Nada se carga de CDN: todo se sirve desde el propio origen (sin SRI que mantener).
 - Actions de GitHub fijadas por SHA: mejora propuesta en `mejoras.md` (antes era requisito
-  para firmar releases de escritorio, que ya no existen: D19).
+  para firmar releases de escritorio, que ya no existen: D19). Hoy van por etiqueta
+  (`@v4`); los tres workflows tienen `permissions: contents: read`.
+- **Revisión de la Fase 12** ✅ (*2026-10-03*, [auditoria.md](auditoria.md)): `npm audit` 0
+  (también solo runtime); lockfile con 531 entradas, todas de `registry.npmjs.org` y con
+  `integrity`; sin `overrides`; ningún script de instalación pendiente con npm 11.19
+  (`fsevents` no necesita denegación: [STACK.md](STACK.md)); motores con versión exacta.
+  Avisos publicados de pdf.js, KaTeX y Mermaid: todos corregidos en versiones anteriores a
+  las fijadas. Mermaid se queda en 11.17.2 (Mermaid 12 es una tarea propia, fuera de v1).
 
 ### 2.6 Apertura de ficheros ✅ (Fase 3)
 
@@ -327,7 +412,7 @@ enlace bloqueado no hace nada. Casos:
 | PDF malformado o hostil al parser | pdf.js parsea **en su worker** (aislado del DOM de la app). Errores capturados y mostrados como «PDF dañado» (`PdfNoLegibleError`). Versión exacta (6.3.289) y actualización inmediata ante avisos (precedente: CVE-2024-4367, ejecución de JS mediante fuentes, corregida en 4.2.67) | ✅ 4 (motor, test de PDF dañado) · ✅ 5 (visor: aviso y liberación, E2E) |
 | JavaScript embebido (acciones de documento, de página, de campos) | **No se distribuyen** `pdf.sandbox*` ni `quickjs-eval.*` (el motor para ejecutarlo): un E2E comprueba que dan 404. El visor no usa la capa de anotaciones interactiva de pdf.js (donde vive `enableScripting`): no hay nada que pueda ejecutar un script del PDF. Las acciones JavaScript de los enlaces se descartan (`enlaces.ts`, test y fixture `visor.pdf`) | ✅ 4 · ✅ 5 |
 | Formularios XFA | `enableXfa: false` en `opcionesDocumento` (test) | ✅ 4 |
-| Formularios AcroForm y anotaciones | `AnnotationMode.ENABLE`: sus apariencias se **pintan en el lienzo**; no hay capa interactiva, así que no se pueden rellenar ni ejecutan nada (D14, confirmada: se ven, no se rellenan en v1) | ✅ 5 |
+| Formularios AcroForm y anotaciones | `AnnotationMode.ENABLE`: sus apariencias se **pintan en el lienzo**; no hay capa interactiva, así que no se pueden rellenar ni ejecutan nada (D14, confirmada: se ven, no se rellenan en v1). Test (Fase 12): un PDF con campo de texto, casilla y JavaScript al abrir y en el campo; se pintan sus apariencias, no hay controles ni capa de anotaciones y nada se ejecuta (`engine.test.ts`, `seguridad.spec.ts`) | ✅ 5 · ✅ 12 |
 | Enlaces externos | Política propia ([`enlaces.ts`](../src/pdf/visor/enlaces.ts) + [`url-externa.ts`](../src/lib/url-externa.ts)): solo `http:`, `https:` y `mailto:`, absolutos y sin credenciales, hasta 2048 caracteres; abiertos por `Platform.openExternal` (pestaña nueva sin `opener` ni `Referer`). El `<a>` nunca navega la app (el clic se intercepta; el central se anula). Corpus de URLs hostiles en `tests/unit/pdf/enlaces.test.ts`; E2E con `window.open` interceptado | ✅ 5 |
 | Acciones `Launch`, `GoToR` (otro fichero), `ImportData`, `SubmitForm`, `file:`, adjuntos | No son enlaces para BPDF: solo se siguen destinos internos, cuatro acciones con nombre de navegación y URLs permitidas. Fixture `visor.pdf` con `javascript:`, `file:` y acción JavaScript: E2E comprueba que no hay `<a>` para ellas | ✅ 5 |
 | Ficheros adjuntos embebidos | No se exponen en v1 | ✅ 5 (no hay interfaz) |
@@ -372,6 +457,23 @@ enlace bloqueado no hace nada. Casos:
 - **Ninguna petición de red provocada por un documento** (CSP + `url-policy`). La única red
   es cargar la propia app. Desde la Fase 3 los E2E de apertura
   lo comprueban en cada recorrido (§2.6).
+- **Qué puede salir del origen, y solo con qué acción** (Fase 12, *2026-10-03*; código
+  revisado entero):
+
+  | Operación | Destino | Solo cuando |
+  |---|---|---|
+  | Cargar la app (HTML, módulos, CSS, fuentes, favicon) | Propio origen | Se abre la web |
+  | Módulos y recursos a demanda: pdf.js y su worker, cmaps, fuentes estándar, KaTeX y sus fuentes, el marco de Mermaid y sus trozos, CodeMirror, el diálogo de preferencias | Propio origen | Se abre un PDF o un Markdown que los necesita, o se pulsa el botón |
+  | Abrir un enlace de un Markdown o de un PDF | Su URL (`http:`, `https:`, `mailto:`), en pestaña nueva sin `opener` ni `Referer` | El usuario hace clic en él (`Platform.openExternal` revalida la URL) |
+  | «Abrir fuera» una imagen remota bloqueada de un Markdown | Su URL, igual que un enlace | El usuario hace clic en el enlace del marcador; la imagen nunca se pide sola |
+  | Crédito «R3ZON» (pantalla vacía) | `https://r3zon.com/`, igual que un enlace | El usuario hace clic en él |
+  | Guardar un Markdown | Un fichero local que elige el usuario (o una descarga) | El usuario pulsa «Guardar» |
+
+  Nada más: ni `fetch` propio, ni telemetría, ni fuentes o imágenes remotas, ni el
+  documento como URL. Las URL `blob:` (imágenes, diagramas, descarga) no salen a la red.
+  Mermaid corre en un marco sin red (`connect-src`, `img-src` y `font-src` a `'none'`).
+  Lo comprueban todos los E2E (ninguna petición fuera del origen) y el recorrido contra
+  producción ([auditoria.md](auditoria.md)).
 - **Abrir un documento no guarda nada**: ni nombre, ni contenido, ni ruta, ni historial.
   Solo vive en memoria mientras está abierto (D16: uno a la vez, sin recientes).
 - **Editar tampoco** (Fase 9): el texto editado vive en el editor (memoria); sin
@@ -394,12 +496,16 @@ enlace bloqueado no hace nada. Casos:
 - **El título de la ventana es siempre «BPDF»** (Fase 11): el nombre del documento nunca va
   a `document.title`, porque el navegador guarda el título de cada visita en su historial
   (y lo sincroniza con su cuenta). Lo vigilan un E2E y un test de componente.
-- Sin cookies.
+- Sin cookies, `sessionStorage`, IndexedDB, Cache API ni service workers: ni BPDF ni
+  ninguna dependencia los usa (búsqueda en la build, Fase 12), y un E2E lo comprueba tras
+  un recorrido completo (PDF, Markdown con KaTeX y Mermaid, editor y preferencias)
+  ✅ (`e2e/specs/seguridad.spec.ts`).
 - En web, el hosting ve la carga de la app (IP, hora), como cualquier web estática, pero
   **nunca** los documentos. Se dirá en el README y en la página de privacidad.
 
 ## 7. Qué comprueba cada fase
 
-La tabla de controles de cada sección indica la fase. La Fase 12 recorre este documento
-entero, verifica cada control con su test y registra el resultado en
-[auditoria.md](auditoria.md) con el formato existente (ID, severidad, estado).
+La tabla de controles de cada sección indica la fase. La Fase 12 recorrió este documento
+entero (*2026-10-03*), verificó cada control con su test y registró el resultado en
+[auditoria.md](auditoria.md) (Auditoría 1: 12 hallazgos; 5 cerrados con su test, 7
+aceptados con su motivo; ninguno 🔴 ni 🟠). **Pendiente de revisión con el usuario.**

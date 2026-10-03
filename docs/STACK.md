@@ -19,9 +19,10 @@ Fase 7 el pipeline de Markdown (`react-markdown`, `remark-gfm`) y el resaltado d
 | CI | **GitHub Actions** | `ci.yml`, `e2e.yml`, `security.yml` |
 
 Plataforma fijada con `engines` (`node >=24 <25`) y `.nvmrc` (`24`). Navegadores mínimos
-en `build.target` de [`vite.config.ts`](../vite.config.ts) (Chrome/Edge 111, **Firefox 114**,
-Safari 16.4): los que exige Tailwind 4 (`color-mix`, `@property`), con Firefox subido a 114
-por el visor PDF (abajo, `pdfjs-dist`; decisión del *2026-10-03*). El `browserslist` de la
+en `build.target` de [`vite.config.ts`](../vite.config.ts) (Chrome/Edge 111, **Firefox 128**,
+Safari 16.4): el **soporte oficial de Tailwind CSS 4**, que es la pieza más exigente y fija el
+mínimo global (decisión del *2026-10-03*). pdf.js 6 por sí solo funcionaría desde Firefox 114
+(abajo, `pdfjs-dist`), pero el mínimo de BPDF es el de todo el stack. Sin polyfills. El `browserslist` de la
 plantilla se retiró en la Fase 2 porque ninguna herramienta del stack lo leía (Vite y
 Tailwind 4 usan sus propios objetivos); una configuración que nadie lee acaba mintiendo.
 
@@ -84,9 +85,9 @@ explica, para que el documento no se quede atrás.
   copia `copiar-pdfjs.mjs` y el módulo que importa `engine.ts` son de la misma build.
   - **Compatibilidad real.** La `legacy` transpila el JavaScript, pero pdf.js 6 crea su
     worker como **módulo ES** (`type: "module"`): el visor necesita Chrome/Edge 80,
-    Safari 15 y **Firefox 114**. Por eso el mínimo de Firefox de `build.target` es 114
-    (decisión del usuario, *2026-10-03*; antes era 111, lo de Tailwind 4, y en Firefox
-    111–113 la app arrancaba pero un PDF no se abría). No se añaden polyfills.
+    Safari 15 y **Firefox 114**. Queda por debajo del mínimo global (Firefox 128, el de
+    Tailwind 4; arriba), así que no lo condiciona. Hasta el *2026-10-03* `build.target`
+    decía Firefox 111 y en 111–113 la app arrancaba pero un PDF no se abría.
   - **CSP.** Sus polyfills detectan `globalThis` con `Function("return this")`, pero esa
     rama no se ejecuta en ningún navegador objetivo (los E2E dan cero violaciones sin
     `'unsafe-eval'`).
@@ -234,8 +235,21 @@ haciendo falta (quitándolos en un temporal y repitiendo `npm audit`). CI lo eje
 ### `allowScripts` (npm 11)
 
 Hoy **ningún paquete** necesita scripts de instalación (`npm install-scripts ls` no lista
-nada). Los tres aprobados en la plantilla (Prisma ×2, Sentry CLI) se fueron con sus
-paquetes.
+nada) y `package.json` no tiene campo `allowScripts`. Los tres aprobados en la plantilla
+(Prisma ×2, Sentry CLI) se fueron con sus paquetes.
+
+**El comando (comprobado con npm 11.19.0, Fase 12):** `npm install-scripts` es el completo
+(`ls`, `approve`, `deny`, `prune`); `npm approve-scripts` también existe, pero solo
+aprueba. Se usa el primero.
+
+**`fsevents@2.3.3`** (dependencia opcional de Vite, solo macOS) **no necesita denegación**.
+npm 11.17 lo listaba como pendiente por el `hasInstallScript` del lockfile, pero con npm
+11.19 `npm ci` no avisa: npm ignora las opcionales que no aplican a la plataforma
+(npm/cli#9562), y en macOS solo cuenta `preinstall`, `install`, `postinstall` o un
+`binding.gyp` presente, y el paquete publicado no trae ninguno (solo `fsevents.js` y su
+binario ya compilado; leído en el tarball y en el código de npm). Una entrada en
+`allowScripts` no cambiaría nada y `npm install-scripts deny` ni se puede aplicar en
+Linux (el paquete no se instala).
 
 npm 11 **omite en silencio** los scripts de instalación de paquetes no aprobados en el
 campo `allowScripts` de `package.json`, y cada aprobación va ligada a una **versión

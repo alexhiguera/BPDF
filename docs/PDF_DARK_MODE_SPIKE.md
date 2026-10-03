@@ -65,7 +65,7 @@ La build moderna de pdf.js 6.3 usa APIs de JavaScript recientes:
 `Map.prototype.getOrInsertComputed`, `Math.sumPrecise`, `Uint8Array.prototype.toHex` y
 `fromBase64`, y `Promise.try`. Falla en Node 24 (`hashOriginal.toHex is not a function`) y
 **no funcionará en los navegadores mínimos que declara BPDF** (Chrome/Edge 111, Firefox 111,
-Safari 16.4, en `vite.config.ts` → `build.target`). La build `legacy/` trae polyfills.
+Safari 16.4, en `vite.config.ts` → `build.target`; hoy Firefox 128). La build `legacy/` trae polyfills.
 
 El spike usa la moderna en el navegador (el Chromium de Playwright y Electron son
 recientes) y la `legacy` en los tests de Node. **Decisión pendiente para la Fase 5**

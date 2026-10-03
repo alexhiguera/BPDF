@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  CAPACIDADES_NEGADAS,
   CSP,
   CSP_MARCO_MERMAID,
   cabecerasPara,
@@ -115,5 +116,75 @@ describe("CSP del marco aislado de Mermaid (Fase 8)", () => {
     expect(cabecerasPara("/assets/x.js")["Access-Control-Allow-Origin"]).toBe("*");
     expect(cabecerasPara("/")["Access-Control-Allow-Origin"]).toBeUndefined();
     expect(cabecerasPara("/mermaid.html.x")["Content-Security-Policy"]).toBe(cspCabecera());
+  });
+});
+
+// Fase 12: la política definitiva, entera. Cambiarla (abrir una directiva, añadir
+// un origen) obliga a cambiar este test y su justificación en SEGURIDAD §2.1.
+describe("CSP definitiva (Fase 12)", () => {
+  it("la app: exactamente estas directivas, cada una justificada en SEGURIDAD §2.1", () => {
+    expect(cspCabecera()).toBe(
+      "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; " +
+        "worker-src 'self'; font-src 'self'; connect-src 'self'; frame-src 'self'; " +
+        "object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    );
+  });
+
+  it("el marco de Mermaid: exactamente estas directivas", () => {
+    expect(cspMarcoCabecera()).toBe(
+      "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+        "img-src 'none'; font-src 'none'; connect-src 'none'; worker-src 'none'; " +
+        "object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'",
+    );
+  });
+
+  it("cada ruta lleva exactamente estas cabeceras: ni una heredada ni una de más", () => {
+    const comunes = [
+      "Content-Security-Policy",
+      "Cross-Origin-Opener-Policy",
+      "Cross-Origin-Resource-Policy",
+      "Permissions-Policy",
+      "Referrer-Policy",
+      "Strict-Transport-Security",
+      "X-Content-Type-Options",
+      "X-Frame-Options",
+    ];
+    expect(Object.keys(cabecerasPara("/")).sort()).toEqual(comunes);
+    expect(Object.keys(cabecerasPara(RUTA_MARCO_MERMAID)).sort()).toEqual(comunes);
+    expect(Object.keys(cabecerasPara("/assets/x.js")).sort()).toEqual(
+      ["Access-Control-Allow-Origin", ...comunes].sort(),
+    );
+  });
+});
+
+describe("Permissions-Policy (docs/SEGURIDAD.md §2.2)", () => {
+  const politica = () => cabecerasSeguridad()["Permissions-Policy"] ?? "";
+  const entradas = () => politica().split(", ");
+
+  it("niega leer el portapapeles (Fase 12): BPDF nunca lo lee", () => {
+    expect(entradas()).toContain("clipboard-read=()");
+  });
+
+  it("no niega lo que BPDF usa: escribir en el portapapeles y la pantalla completa", () => {
+    expect(politica()).not.toMatch(/clipboard-write|fullscreen/);
+  });
+
+  it("cada capacidad se niega a todos, también al propio origen, y sin repetir", () => {
+    expect(entradas()).toEqual(CAPACIDADES_NEGADAS.map((c) => `${c}=()`));
+    expect(new Set(CAPACIDADES_NEGADAS).size).toBe(CAPACIDADES_NEGADAS.length);
+    for (const e of entradas()) expect(e).toMatch(/^[a-z-]+=\(\)$/);
+  });
+
+  it("el hardware conectado se niega como familia, y lo que un visor no usa", () => {
+    for (const c of ["usb", "serial", "hid", "midi"]) {
+      expect(CAPACIDADES_NEGADAS).toContain(c);
+    }
+    for (const c of ["camera", "microphone", "geolocation", "payment", "display-capture"]) {
+      expect(CAPACIDADES_NEGADAS).toContain(c);
+    }
+  });
+
+  it("el marco de Mermaid recibe la misma política", () => {
+    expect(cabecerasPara(RUTA_MARCO_MERMAID)["Permissions-Policy"]).toBe(politica());
   });
 });

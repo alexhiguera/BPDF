@@ -22,6 +22,8 @@
  * - `busqueda.pdf` (Fase 6): mayúsculas y minúsculas de la misma palabra, una
  *   palabra dentro de otra y una palabra partida con guion al final de línea.
  *   `BUSQUEDA` dice cuántas veces aparece cada cosa.
+ * - `crearPdfFormulario()` (Fase 12, solo en memoria): campos AcroForm con su
+ *   apariencia y JavaScript al abrir y en los campos. `FORMULARIO` dice dónde.
  */
 import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
@@ -198,6 +200,43 @@ export function crearPdfCjk() {
     "<< /Type /Font /Subtype /CIDFontType0 /BaseFont /KozMinPr6N-Regular /CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 6 >> /FontDescriptor 8 0 R >>",
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
     "<< /Type /FontDescriptor /FontName /KozMinPr6N-Regular /Flags 6 /FontBBox [0 -200 1000 900] /ItalicAngle 0 /Ascent 880 /Descent -120 /CapHeight 700 /StemV 80 >>",
+  ]);
+}
+
+/**
+ * Formulario AcroForm (Fase 12, D14: se ve, no se rellena). Un campo de texto con
+ * valor y una casilla marcada, los dos con su apariencia (un bloque relleno, fácil
+ * de encontrar en los píxeles), y JavaScript en todas partes: al abrir el
+ * documento (`/OpenAction`) y en las acciones del campo (pulsación y formato).
+ * Solo en memoria (`crearPdfFormulario()`); no se escribe en disco.
+ */
+export const FORMULARIO = {
+  /** Rectángulos en puntos PDF [x1 y1 x2 y2]. */
+  campo: [72, 600, 372, 640],
+  casilla: [72, 540, 102, 570],
+  /** Un punto de la página sin nada pintado. */
+  vacio: [450, 300],
+  valor: "valor-del-campo",
+};
+export function crearPdfFormulario() {
+  const F = FORMULARIO;
+  const apariencia = (ancho, alto, contenido) =>
+    `<< /Type /XObject /Subtype /Form /BBox [0 0 ${ancho} ${alto}] /Length ${Buffer.byteLength(contenido, "latin1")} >>\nstream\n${contenido}\nendstream`;
+  const js = (codigo) => `<< /S /JavaScript /JS (${escapar(codigo)}) >>`;
+  const [cx1, cy1, cx2, cy2] = F.campo;
+  const [kx1, ky1, kx2, ky2] = F.casilla;
+  return escribirPdf([
+    "<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [5 0 R 6 0 R] >> /OpenAction 9 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 10 0 R >> >> /Annots [5 0 R 6 0 R] >>",
+    flujo(texto(72, 780, 20, "Formulario de prueba")),
+    `<< /Type /Annot /Subtype /Widget /FT /Tx /T (nombre) /V (${F.valor}) /Rect [${F.campo.join(" ")}] /F 4 /P 3 0 R /AP << /N 7 0 R >> /AA << /K ${js("app.alert(1)")} /F ${js("app.alert(2)")} >> >>`,
+    `<< /Type /Annot /Subtype /Widget /FT /Btn /T (acepto) /V /Si /AS /Si /Rect [${F.casilla.join(" ")}] /F 4 /P 3 0 R /AP << /N << /Si 8 0 R /Off 11 0 R >> >> >>`,
+    apariencia(cx2 - cx1, cy2 - cy1, `0 0 0 rg 0 0 ${cx2 - cx1} ${cy2 - cy1} re f`),
+    apariencia(kx2 - kx1, ky2 - ky1, `0 0 0 rg 0 0 ${kx2 - kx1} ${ky2 - ky1} re f`),
+    js("app.alert(3)"),
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+    apariencia(kx2 - kx1, ky2 - ky1, ""),
   ]);
 }
 

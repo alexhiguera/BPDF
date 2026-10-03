@@ -9,6 +9,7 @@ import {
   GEOMETRIA,
 } from "../../tests/fixtures/pdf/modo-oscuro/generar.mjs";
 import { BUSQUEDA, CJK, VISOR } from "../../tests/fixtures/pdf/visor/generar.mjs";
+import { leerPortapapeles } from "../portapapeles";
 import { abrir, type Vigilancia } from "../vigilancia";
 
 /**
@@ -360,9 +361,8 @@ test("el texto se selecciona y se copia, también a otro zoom", async ({ page, c
   expect(Math.abs((a100?.x ?? 0) - (pagina?.x ?? 0) - 72 * PT_A_CSS)).toBeLessThanOrEqual(3);
   await span.click({ clickCount: 3 });
   await page.keyboard.press("Control+c");
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
-    "La canción del búho",
-  );
+  // El portapapeles del sistema, leído fuera de la app (que niega `clipboard-read`).
+  expect(await leerPortapapeles(context)).toContain("La canción del búho");
   // A 200 %, la misma frase mide el doble.
   for (let i = 0; i < 5; i++) await boton(page, t.zoomIn).click();
   await expect(page.getByText(t.zoomPercent(200), { exact: true })).toBeVisible();

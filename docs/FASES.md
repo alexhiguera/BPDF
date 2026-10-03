@@ -51,7 +51,7 @@ web); conserva su número, sin trabajo pendiente.
 | 9 | Editor Markdown + vista previa + dividido | Igual (D9: CodeMirror 6). La vista previa de un documento grande se pausa en dividido (medido) |
 | 10 | Preferencias | Infraestructura, panel, memoria por documento y borrado. La infraestructura estaba prevista en la F2 y se aplazó aquí, a su primer uso real |
 | 11 | UI/UX final | Igual. Al especificarla: título fijo, «Acerca de» dentro de Preferencias, sin enlace al repositorio (F16) |
-| 12 | Seguridad: endurecimiento y auditoría | Ya no «añade» seguridad: cada fase implementa la suya. Aquí se verifica, se endurece (CSP final, Trusted Types) y se audita |
+| 12 | Seguridad: endurecimiento y auditoría | Ya no «añade» seguridad: cada fase implementa la suya. Aquí se verifica, se endurece (CSP final, Trusted Types: medido y no adoptado en v1) y se audita. **Implementada, pendiente de revisión** |
 | 13 | Accesibilidad y rendimiento | Los tests viven en cada fase; esta fase **mide** con el corpus grande y corrige |
 | 14 | ~~Electron: aplicación~~ | **Cancelada** el *2026-10-03*: BPDF es solo una aplicación web (D19) |
 | 15 | Distribución web | Incluye la publicación web (antes no tenía fase). **Reescrita** el *2026-10-03* sin la parte de escritorio (D19) |
@@ -251,7 +251,8 @@ E2E) está borrado; el benchmark mide ahora el visor (`npm run bench:pdf`).
   se dice que BPDF aún no lo abre.
 - **Rotación en un solo sentido** (90° a la derecha, cuatro pulsaciones dan la vuelta).
 - **Firefox 114+** para el visor: pdf.js 6 carga su worker como módulo ES
-  (ARCHITECTURE §4 quater, límites).
+  (ARCHITECTURE §4 quater, límites). Desde el *2026-10-03* el mínimo global es Firefox 128
+  (Tailwind 4), que ya lo cubre.
 - **PDF reales** (§28 del encargo): probados nueve (paper con gráficas vectoriales, paper
   con figuras raster y tablas, formulario oficial, documento de empresa con logo, tablas,
   foto y gráfico generado con Chromium, documento largo con índice enlazado, escaneo sin
@@ -1181,6 +1182,21 @@ bitácora, TAREAS.
 ---
 
 ## Fase 12 — Seguridad: endurecimiento y auditoría
+
+> **Estado: IMPLEMENTADA / PENDIENTE DE REVISIÓN** (*2026-10-03*, iteración 27). Falta
+> revisarla con el usuario: cabeceras, CSP, `Permissions-Policy`, producción,
+> dependencias y riesgos aceptados. No se cierra hasta entonces. Resultado en
+> [auditoria.md](auditoria.md) (Auditoría 1).
+>
+> **Qué se hizo.** CSP revisada directiva a directiva: ninguna sobra, queda igual y
+> congelada en un test. `Permissions-Policy` con `clipboard-read=()` y la familia del
+> hardware (`serial`, `hid`, `midi`). Cabeceras revisadas una a una (ninguna añadida
+> por lista; `X-Frame-Options` redundante, se conserva). **T-3 cerrada; T-4 (Trusted
+> Types) medida y no adoptada en v1**, pendiente de confirmar. E2E nuevo
+> `seguridad.spec.ts` (cabeceras de siete rutas, portapapeles, almacenamiento tras un
+> recorrido completo, formularios PDF de D14). `fsevents` resuelto sin denegación.
+> Producción comprobada con la versión desplegada (anterior a la Fase 11); lo nuevo se
+> comprueba tras el push. Sin funciones nuevas ni cambios fuera de la seguridad.
 
 **Objetivo.** Verificar cada control de [SEGURIDAD.md](SEGURIDAD.md), endurecer lo que
 quede y registrar una auditoría.

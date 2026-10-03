@@ -66,25 +66,57 @@ export const cspCabecera = (): string => serializar(CSP);
 /**
  * CSP para `<meta http-equiv>` en el `index.html` de la build: la misma política
  * sin las directivas que en `<meta>` no existen. Hace que el `dist/` lleve su
- * CSP puesta aunque el hosting no mande cabeceras (el hosting está pendiente de
- * D5); donde sí las mande, se aplican las dos y manda la más estricta.
+ * CSP puesta aunque el hosting no mande cabeceras (Vercel, D5, sí las manda);
+ * donde las mande, se aplican las dos y manda la más estricta.
  */
 export const cspMeta = (): string => serializar(CSP, SOLO_CABECERA);
 
 /**
- * Cabeceras de toda respuesta. `Permissions-Policy` niega lo que la app no usa;
- * solo lista características que Chrome reconoce, porque una desconocida
- * produce un error en consola.
+ * `Permissions-Policy`: capacidades del navegador que BPDF niega a todos, también
+ * a sí mismo (docs/SEGURIDAD.md §2.2). Si algún día un fallo dejara correr código
+ * ajeno en la app, no podría ni pedirlas. Solo características que Chrome
+ * reconoce: una desconocida produce un error en consola.
+ *
+ * - `clipboard-read` (Fase 12): BPDF nunca lee el portapapeles (copiar solo
+ *   escribe, y pegar en el editor es el `paste` del usuario, que esto no toca).
+ *   `clipboard-write` NO se niega: lo usa «Copiar» en los bloques de código.
+ * - Cámara, micrófono, ubicación, pagos y captura de pantalla: un visor de
+ *   documentos no los usa.
+ * - Hardware conectado (`usb`, y desde la Fase 12 `serial`, `hid` y `midi`): la
+ *   familia entera, no solo uno de sus miembros. `bluetooth` NO: Chrome no lo
+ *   reconoce como característica de esta cabecera y da un error en consola
+ *   (medido en los E2E); Web Bluetooth pide además un gesto y un selector.
+ * - `fullscreen` no aparece: su valor por defecto ya es el propio origen y lo
+ *   usa la pantalla completa del visor PDF (Fase 6).
  */
+export const CAPACIDADES_NEGADAS = [
+  "camera",
+  "microphone",
+  "geolocation",
+  "payment",
+  "usb",
+  "display-capture",
+  "clipboard-read",
+  "serial",
+  "hid",
+  "midi",
+] as const;
+
+/** Cabeceras de toda respuesta (docs/SEGURIDAD.md §2.2, cada una con su motivo). */
 export function cabecerasSeguridad(): Record<string, string> {
   return {
     "Content-Security-Policy": cspCabecera(),
     "X-Content-Type-Options": "nosniff",
+    // Redundante con `frame-ancestors 'none'` en todos los navegadores mínimos;
+    // se conserva porque no cuesta nada y cubre a quien no aplique CSP 2.
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "no-referrer",
-    "Permissions-Policy":
-      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=()",
+    "Permissions-Policy": CAPACIDADES_NEGADAS.map((c) => `${c}=()`).join(", "),
+    // Ninguna ventana de otro origen conserva una referencia a la de BPDF (ni la
+    // que la abra, ni la que abra un enlace externo, que además va sin `opener`).
     "Cross-Origin-Opener-Policy": "same-origin",
+    // Otras webs no pueden incrustar los ficheros de BPDF como recurso (`no-cors`).
+    // Sin COEP: no hace falta aislamiento entre orígenes (ni `SharedArrayBuffer`).
     "Cross-Origin-Resource-Policy": "same-origin",
     // Sin `preload`: entrar en la lista de precarga es un compromiso del dominio.
     "Strict-Transport-Security": "max-age=63072000; includeSubDomains",

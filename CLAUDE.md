@@ -20,7 +20,9 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   los objetivos de latencia (medido; [`docs/FASES.md`](docs/FASES.md), Fase 9). La 10
   (preferencias, posición solo para PDF) se cerró el *2026-10-03* (ARCHITECTURE §4 nonies).
   La 11 (UI/UX final) se cerró el mismo día (D10: sin tema claro; D12: adaptación básica;
-  título de ventana siempre «BPDF»). Siguiente: **Fase 12** (seguridad). La app es una SPA estática de Vite + React (D1)
+  título de ventana siempre «BPDF»). La 12 (seguridad) está **implementada y pendiente de
+  revisión** (*2026-10-03*; [`docs/auditoria.md`](docs/auditoria.md), Auditoría 1): no se
+  cierra hasta revisarla con el usuario. La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
   oscuro selectivo en un worker, búsqueda avanzada, pantalla completa, atajos de una tecla

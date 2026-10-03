@@ -9,7 +9,7 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 | SPA estática (Vite + React) y shell accesible | ✅ F2 | `index.html`, `vite.config.ts`, `src/main.tsx`, `src/app/` |
 | Tokens de diseño y primitivos (Button, Field, Input) | ✅ F2 (revisados en F11; lista en PLAN §9.5) | `src/styles/globals.css`, `src/components/ui/` |
 | Textos centralizados | ✅ F2 | `src/i18n/messages.ts` |
-| CSP y cabeceras de seguridad | ✅ F2 (base; se amplía por fase y se cierra en F12) | `src/config/security-headers.ts` |
+| CSP y cabeceras de seguridad | ✅ F2 (base; se amplía por fase) · F12 implementada, pendiente de revisión (CSP definitiva, `Permissions-Policy` ampliada) | `src/config/security-headers.ts` |
 | Tests: unitarios, componentes, a11y, guardarraíles, E2E | ✅ | `tests/`, `e2e/` |
 | CI: calidad, tamaño del arranque, E2E, seguridad de dependencias | ✅ | `.github/workflows/` |
 | `public_docs/` con contrato y validador | ✅ (portada «próximamente») | `public_docs/`, `scripts/validar-public-docs.mjs` |

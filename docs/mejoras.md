@@ -16,6 +16,14 @@ Heredadas de la plantilla, siguen aplicando:
   [SEGURIDAD.md](SEGURIDAD.md) §2.5.)
 - Comprobar si `actions/checkout`, `setup-node` y `upload-artifact` tienen una versión
   mayor más nueva que `v4`.
+- `persist-credentials: false` en `actions/checkout`: hoy el token queda en `.git/config`
+  mientras corren `npm ci`, la build y los tests (código de dependencias). El token es de
+  solo lectura (`permissions: contents: read` en los tres workflows), así que el riesgo es
+  bajo.
+
+**Situación (Fase 12, *2026-10-03*):** las Actions van por etiqueta (`@v4`), no por SHA.
+Sigue siendo una mejora, no un requisito de v1: sin releases firmadas (D19) y con
+permisos mínimos. Hallazgo A1-9 de [auditoria.md](auditoria.md).
 - Notificación a Discord también en `e2e.yml` y `security.yml` (hoy solo en `ci.yml`).
 
 **Desbloqueo:** la primera ejecución real de los workflows en GitHub.

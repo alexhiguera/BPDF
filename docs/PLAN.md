@@ -676,8 +676,8 @@ terceros sin licencia clara.
 |---|---|---|
 | **T-1** | Estrategia de modo oscuro del PDF y, con ella, `PDFViewer` frente a visor propio. **Resuelta en la Fase 4:** recoloreado selectivo con las regiones de `recordImages`; exige visor propio sobre la API núcleo (D17, confirmada; [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §11–12) | Fase 4 ✅ |
 | **T-2** | `@vitejs/plugin-react` sí o no. **Resuelta en la Fase 2: no** (Vite transforma el JSX solo; se renuncia a Fast Refresh; [STACK.md](STACK.md)) | Fase 2 ✅ |
-| **T-3** | `style-src` sin `'unsafe-inline'`. **Desde la Fase 2 la CSP ya no lo lleva.** pdf.js y KaTeX no lo necesitan (KaTeX, quitando el `style` que pone por atributo). **Mermaid sí**: resuelto en la Fase 8 sin tocar la CSP de la app, con un marco aislado que tiene su propia política (confirmado al empezar la fase; [SEGURIDAD.md](SEGURIDAD.md) §2.1) | Fases 4–8 ✅; cierre en la 12 |
-| **T-4** | Trusted Types (`require-trusted-types-for 'script'`) viable con pdf.js y Mermaid | Fase 12 |
+| **T-3** | `style-src` sin `'unsafe-inline'`. **Desde la Fase 2 la CSP ya no lo lleva.** pdf.js y KaTeX no lo necesitan (KaTeX, quitando el `style` que pone por atributo). **Mermaid sí**: resuelto en la Fase 8 sin tocar la CSP de la app, con un marco aislado que tiene su propia política (confirmado al empezar la fase; [SEGURIDAD.md](SEGURIDAD.md) §2.1). **Cerrada en la Fase 12** (*2026-10-03*): CSP definitiva sin él | Fases 4–8 ✅ · 12 ✅ |
+| **T-4** | Trusted Types (`require-trusted-types-for 'script'`) viable con pdf.js y Mermaid. **Medida en la Fase 12: no se adopta en v1** (pendiente de confirmar por el usuario). Rompe 49 de 116 E2E: los dos workers y el decodificador de entidades de micromark necesitarían una política `default` propia; ningún sumidero inventariado recibe HTML del documento ([SEGURIDAD.md](SEGURIDAD.md) §2.3, [auditoria.md](auditoria.md) A1-5) | Fase 12 (medida) · reevaluar tras la 13 |
 | ~~**T-5**~~ | ~~Electron Forge frente a electron-builder~~. **Ya no aplica** (D19: sin escritorio) | — |
 
 ## 15. Riesgos

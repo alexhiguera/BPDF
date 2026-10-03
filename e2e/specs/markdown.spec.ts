@@ -1,6 +1,7 @@
 import path from "node:path";
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { messages } from "../../src/i18n/messages";
+import { leerPortapapeles } from "../portapapeles";
 import { abrir, type Vigilancia } from "../vigilancia";
 
 /**
@@ -122,7 +123,8 @@ test("código: resaltado con los colores del tema y botón de copiar que copia d
   const copiar = python.getByRole("button", { name: t.code.copy });
   await copiar.click();
   await expect(python.getByRole("button", { name: t.code.copied })).toBeVisible();
-  const copiado = await page.evaluate(() => navigator.clipboard.readText());
+  // El portapapeles del sistema, leído fuera de la app (que niega `clipboard-read`).
+  const copiado = await leerPortapapeles(context);
   expect(copiado).toBe(
     'def fib(n: int) -> int:\n    """Fibonacci."""\n    return n if n < 2 else fib(n - 1) + fib(n - 2)',
   );

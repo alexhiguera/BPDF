@@ -32,7 +32,9 @@ probar los validadores de `public_docs/`.
 | `pdf/visor/sin-texto.pdf` | 2 páginas de solo dibujo: lo que ve BPDF de un escaneo sin OCR | El mismo generador | `tests/unit/pdf/documento.test.ts`, `e2e/specs/visor-pdf.spec.ts` |
 | `pdf/visor/cjk.pdf` | Texto japonés («日本語») con una fuente CID **no incrustada** (Adobe-Japan1, `UniJIS-UCS2-H`) y una línea en Helvetica: pdf.js necesita pedir sus cmaps al propio origen | El mismo generador | `tests/unit/pdf/documento.test.ts`, `e2e/specs/visor-pdf.spec.ts` (exige `connect-src 'self'`) |
 
-Los casos que no merecen un fichero en disco se construyen en el propio test: PDF falso
+Los casos que no merecen un fichero en disco se construyen en el propio test o con los
+generadores en memoria: el PDF con formulario AcroForm de la Fase 12 (`crearPdfFormulario()`
+de `pdf/visor/generar.mjs`, con JavaScript al abrir y en el campo; D14), PDF falso
 (bytes de PNG con extensión `.pdf`), ficheros vacíos, Markdown en UTF-16 o binario, y
 nombres con `<`, `>`, comillas, Unicode o espacios (en disco darían problemas en algunos
 sistemas de ficheros).
