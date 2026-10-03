@@ -189,6 +189,40 @@ export const messages = {
       external: (url: string) => `Abrir ${url} en el navegador`,
     },
   },
+  /** Diálogo de preferencias (Fase 10, docs/PLAN.md §8). */
+  preferences: {
+    open: "Preferencias",
+    title: "Preferencias",
+    close: "Cerrar las preferencias",
+    intro:
+      "Se guardan solo en este navegador. BPDF nunca guarda nombres de archivo, contenido ni contraseñas.",
+    pdf: "PDF: al abrir un documento",
+    pdfHint:
+      "Se aplican al siguiente PDF que abras; los botones del visor cambian solo el abierto.",
+    mode: "Colores de la página",
+    zoom: "Zoom",
+    zoomFixed: (porcentaje: number) => `${porcentaje} %`,
+    view: "Vista",
+    markdown: "Markdown",
+    fontSize: "Tamaño de letra",
+    fontSizeValue: (px: number) => `${px} px`,
+    width: "Ancho de la columna",
+    widths: {
+      estrecho: "Estrecho (60 caracteres)",
+      normal: "Normal (72 caracteres)",
+      ancho: "Ancho (90 caracteres)",
+    },
+    keyboard: "Teclado",
+    singleKey: "Atajos de una tecla en el visor PDF (F, T, R, Mayús+R y ?)",
+    position: "Posición de lectura",
+    remember: "Recordar la página y el zoom de cada PDF",
+    rememberHint:
+      "Se guarda una huella del archivo, no su nombre. Desactivarlo no borra las posiciones ya guardadas.",
+    forget: "Olvidar posiciones guardadas",
+    forgotten: "Posiciones guardadas olvidadas.",
+    reset: "Restablecer preferencias",
+    resetDone: "Preferencias restablecidas.",
+  },
   /** Cambios sin guardar al sustituir o cerrar un documento (Fase 9). */
   discard: {
     title: "Hay cambios sin guardar",

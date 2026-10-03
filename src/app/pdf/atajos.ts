@@ -178,16 +178,3 @@ export function atajoDe(e: Tecla, contexto: ContextoAtajos = CONTEXTO_INICIAL): 
       return null;
   }
 }
-
-/**
- * Atajos de una tecla activados o no, **solo en memoria**: dura toda la sesión
- * de la pestaña (también al abrir otro documento, que vuelve a montar el visor)
- * y se pierde al recargar. La Fase 10 lo llevará a preferencias guardadas.
- */
-let unaTeclaActivos = true;
-export const atajosDeUnaTecla = {
-  activos: (): boolean => unaTeclaActivos,
-  fijar: (activos: boolean): void => {
-    unaTeclaActivos = activos;
-  },
-};

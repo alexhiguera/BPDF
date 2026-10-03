@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { Settings } from "lucide-react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { project } from "@/config/project";
 import { DocumentProvider, useDocument } from "@/documents/DocumentProvider";
@@ -17,6 +18,8 @@ import { EmptyState } from "./EmptyState";
  */
 const VisorPdf = lazy(() => import("./pdf/VisorPdf"));
 const MarkdownView = lazy(() => import("@/markdown/MarkdownView"));
+/** Preferencias (Fase 10): el diálogo, `zod` y el almacén llegan al abrirlo. */
+const PreferencesDialog = lazy(() => import("@/preferences/PreferencesDialog"));
 
 /**
  * La aplicación. Recibe la plataforma (web hoy, Electron en la Fase 14) desde
@@ -51,6 +54,7 @@ function Shell({ platform }: { platform: Platform }) {
     respondDiscard,
   } = useDocument();
   const main = useRef<HTMLElement>(null);
+  const [preferencias, setPreferencias] = useState(false);
 
   useOpenShortcut(openWithPicker);
 
@@ -69,18 +73,36 @@ function Shell({ platform }: { platform: Platform }) {
       </a>
       <header className="flex items-center justify-between gap-4 border-b border-border bg-app px-4 py-2">
         <span className="font-semibold">{project.name}</span>
-        {/* Sin documento, la acción está en el centro del estado vacío. */}
-        {document && (
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={openFolder}>
-              {messages.open.folder}
-            </Button>
-            <Button variant="secondary" onClick={openWithPicker}>
-              {messages.open.button}
-            </Button>
-          </div>
-        )}
+        <div className="flex gap-2">
+          {/* Sin documento, abrir está en el centro del estado vacío. */}
+          {document && (
+            <>
+              <Button variant="secondary" onClick={openFolder}>
+                {messages.open.folder}
+              </Button>
+              <Button variant="secondary" onClick={openWithPicker}>
+                {messages.open.button}
+              </Button>
+            </>
+          )}
+          {/* Las preferencias, siempre: también sin documento abierto. */}
+          <Button
+            variant="secondary"
+            aria-haspopup="dialog"
+            title={messages.preferences.open}
+            onClick={() => setPreferencias(true)}
+          >
+            <Settings aria-hidden="true" className="size-4" />
+            {/* En pantalla estrecha, solo el icono: el nombre sigue ahí para el lector. */}
+            <span className="max-sm:sr-only">{messages.preferences.open}</span>
+          </Button>
+        </div>
       </header>
+      {preferencias && (
+        <Suspense fallback={null}>
+          <PreferencesDialog onCerrar={() => setPreferencias(false)} />
+        </Suspense>
+      )}
       <main
         ref={main}
         id="contenido"

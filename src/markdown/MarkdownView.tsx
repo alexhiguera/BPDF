@@ -20,6 +20,7 @@ import { useDesplazamientoSincronizado } from "@/editor/sincronia";
 import type { EstadoGuardado, ManejadorEditor, ModoMarkdown } from "@/editor/tipos";
 import { messages } from "@/i18n/messages";
 import type { ResultadoGuardado } from "@/platform";
+import { usePreferences } from "@/preferences/usePreferences";
 import {
   type AccionesDocumento,
   ContextoAcciones,
@@ -140,6 +141,11 @@ export default function MarkdownView({
   const titulo = useRef<HTMLHeadingElement>(null);
   const articulo = useRef<HTMLElement>(null);
   const idIndice = useId();
+  // Tipografía (Fase 10): `data-letra` y `data-ancho` en `.md-contenido`, con sus
+  // valores en markdown.css (sin `style` en línea: el contenido solo admite el de
+  // las celdas de tabla). Cambiarla no vuelve a renderizar el documento
+  // (`Contenido` es `memo` por el texto).
+  const { tamanoLetra, ancho } = usePreferences().markdown;
   const [indice, setIndice] = useState<EntradaIndice[]>([]);
   const [indiceAbierto, setIndiceAbierto] = useState(esAncha);
   const [aviso, setAviso] = useState("");
@@ -401,7 +407,7 @@ export default function MarkdownView({
       // volver a maquetar ni pintar lo de fuera.
       className="min-h-0 min-w-0 flex-1 overflow-auto bg-page [contain:strict]"
     >
-      <div className="md-contenido" aria-busy={!listo}>
+      <div className="md-contenido" aria-busy={!listo} data-letra={tamanoLetra} data-ancho={ancho}>
         {listo ? (
           <ContextoAcciones value={acciones}>
             <ContextoImagenes value={imagenes}>

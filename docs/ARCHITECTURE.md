@@ -280,9 +280,9 @@ búsqueda; nada con un diálogo modal abierto ni con `Alt`). Resolución pura en
 | F · T · R · Mayús+R · ? | **Una tecla** (WCAG 2.1.4): pantalla completa · miniaturas · girar a la derecha · a la izquierda · ayuda |
 
 Los de una tecla se desactivan con el interruptor de la ayuda (`?`, o el botón de la barra,
-que sigue funcionando con ellos desactivados). El estado vive en memoria del módulo
-(`atajosDeUnaTecla`): dura la sesión de la pestaña, también al abrir otro documento, y se
-pierde al recargar; la Fase 10 lo llevará a preferencias. `Mayús+R` se distingue por
+que sigue funcionando con ellos desactivados). Desde la Fase 10 el estado es una preferencia
+guardada (`atajosUnaTecla` en `bpdf:prefs`, §4 nonies): sobrevive a recargar, y el diálogo
+de preferencias tiene el mismo interruptor. `Mayús+R` se distingue por
 `shiftKey` (con Bloq Mayús, `R` sigue girando a la derecha) y `?` por el carácter, no por
 la tecla física (sale con Mayús en casi todas las distribuciones).
 
@@ -884,6 +884,78 @@ en Dividido (iteraciones 16–18).
   acceso al fichero abierto). Firefox y Safari no tienen `showSaveFilePicker`: descargan.
 - Probado en Chromium. El Shadow DOM con hojas construibles funciona en Firefox y Safari
   16.4+, pero no se ha comprobado.
+
+### 4 nonies. Preferencias y posición de lectura (Fase 10)
+
+> **Implementada el *2026-10-03*, pendiente de la aprobación del usuario.** Especificación:
+> [FASES.md](FASES.md), Fase 10; qué se guarda: [PLAN.md](PLAN.md) §8.
+
+| Pieza | Dónde | Qué hace |
+|---|---|---|
+| Esquemas | [`src/preferences/schema.ts`](../src/preferences/schema.ts) | `bpdf:prefs` y `bpdf:positions` con `zod`, campo a campo; valores por defecto; huella válida |
+| Almacén | [`src/preferences/store.ts`](../src/preferences/store.ts) | `localStorage` con `try/catch`; lectura versionada; copia en memoria; avisos de esta pestaña y de otras |
+| Gancho | [`src/preferences/usePreferences.ts`](../src/preferences/usePreferences.ts) | `useSyncExternalStore` sobre el almacén |
+| Posiciones | [`src/preferences/positions.ts`](../src/preferences/positions.ts) | Página y zoom por huella de PDF, LRU de 50 |
+| Diálogo | [`src/preferences/PreferencesDialog.tsx`](../src/preferences/PreferencesDialog.tsx) | `<dialog>` modal desde el botón «Preferencias» de la cabecera (siempre visible) |
+
+**Solo dos claves, y nada del documento.** `bpdf:prefs`: modo, zoom y vista por defecto del
+PDF, panel de miniaturas, tamaño de letra y ancho de Markdown, atajos de una tecla, recordar
+posición. `bpdf:positions`: `{ v: 1, docs: { [huella]: { page, zoom, t } } }`. Nunca nombres,
+rutas, contenido, contraseñas, opciones de búsqueda, estado del editor ni posición de
+Markdown (un E2E abre documentos con nombre y contenido conocidos y recorre el
+almacenamiento).
+
+**Lo leído es hostil.** Se valida campo a campo: un campo inválido vuelve a su valor por
+defecto sin arrastrar a los demás; las claves desconocidas se descartan; la huella tiene que
+ser hexadecimal (así ninguna clave del registro puede ser `__proto__`). Nunca rompe el
+arranque: sin almacenamiento, con cuota llena o con datos rotos, BPDF sigue con los valores en
+memoria.
+
+**Versiones.** `{ v, … }` en las dos claves y una tabla de migraciones paso a paso
+(`n → n + 1`), vacía en la v1, que es la primera; el mecanismo se prueba con tablas
+sintéticas. Una versión **futura** (otra pestaña con un BPDF más nuevo) se ignora en memoria y
+no se reescribe por su cuenta: las preferencias solo si el usuario cambia algo, y las
+posiciones nunca (guardarlas es automático); «Olvidar» sí la borra.
+
+**Una copia en memoria, varias pestañas.** El almacén guarda las preferencias leídas y solo
+sustituye el objeto si algo cambia, así que los componentes no se repintan por nada. El
+evento `storage` trae los cambios de otras pestañas; los de esta se avisan en el propio
+almacén (ese evento no llega a quien escribe). El oyente de `storage` es uno solo y se quita
+cuando no queda ningún suscriptor.
+
+**Cuándo se aplica cada cosa.**
+- PDF: modo, zoom y vista se leen **al abrir** un documento; cambiarlos en el diálogo no mueve
+  el abierto, y los botones del visor siguen siendo solo para ese documento.
+- Miniaturas: abrirlas o cerrarlas (`T` o el botón) se guarda al momento y vale para el
+  siguiente PDF.
+- Atajos de una tecla y tipografía de Markdown: al momento. El interruptor de la ayuda (`?`)
+  y el del diálogo escriben la misma preferencia. La tipografía va por `data-letra` y
+  `data-ancho` en `.md-contenido`, traducidos a propiedades CSS en `markdown.css` (en rem: 17
+  px = 1.0625rem, como antes). **Sin `style` en línea**: el contenido de un documento solo
+  admite el de las celdas de tabla (corpus de XSS). Cambiarla no vuelve a renderizar el
+  documento (`Contenido` es `memo` por el texto), aunque el navegador sí vuelve a maquetarlo.
+
+**Posición (D8).** Huella: `fingerprints[0]` de pdf.js (`DocumentoVisor.huella`). Al abrir,
+si «recordar» está activado y hay entrada, el zoom guardado manda sobre el de por defecto y
+la página se restaura con un salto, como cualquier «ir a» (los tamaños reales llegan
+después y el ancla mantiene esa página arriba); recuperarla actualiza su `t`. Se guarda 1 s
+después del último cambio de página o zoom, al desmontar el visor (cerrar, abrir otro) y en
+`pagehide`; abrir un PDF y no moverse no escribe nada. Desactivar «recordar» deja de leer y
+escribir, sin borrar. LRU de 50 por `t`.
+
+**CSP.** Sin cambios. `zod` va con `jitless: true`: sin eso, comprueba si puede compilar
+validadores con `new Function("")` y, aunque captura el error, el navegador informa una
+violación de `script-src` (la vieron los E2E en la primera ejecución).
+
+**Arranque.** `zod` y el almacén van en un trozo a demanda (~23 KB gzip) que llega con el
+visor PDF, el lector de Markdown o el diálogo. El arranque solo suma el botón y su icono
+(92,5 → 93,3 KB gzip).
+
+**Límites conocidos.**
+- La huella de pdf.js sale del ID del fichero: dos copias del mismo PDF comparten posición, y
+  un PDF editado que conserva su ID también.
+- Los orígenes son distintos en `vite dev`, `vite preview`, la web publicada y (Fase 14)
+  Electron: cada uno tiene sus propias preferencias.
 
 ### 5. La menor complejidad que cumpla los requisitos
 

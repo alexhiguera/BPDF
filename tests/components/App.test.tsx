@@ -42,6 +42,7 @@ vi.mock("@/editor/EditorMarkdown", async () => import("../helpers/editor-falso")
 beforeAll(async () => {
   await import("@/app/pdf/VisorPdf");
   await import("@/markdown/MarkdownView");
+  await import("@/preferences/PreferencesDialog");
 });
 
 function montar(plataforma = new PlataformaEnMemoria()) {
@@ -537,5 +538,61 @@ describe("App: editar un Markdown (Fase 9)", () => {
     await screen.findByRole("heading", { level: 1, name: "a.pdf" });
     expect(screen.queryByRole("button", { name: e.save })).toBeNull();
     expect(screen.queryByRole("button", { name: e.mode.edicion })).toBeNull();
+  });
+});
+
+describe("App: preferencias (Fase 10)", () => {
+  const p = messages.preferences;
+
+  it("el botón «Preferencias» está en la cabecera sin documento abierto, abre el diálogo y el foco vuelve", async () => {
+    montar();
+    const boton = within(screen.getByRole("banner")).getByRole("button", { name: p.open });
+    expect(boton).toHaveAttribute("aria-haspopup", "dialog");
+    boton.focus();
+    await act(async () => fireEvent.click(boton));
+    const dialogo = await screen.findByRole("dialog", { name: p.title });
+    fireEvent.click(within(dialogo).getByRole("button", { name: p.close }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(boton).toHaveFocus();
+  });
+
+  it("también con un documento abierto", async () => {
+    montar(new PlataformaEnMemoria().elegira(fichero("notas.md", "# Notas")));
+    await abrir();
+    await screen.findByRole("heading", { level: 1, name: "notas.md" });
+    const banner = screen.getByRole("banner");
+    expect(within(banner).getByRole("button", { name: p.open })).toBeInTheDocument();
+    expect(within(banner).getByRole("button", { name: messages.open.button })).toBeInTheDocument();
+  });
+
+  it("abrir un Markdown no guarda nada: ni posición, ni huella, ni nombre", async () => {
+    montar(
+      new PlataformaEnMemoria().elegira(fichero("diario-secreto.md", "# Hola\n\nTexto privado")),
+    );
+    await abrir();
+    await screen.findByRole("heading", { level: 1, name: "diario-secreto.md" });
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it("la tipografía de Markdown elegida se aplica al documento abierto, al momento", async () => {
+    montar(new PlataformaEnMemoria().elegira(fichero("notas.md", "# Notas")));
+    await abrir();
+    await screen.findByRole("heading", { level: 1, name: "notas.md" });
+    const contenido = document.querySelector<HTMLElement>(".md-contenido");
+    expect(contenido).toHaveAttribute("data-letra", "17");
+    expect(contenido).toHaveAttribute("data-ancho", "normal");
+    expect(contenido).not.toHaveAttribute("style");
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: p.open })));
+    const dialogo = await screen.findByRole("dialog", { name: p.title });
+    fireEvent.change(within(dialogo).getByRole("combobox", { name: p.fontSize }), {
+      target: { value: "22" },
+    });
+    fireEvent.change(within(dialogo).getByRole("combobox", { name: p.width }), {
+      target: { value: "estrecho" },
+    });
+    expect(contenido).toHaveAttribute("data-letra", "22");
+    expect(contenido).toHaveAttribute("data-ancho", "estrecho");
+    expect(localStorage.getItem("bpdf:prefs")).not.toContain("notas");
   });
 });

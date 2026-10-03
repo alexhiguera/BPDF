@@ -394,8 +394,10 @@ Todo en `localStorage` del origen de la app (en Electron también: el protocolo 
 origen estándar y seguro, así que **no hace falta IPC para preferencias**). Sin cookies: no
 hay servidor que las lea.
 
-Implementación: **Fase 10** (sin empezar; especificación y esquemas exactos en
-[FASES.md](FASES.md), Fase 10). Decisiones del *2026-10-03* reflejadas en la tabla.
+Implementación: **Fase 10** (*2026-10-03*; implementada y pendiente de la aprobación del
+usuario). Especificación y esquemas exactos en [FASES.md](FASES.md), Fase 10; diseño en
+[ARCHITECTURE.md](ARCHITECTURE.md) §4 nonies. Decisiones del *2026-10-03* reflejadas en la
+tabla.
 
 | Dato | ¿Se guarda? | Clave / forma | Motivo |
 |---|---|---|---|

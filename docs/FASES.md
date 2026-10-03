@@ -872,9 +872,29 @@ retraso perceptible al teclear (medir en F13 si hay duda). *Al cerrar: se cumple
 
 ---
 
-## Fase 10 — Preferencias
+## Fase 10 — Preferencias 🚧
 
-> **Especificada de nuevo el *2026-10-03*** (iteración 20), con la Fase 9 cerrada y las
+**IMPLEMENTADA, PENDIENTE DE APROBACIÓN** (*2026-10-03*, iteración 21). Diseño:
+[ARCHITECTURE.md](ARCHITECTURE.md) §4 nonies. Tipografía confirmada por el usuario al
+empezar: 15, 16, 17, 18, 20 y 22 px; 60, 72 y 90 ch; por defecto 17 px y 72 ch.
+
+**Desviaciones y decisiones al implementar** (detalle en la bitácora, iteración 21):
+
+- **`zod` con `jitless: true`**: sin eso, su comprobación de `new Function` provoca una
+  violación de CSP (lo vieron los E2E). La CSP no cambia.
+- **Tipografía por `data-letra` y `data-ancho`**, no por `style` en línea con propiedades
+  CSS: el corpus de XSS solo admite en el contenido el `style` de las celdas de tabla.
+- **`MarkdownView` tiene un oyente global** (el `storage` de las preferencias, compartido
+  y que se quita al desmontar): su test «no añade listeners globales» pasa a exigir
+  exactamente ese y su retirada.
+- **En pantalla estrecha, el botón «Preferencias» es solo un icono** (con nombre accesible y
+  `title`): con el texto, la cabecera desbordaba en 375 px (E2E de ventana estrecha).
+- La posición solo se guarda si cambia: abrir un PDF y no moverse no escribe nada.
+- **Hallazgo fuera de alcance:** cerrar un PDF mientras se pintan páginas deja a veces un
+  rechazo `worker-destruido` en consola. Es **anterior** a la Fase 10 (6 de 24 ejecuciones
+  con el código de antes, con carga) y queda en TAREAS.
+
+> **Especificada de nuevo el *2026-10-03* (iteración 20), con la Fase 9 cerrada y las
 > decisiones del usuario: **D8 confirmada**; posición **solo para PDF**; opciones de
 > búsqueda y estado del editor **no se guardan**; panel de miniaturas **sí**; acceso desde
 > la cabecera también sin documento; sin página pública de privacidad en esta fase.

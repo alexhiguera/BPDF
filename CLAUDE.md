@@ -18,8 +18,8 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   su número). La 9 se aprobó (*2026-10-03*) con una **excepción de rendimiento
   documentada**: teclear en Dividido con 1 MB + KaTeX, o con 1 MB de encabezados, supera
   los objetivos de latencia (medido; [`docs/FASES.md`](docs/FASES.md), Fase 9). Siguiente:
-  **Fase 10** (preferencias; D8 confirmada, posición solo para PDF), especificada y sin
-  empezar. La app es una SPA estática de Vite + React (D1)
+  **Fase 10** (preferencias; D8 confirmada, posición solo para PDF): **implementada y
+  pendiente de aprobación** (*2026-10-03*; ARCHITECTURE §4 nonies). La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
   oscuro selectivo en un worker, búsqueda avanzada, pantalla completa, atajos de una tecla

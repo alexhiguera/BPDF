@@ -87,7 +87,12 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   ├── ModeSwitch.tsx · SplitView.tsx  modos y paneles con separador accesible
 │   │   ├── sincronia.ts      desplazamiento sincronizado por encabezados (puro + gancho)
 │   │   └── tipos.ts          el contrato del editor, sin tipos de CodeMirror
-│   └── preferences/          llega en F10
+│   └── preferences/          preferencias y posición de lectura (F10, ARCHITECTURE §4 nonies)
+│       ├── schema.ts         bpdf:prefs y bpdf:positions con zod (jitless), campo a campo
+│       ├── store.ts          localStorage con try/catch, versiones, copia en memoria y pestañas
+│       ├── usePreferences.ts el gancho (useSyncExternalStore)
+│       ├── positions.ts      página y zoom por huella de PDF, LRU de 50
+│       └── PreferencesDialog.tsx  el diálogo, a demanda desde la cabecera
 ├── electron/                 llega en F14 (proceso main y preload; fuera de src/)
 ├── tests/
 │   ├── unit/                 lógica pura y guardarraíles (tokens, CSP, textos, identidad)
@@ -100,7 +105,8 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   ├── specs/                app.spec.ts (base) · abrir.spec.ts (apertura) · visor-pdf.spec.ts (visor PDF) ·
 │   │                         markdown.spec.ts (visor Markdown) · recursos.spec.ts (imágenes locales) ·
 │   │                         formulas-diagramas.spec.ts (KaTeX y Mermaid) · editor.spec.ts (editor, F9) ·
-│   │                         memoria.spec.ts (al cambiar de documento se libera el anterior; CDP, sin traza)
+│   │                         memoria.spec.ts (al cambiar de documento se libera el anterior; CDP, sin traza) ·
+│   │                         preferencias.spec.ts (preferencias, posición y privacidad del almacenamiento, F10)
 │   ├── bench/                benchmarks (no son tests; `npm run bench:pdf` · `bench:markdown` · `bench:editor`)
 │   └── vigilancia.ts         consola, CSP y red vigiladas en cada carga
 ├── scripts/                  herramientas (.mjs, sin dependencias extra)

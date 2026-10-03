@@ -4,7 +4,6 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { axe } from "jest-axe";
 import { createRef, type MutableRefObject } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { atajosDeUnaTecla } from "@/app/pdf/atajos";
 import { Visor } from "@/app/pdf/Visor";
 import { messages } from "@/i18n/messages";
 import type { OpcionesBusqueda } from "@/pdf/visor/busqueda";
@@ -20,14 +19,14 @@ const A4 = { ancho: 595, alto: 842 };
  * búsqueda, accesibilidad) sin pdf.js ni lienzos. Lo que pinta se comprueba por
  * lo que la interfaz le pide (`mostrar`). El render real va en Playwright.
  */
-function controladorFalso(total: number) {
+function controladorFalso(total: number, huella: string | null = null) {
   const pedidos: { paginas: number[]; p: ParametrosPintura }[] = [];
   const busquedas: string[] = [];
   let responder: (e: EstadoBusqueda) => void = () => {};
   const c = {
     total,
     tipoTransformador: "worker",
-    documento: { tamanos: vi.fn(async () => {}) },
+    documento: { tamanos: vi.fn(async () => {}), huella },
     memoria: () => ({ lienzos: 0, bytes: 0, pintando: 0 }),
     mostrar: vi.fn((marcos: { numero: number }[], p: ParametrosPintura) =>
       pedidos.push({ paginas: marcos.map((m) => m.numero), p }),
@@ -55,8 +54,8 @@ function controladorFalso(total: number) {
   };
 }
 
-function montar(total = 20) {
-  const f = controladorFalso(total);
+function montar(total = 20, huella: string | null = null) {
+  const f = controladorFalso(total, huella);
   const alEnlace = createRef() as MutableRefObject<(d: DestinoEnlace) => void>;
   alEnlace.current = () => {};
   const alCambio = createRef() as MutableRefObject<() => void>;
@@ -304,7 +303,6 @@ describe("Visor: enlaces del documento", () => {
 });
 
 describe("Visor: atajos de la Fase 6", () => {
-  afterEach(() => atajosDeUnaTecla.fijar(true));
   const tecla = (key: string, mod: Partial<KeyboardEvent> = {}) =>
     fireEvent.keyDown(window, { key, ...mod });
 
@@ -418,7 +416,7 @@ describe("Visor: atajos de la Fase 6", () => {
     expect(origen).toHaveFocus();
   });
 
-  it("el interruptor desactiva los de una tecla (en memoria, para toda la sesión); el botón de la barra reabre la ayuda", () => {
+  it("el interruptor desactiva los de una tecla (preferencia guardada, Fase 10); el botón de la barra reabre la ayuda", () => {
     const { ultimo, unmount } = montar(20);
     fireEvent.click(boton(t.shortcuts));
     const casilla = screen.getByRole("checkbox", { name: t.help.singleKey });
@@ -433,6 +431,11 @@ describe("Visor: atajos de la Fase 6", () => {
     // La navegación sigue.
     tecla(" ");
     expect(estadoPagina()).toHaveTextContent(t.status.page(2, 20));
+    // Se guarda en `bpdf:prefs`, y nada más: ni el nombre del documento.
+    expect(Object.keys(localStorage)).toEqual(["bpdf:prefs"]);
+    expect(JSON.parse(localStorage.getItem("bpdf:prefs") ?? "{}").atajosUnaTecla).toBe(false);
+    expect(localStorage.getItem("bpdf:prefs")).not.toContain("informe");
+    expect(sessionStorage.length).toBe(0);
     // Otro documento (el visor se monta de nuevo): siguen desactivados.
     unmount();
     montar(20);
@@ -443,7 +446,7 @@ describe("Visor: atajos de la Fase 6", () => {
     fireEvent.click(screen.getByRole("button", { name: t.help.close }));
     tecla("r");
     expect(screen.getByText(t.status.rotation(90))).toBeInTheDocument();
-    expect(localStorage.length).toBe(0);
+    expect(JSON.parse(localStorage.getItem("bpdf:prefs") ?? "{}").atajosUnaTecla).toBe(true);
   });
 });
 
@@ -543,5 +546,139 @@ describe("Visor: miniaturas", () => {
       "aria-current",
       "page",
     );
+  });
+});
+
+describe("Visor: preferencias y posición (Fase 10)", () => {
+  const HUELLA = "0123456789abcdef0123456789abcdef";
+  const tecla = (key: string) => fireEvent.keyDown(window, { key });
+  const guardadas = () => JSON.parse(localStorage.getItem("bpdf:positions") ?? "null");
+  const prefs = (pdf: object, extra: object = {}) =>
+    localStorage.setItem("bpdf:prefs", JSON.stringify({ v: 1, pdf, ...extra }));
+  afterEach(() => vi.useRealTimers());
+
+  it("abre con los valores por defecto guardados: colores, zoom, vista y miniaturas", () => {
+    prefs({
+      modo: "original",
+      zoom: { tipo: "fijo", valor: 1.5 },
+      vista: "pagina",
+      miniaturas: true,
+    });
+    const { ultimo } = montar(20);
+    expect(ultimo()?.p.modo).toBe("original");
+    expect(ultimo()?.p.zoom).toBe(1.5);
+    expect(screen.getByTestId("lector-pdf")).toHaveAttribute("data-vista", "pagina");
+    expect(screen.getByRole("navigation", { name: t.thumbnails })).toBeInTheDocument();
+  });
+
+  it("sin nada guardado, lo de siempre (y abrir no escribe nada)", () => {
+    const { ultimo } = montar(20, HUELLA);
+    expect(ultimo()?.p.modo).toBe("oscuro");
+    expect(screen.getByTestId("lector-pdf")).toHaveAttribute("data-vista", "continua");
+    expect(screen.queryByRole("navigation", { name: t.thumbnails })).toBeNull();
+    expect(localStorage.length).toBe(0);
+  });
+
+  it("restaura la página y el zoom guardados para esa huella, por encima del zoom por defecto", () => {
+    prefs({ zoom: { tipo: "pagina" } });
+    localStorage.setItem(
+      "bpdf:positions",
+      JSON.stringify({
+        v: 1,
+        docs: { [HUELLA]: { page: 7, zoom: { tipo: "fijo", valor: 2 }, t: 1 } },
+      }),
+    );
+    const { ultimo } = montar(20, HUELLA);
+    expect(estadoPagina()).toHaveTextContent(t.status.page(7, 20));
+    expect(ultimo()?.p.zoom).toBe(2);
+    // Recuperarla cuenta como uso: su `t` se actualiza.
+    expect(guardadas().docs[HUELLA].t).toBeGreaterThan(1);
+  });
+
+  it("una página guardada mayor que el documento se acota a la última", () => {
+    localStorage.setItem(
+      "bpdf:positions",
+      JSON.stringify({ v: 1, docs: { [HUELLA]: { page: 99, zoom: { tipo: "ancho" }, t: 1 } } }),
+    );
+    montar(20, HUELLA);
+    expect(estadoPagina()).toHaveTextContent(t.status.page(20, 20));
+  });
+
+  it("guarda la posición 1 s después del último cambio, con la huella y sin el nombre", () => {
+    vi.useFakeTimers();
+    montar(20, HUELLA);
+    tecla("PageDown");
+    tecla("PageDown");
+    act(() => vi.advanceTimersByTime(999));
+    expect(guardadas()).toBeNull();
+    act(() => vi.advanceTimersByTime(1));
+    expect(guardadas().docs[HUELLA]).toMatchObject({ page: 3, zoom: { tipo: "ancho" } });
+    expect(Object.keys(localStorage)).toEqual(["bpdf:positions"]);
+    expect(localStorage.getItem("bpdf:positions")).not.toContain("informe");
+  });
+
+  it("al cerrar el documento (desmontar) guarda lo pendiente sin esperar", () => {
+    vi.useFakeTimers();
+    const { unmount } = montar(20, HUELLA);
+    tecla("End");
+    expect(guardadas()).toBeNull();
+    unmount();
+    expect(guardadas().docs[HUELLA].page).toBe(20);
+  });
+
+  it("al salir de la página (`pagehide`) guarda lo pendiente", () => {
+    vi.useFakeTimers();
+    montar(20, HUELLA);
+    tecla("PageDown");
+    act(() => {
+      window.dispatchEvent(new Event("pagehide"));
+    });
+    expect(guardadas().docs[HUELLA].page).toBe(2);
+  });
+
+  it("con «recordar» desactivado no restaura ni guarda posiciones", () => {
+    vi.useFakeTimers();
+    prefs({}, { recordarPosicion: false });
+    const antes = JSON.stringify({
+      v: 1,
+      docs: { [HUELLA]: { page: 7, zoom: { tipo: "ancho" }, t: 1 } },
+    });
+    localStorage.setItem("bpdf:positions", antes);
+    const { unmount } = montar(20, HUELLA);
+    expect(estadoPagina()).toHaveTextContent(t.status.page(1, 20));
+    tecla("PageDown");
+    act(() => vi.advanceTimersByTime(5000));
+    unmount();
+    // Desactivar no borra lo guardado: no lo toca.
+    expect(localStorage.getItem("bpdf:positions")).toBe(antes);
+  });
+
+  it("un PDF sin huella no guarda posición", () => {
+    vi.useFakeTimers();
+    const { unmount } = montar(20, null);
+    tecla("PageDown");
+    act(() => vi.advanceTimersByTime(5000));
+    unmount();
+    expect(localStorage.getItem("bpdf:positions")).toBeNull();
+  });
+
+  it("abrir o cerrar las miniaturas se recuerda para el siguiente PDF", () => {
+    const { unmount } = montar(5);
+    fireEvent.click(boton(t.showThumbnails));
+    expect(JSON.parse(localStorage.getItem("bpdf:prefs") ?? "{}").pdf.miniaturas).toBe(true);
+    unmount();
+    montar(5);
+    expect(screen.getByRole("navigation", { name: t.thumbnails })).toBeInTheDocument();
+    fireEvent.click(boton(t.hideThumbnails));
+    expect(JSON.parse(localStorage.getItem("bpdf:prefs") ?? "{}").pdf.miniaturas).toBe(false);
+  });
+
+  it("las opciones de búsqueda no se guardan", () => {
+    montar(20);
+    fireEvent.click(boton(t.search));
+    fireEvent.click(boton(t.searchMatchCase));
+    fireEvent.click(boton(t.searchWholeWord));
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.length).toBe(0);
   });
 });

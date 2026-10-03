@@ -580,10 +580,26 @@ test("contraseña (F6, D13): incorrecta, reintento y correcta; no queda guardada
   await expect(page.getByTestId("visor-pdf")).toHaveAttribute("data-paginas", "1");
   await listo(page, 1);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("protegido.pdf");
-  const guardado = await page.evaluate(() =>
-    JSON.stringify([{ ...localStorage }, { ...sessionStorage }, document.cookie]),
-  );
-  for (const c of ["bpdf", "mala-e2e"]) expect(guardado).not.toContain(c);
+  // Con las preferencias de la Fase 10 en uso (miniaturas y posición guardadas), la
+  // contraseña tampoco aparece. Las únicas claves son las de preferencias: su nombre
+  // empieza por «bpdf:», que coincide con la contraseña de este fixture, así que se
+  // comprueba que las claves son exactamente esas y que ningún VALOR la contiene.
+  await boton(page, t.showThumbnails).click();
+  await boton(page, t.zoomIn).click();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("bpdf:positions")), { timeout: 5000 })
+    .not.toBeNull();
+  const guardado = await page.evaluate(() => ({
+    local: Object.entries(localStorage),
+    sesion: Object.entries(sessionStorage),
+    cookies: document.cookie,
+  }));
+  expect(guardado.local.map(([clave]) => clave).sort()).toEqual(["bpdf:positions", "bpdf:prefs"]);
+  expect(guardado.sesion).toEqual([]);
+  expect(guardado.cookies).toBe("");
+  for (const [, valor] of guardado.local) {
+    for (const c of ["bpdf", "mala-e2e"]) expect(valor).not.toContain(c);
+  }
   expect(await page.content()).not.toContain("mala-e2e");
   limpia(v);
 });

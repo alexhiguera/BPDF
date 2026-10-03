@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   atajoDe,
-  atajosDeUnaTecla,
   CONTEXTO_INICIAL,
   type ContextoAtajos,
   esCampoDeTexto,
@@ -201,17 +200,5 @@ describe("con un diálogo modal abierto", () => {
       expect(atajoDe(tecla(k), modal)).toBeNull();
     }
     expect(atajoDe(tecla("f", { ctrlKey: true }), modal)).toBeNull();
-  });
-});
-
-describe("interruptor de los atajos de una tecla", () => {
-  afterEach(() => atajosDeUnaTecla.fijar(true));
-
-  it("empieza activado y guarda el cambio en memoria (sin almacenamiento)", () => {
-    expect(atajosDeUnaTecla.activos()).toBe(true);
-    atajosDeUnaTecla.fijar(false);
-    expect(atajosDeUnaTecla.activos()).toBe(false);
-    expect(localStorage.length).toBe(0);
-    expect(sessionStorage.length).toBe(0);
   });
 });

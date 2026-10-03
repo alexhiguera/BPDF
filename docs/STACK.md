@@ -1,6 +1,6 @@
 # Stack tecnológico
 
-Estado tras la Fase 9 (*2026-10-01*; la Fase 9 añadió el editor, CodeMirror 6: `@codemirror/*` y `@lezer/highlight`; la Fase 8, `remark-math`, `katex` y `mermaid`): la Fase 4 añadió `pdfjs-dist` (el motor de PDF) y la
+Estado tras la Fase 10 (*2026-10-03*; la Fase 10 reinstaló `zod` para las preferencias guardadas; la Fase 9 añadió el editor, CodeMirror 6: `@codemirror/*` y `@lezer/highlight`; la Fase 8, `remark-math`, `katex` y `mermaid`): la Fase 4 añadió `pdfjs-dist` (el motor de PDF) y la
 Fase 7 el pipeline de Markdown (`react-markdown`, `remark-gfm`) y el resaltado de código
 (`lowlight`, `highlight.js`). El stack **objetivo** (pipeline de Markdown, Electron) y el motivo
 de cada pieza están en [PLAN.md](PLAN.md); cada fase añade aquí lo que instala.
@@ -63,6 +63,7 @@ explica, para que el documento no se quede atrás.
 | `@codemirror/state`, `@codemirror/view`, `@codemirror/commands`, `@codemirror/language` | Fase 9 (D9): el editor de Markdown, CodeMirror 6. **Versiones exactas** (6.7.6, 6.43.13, 6.11.1, 6.12.4): trabaja con texto no confiable. Lo mínimo: estado y vista, historial y teclado (`commands`) y resaltado (`language`). **Sin** el paquete `codemirror` (su `basicSetup` trae autocompletado, lint y búsqueda). Se carga a demanda al entrar en «Edición» o «Dividido»; montado en un Shadow DOM por la CSP (abajo) |
 | `@codemirror/lang-markdown` | Fase 9: la gramática de Markdown del editor (con GFM). **Versión exacta** (6.5.2). Se importan solo `markdownLanguage` y `markdownKeymap` (continuar listas y citas con Intro): así no entra en el trozo `lang-html` con CSS y JavaScript, que arrastra como dependencia para el HTML incrustado (comprobado en la build) |
 | `@lezer/highlight` | Fase 9: las etiquetas de sintaxis (`tags`) del tema del editor. **Versión exacta** (1.2.5). Ya llegaba de rebote; es directa porque se importa |
+| `zod` | Fase 10: valida lo que BPDF lee de `localStorage` (`bpdf:prefs`, `bpdf:positions`), que se trata como dato hostil: campo a campo, con su valor por defecto si no vale (`src/preferences/schema.ts`). **Versión exacta** (4.6.5; sin dependencias ni scripts de instalación). Con **`z.config({ jitless: true })`**: sin eso, zod prueba `new Function("")` y la CSP (sin `eval`) informa una violación aunque zod capture el error (medido en los E2E). Fuera del arranque: llega con el visor, el lector o el diálogo de preferencias (trozo a demanda, ~23 KB gzip). Volverá a usarse en los argumentos IPC de Electron (Fase 14) |
 | `pdfjs-dist` | El motor de PDF (pdf.js de Mozilla). **Versión exacta** (6.3.289): procesa contenido no confiable. Build **`legacy`** (D18). Se carga a demanda, con `useWasm: false` y sus recursos servidos desde el propio origen ([PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §3). El visor usa solo sus APIs núcleo y `TextLayer` (D17, [ARCHITECTURE.md](ARCHITECTURE.md) §4 quater) |
 
 ### `pdfjs-dist`: qué trae y qué implica
@@ -152,6 +153,8 @@ el validador de `public_docs/`).
 (desarrollo). `zod` se quedó sin uso al borrar la auth y las variables de entorno; vuelve
 cuando haya algo que validar: las preferencias guardadas (Fase 10) y los argumentos IPC
 de Electron (Fase 14).
+
+**Reinstalada en la Fase 10:** `zod` 4.6.5 (runtime, versión exacta; `npm audit` limpio, sin scripts de instalación que aprobar). La 4.6.5 llevaba tres semanas publicada.
 
 **Retiradas en la Fase 2:** `next` (runtime) y `@tailwindcss/postcss` (desarrollo,
 sustituido por `@tailwindcss/vite`).

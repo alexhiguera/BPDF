@@ -10,6 +10,106 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 21 — *2026-10-03* — Fase 10: preferencias y posición de lectura (implementada, pendiente de aprobación)
+
+**Contexto.** El usuario aprobó empezar la Fase 10 con la especificación de la iteración 20 y
+confirmó la tipografía de Markdown: 15, 16, 17, 18, 20 y 22 px; 60, 72 y 90 ch; por defecto
+17 px y 72 ch, exactamente como antes. **La fase queda implementada y pendiente de su
+aprobación**; no se da por cerrada. Diseño: ARCHITECTURE §4 nonies.
+
+**Hecho.**
+- `zod` 4.6.5 (exacta, sin dependencias ni scripts de instalación) y `src/preferences/`:
+  `schema.ts` (campo a campo, valores por defecto, huella hexadecimal), `store.ts` (todo en
+  `try/catch`, lectura versionada con tabla de migraciones vacía en la v1, copia en memoria,
+  avisos de esta pestaña y de otras por `storage`), `usePreferences.ts`
+  (`useSyncExternalStore`), `positions.ts` (página y zoom por huella, LRU de 50, versión
+  futura ni leída ni pisada) y `PreferencesDialog.tsx`.
+- Botón «Preferencias» en la cabecera, **siempre** (también sin documento); el diálogo se
+  carga a demanda.
+- Visor PDF: abre con el modo, el zoom, la vista y las miniaturas guardados; restaura la
+  página y el zoom de ese PDF (huella `fingerprints[0]`) si «recordar» está activado;
+  guarda la posición 1 s después del último cambio, al cerrar y en `pagehide`; el
+  interruptor de atajos de una tecla pasa de variable de módulo a preferencia (se borra
+  `atajosDeUnaTecla`).
+- Lector de Markdown: tamaño de letra y ancho al momento, también en la vista previa.
+- No se guarda: nombres, contenido, contraseñas, posición ni huella de Markdown, opciones de
+  búsqueda ni estado del editor.
+
+**Desviaciones y decisiones al implementar, y por qué:**
+- **`zod` con `jitless: true`.** La primera ejecución de los E2E falló casi entera por
+  `script-src eval`: zod 4 prueba `new Function("")` para compilar validadores y, aunque
+  captura el error, Chromium informa la violación de CSP. Su propio código prevé el caso.
+  La CSP no se abre.
+- **Tipografía por `data-letra`/`data-ancho`**, no por propiedades CSS en un `style` en
+  línea, que fue el primer intento: el corpus de XSS (22 casos) solo admite en el contenido
+  el `style` de las celdas de tabla, y falló. Corregido el código, no el test. Los valores
+  van en rem (17 px = 1.0625rem, como antes) y la regla de pantalla estrecha resta 1 px,
+  como antes (17 → 16).
+- **`MarkdownView` ya tiene un oyente global**: el `storage` de las preferencias (uno solo,
+  compartido, que se quita al desmontar). Su test «no añade listeners globales» exigía cero;
+  ahora exige exactamente ese oyente y que se quite con el mismo manejador. Es la
+  sincronización entre pestañas que pide la fase.
+- **Botón solo con icono en pantalla estrecha** (`max-sm:sr-only` en el texto, más
+  `title`): con el texto, la cabecera desbordaba a 413 px en 375 y 390 px (dos E2E de
+  ventana estrecha). Una regresión de diseño propia, vista por los E2E.
+- La posición solo se guarda cuando cambia: abrir un PDF y no moverse no deja historial.
+- Recuperar una posición actualiza su `t` (el uso cuenta para el LRU), como dice la
+  especificación.
+
+**Tests cambiados (igual o más estrictos):**
+- `atajos.test.ts`: fuera el test del interruptor en memoria (el módulo ya no lo tiene); su
+  comportamiento lo prueban `Visor.test.tsx` y `store.test.ts`.
+- `Visor.test.tsx`: el interruptor ahora exige que `localStorage` tenga **solo**
+  `bpdf:prefs`, con `atajosUnaTecla`, sin el nombre del documento.
+- `visor-pdf.spec.ts`, contraseña: buscaba «bpdf» (la contraseña del fixture) en todo el
+  almacenamiento, claves incluidas, y fallaría por el nombre de `bpdf:prefs`. Ahora usa las
+  preferencias de verdad (miniaturas y posición guardadas) y comprueba que las claves son
+  exactamente las dos permitidas, que ningún valor contiene la contraseña ni las erróneas, y
+  que `sessionStorage` y las cookies están vacíos.
+- `MarkdownView.test.tsx`: el de los oyentes globales (arriba).
+- Los que exigen almacenamiento vacío donde nada debe guardarse (`DocumentProvider`, la
+  contraseña en `App`, guardar en `editor.spec.ts`) **no se tocan** y siguen en verde.
+
+**Tests nuevos.** Unitarios: `schema` (valores por defecto, campo a campo, zooms,
+`__proto__`, huella, entradas de posición), `store` (vacío, corrupto, versión futura que no
+se reescribe, migraciones sintéticas en orden y rotas, almacenamiento que lanza o no existe,
+cambiar y validar, restablecer, varias pestañas, oyente único), `positions` (guardar y
+recuperar, `t`, LRU de 50, huellas inválidas, entradas corruptas, versión futura, olvidar).
+Componentes: diálogo (axe, etiquetas, valores por defecto, guardar al momento, olvidar,
+restablecer, otra pestaña), `Visor` (valores al abrir, restaurar y acotar, esperar 1 s,
+desmontar, `pagehide`, recordar desactivado, sin huella, miniaturas, búsqueda no guardada),
+`App` (botón con y sin documento, foco de vuelta, Markdown sin nada guardado, tipografía al
+momento). E2E (`preferencias.spec.ts`, 11): ver TAREAS.
+
+**Hallazgo fuera de alcance (no se corrige).** Un E2E nuevo cerraba el PDF justo después
+de navegar y vio `worker-destruido` en consola. Antes de achacarlo a la fase, se midió con
+el código de antes en una copia aparte: **6 de 24** ejecuciones con 8 navegadores en
+paralelo (10 de 24 con la Fase 10: mismo orden). Es anterior (worker del modo oscuro, Fase
+5) y va a TAREAS. Los E2E de la fase cierran con todo pintado.
+
+**Benchmark (`bench:editor`).** Comprobación, no optimización (Chromium, mismo equipo;
+una ejecución completa más dos de los casos de la excepción, que es como la iteración 18
+juntó tres). Por pulsación, Event Timing (redondea a 8 ms):
+
+| Caso | Modo | Iteración 18 (3 ejec.) | Fase 10 |
+|---|---|---|---|
+| 2 KB · 100 KB · 200 KB | ambos | máx. ≤ 32 ms | máx. ≤ 24 ms; 0 eventos ≥ 50 ms |
+| 1 MB | Edición / Dividido | máx. 32 / P95 48, máx. 56 | máx. 32 / P95 40, máx. 56 |
+| 1 MB + Mermaid | Dividido | P95 24, máx. 56 | P95 32, máx. 64 |
+| 1 MB + KaTeX | Edición | máx. 32 | máx. 32 (las tres) |
+| **1 MB + KaTeX** | **Dividido** | P95 96 · P99 216 · máx. 256; ≥ 100 ms: 5–11 por ejec.; tarea larga 97–203 | P95 104 (las tres) · P99 208–288 · máx. 208–288; ≥ 100 ms: 9–14; tarea larga 188–223 |
+| 1 MB de encabezados | Edición | P95 40, máx. 48 | P95 32–40, máx. 40–48 |
+| 1 MB de encabezados | Dividido | P95 64 · P99 112 · máx. 120 | P95 40–64 · P99 56–128 · máx. 56–128 |
+
+Vista previa: 208 ms (2 KB) y 327 ms (100 KB) desde la última tecla, como antes.
+**Lectura:** todo igual salvo la cola de 1 MB + KaTeX en Dividido, un escalón de 8 ms en el
+P95 y algo más de eventos ≥ 100 ms, dentro de la variación de una excepción ya aceptada
+(máx. 208–288 frente a 256). En ese recorrido la Fase 10 no añade trabajo por tecla: dos
+atributos fijos en `.md-contenido` y una suscripción que no se dispara al teclear. Se
+reporta y no se toca (orden del usuario: no reabrir la Fase 9).
+
+**Verificación.** `lint`, `typecheck`, `npm test` (971 tests en 50 ficheros), `build`, `build:tamano` (arranque 93,3 KB gzip; `zod` en un trozo a demanda de ~23 KB), `docs:enlaces` (264), `docs:validar` y `test:e2e` **108/108** (tres veces seguidas en verde al final), con cero errores de consola, cero violaciones de CSP y ninguna petición externa. `npm audit`: 0 vulnerabilidades. CSP y cabeceras sin cambios.
+
 ### Iteración 20 — *2026-10-03* — Fase 9 cerrada y aprobada, con una excepción de rendimiento; Fase 10 especificada de nuevo
 
 **Contexto.** Al preparar la Fase 10, la auditoría previa encontró que la Fase 9 no estaba

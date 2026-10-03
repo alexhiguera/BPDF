@@ -6,9 +6,9 @@ import { acotarZoom, pasoZoom, type Zoom } from "@/pdf/visor/disposicion";
  * colores. Reductor puro (probado en `tests/unit/pdf/estado.test.ts`); la
  * interfaz lo lee y el controlador pinta lo que dice.
  *
- * No se guarda nada entre sesiones (preferencias persistentes: fuera de la
- * Fase 5). Al abrir otro documento, el visor se monta de nuevo con el estado
- * inicial.
+ * Al abrir otro documento, el visor se monta de nuevo con el estado inicial,
+ * que toma de las preferencias (Fase 10) el zoom, la vista, el modo y las
+ * miniaturas; el resto empieza siempre igual.
  */
 export type Vista = "continua" | "pagina";
 export type Rotacion = 0 | 90 | 180 | 270;
@@ -30,14 +30,20 @@ export type EstadoVisor = {
   salto: number;
 };
 
-export const estadoInicial = (total: number): EstadoVisor => ({
+/** Lo que las preferencias (o la posición guardada, el zoom) fijan al abrir. */
+export type ValoresIniciales = Partial<Pick<EstadoVisor, "zoom" | "vista" | "modo" | "miniaturas">>;
+
+export const estadoInicial = (total: number, valores: ValoresIniciales = {}): EstadoVisor => ({
   pagina: 1,
   total,
-  zoom: { tipo: "ancho" },
+  zoom:
+    valores.zoom?.tipo === "fijo"
+      ? { tipo: "fijo", valor: acotarZoom(valores.zoom.valor) }
+      : (valores.zoom ?? { tipo: "ancho" }),
   rotacion: 0,
-  vista: "continua",
-  modo: "oscuro",
-  miniaturas: false,
+  vista: valores.vista ?? "continua",
+  modo: valores.modo ?? "oscuro",
+  miniaturas: valores.miniaturas ?? false,
   busqueda: false,
   salto: 0,
 });

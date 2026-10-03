@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { toHaveNoViolations } from "jest-axe";
 import { afterEach, expect } from "vitest";
+import { reiniciarPreferenciasEnMemoria } from "@/preferences/store";
 
 expect.extend(toHaveNoViolations);
 
@@ -28,6 +29,11 @@ if (typeof HTMLDialogElement !== "undefined" && !("showModal" in HTMLDialogEleme
 }
 
 // Testing Library solo desmonta sola con `globals: true`; aquí se hace explícito.
+// Las preferencias (Fase 10) viven en `localStorage` y en una copia en memoria:
+// cada test empieza sin ninguna de las dos.
 afterEach(() => {
   if (typeof document !== "undefined") cleanup();
+  if (typeof localStorage !== "undefined") localStorage.clear();
+  if (typeof sessionStorage !== "undefined") sessionStorage.clear();
+  reiniciarPreferenciasEnMemoria();
 });

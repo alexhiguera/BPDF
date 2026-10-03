@@ -30,14 +30,11 @@ import {
   zoomEfectivo,
 } from "@/pdf/visor/disposicion";
 import type { DestinoEnlace } from "@/pdf/visor/enlaces";
+import { guardarPosicion, recuperarPosicion } from "@/preferences/positions";
+import { cambiarPreferencias, obtenerPreferencias } from "@/preferences/store";
+import { usePreferences } from "@/preferences/usePreferences";
 import { AyudaAtajos } from "./AyudaAtajos";
-import {
-  atajoDe,
-  atajosDeUnaTecla,
-  type ContextoAtajos,
-  ID_CAMPO_BUSQUEDA,
-  ID_CAMPO_PAGINA,
-} from "./atajos";
+import { atajoDe, type ContextoAtajos, ID_CAMPO_BUSQUEDA, ID_CAMPO_PAGINA } from "./atajos";
 import { BarraBusqueda } from "./BarraBusqueda";
 import { BarraHerramientas } from "./BarraHerramientas";
 import { estadoInicial, reducir } from "./estado";
@@ -45,6 +42,8 @@ import { PanelMiniaturas } from "./PanelMiniaturas";
 
 const t = messages.pdf;
 const PASO_FLECHA = 60;
+/** La posición se guarda tras este tiempo sin cambios (y al cerrar o salir). */
+export const ESPERA_POSICION_MS = 1000;
 
 export type PropsVisor = {
   controlador: ControladorVisor;
@@ -67,6 +66,13 @@ export type PropsVisor = {
  *
  * Fase 6: pantalla completa del área de lectura, ayuda de atajos (con el
  * interruptor de los de una tecla), opciones de búsqueda y F3.
+ *
+ * Fase 10 (preferencias): al abrir, el zoom, la vista, el modo y las miniaturas
+ * salen de `bpdf:prefs` y, si «Recordar la posición» está activado y el PDF
+ * tiene una guardada (por su huella), la página y el zoom de ahí. La posición
+ * se guarda 1 s después del último cambio, al cerrar el documento y al salir de
+ * la página. Abrir o cerrar las miniaturas y el interruptor de atajos se
+ * guardan al momento. Las opciones de búsqueda NO se guardan.
  */
 export function Visor({
   controlador,
@@ -78,7 +84,23 @@ export function Visor({
   alCambio,
 }: PropsVisor) {
   const total = controlador.total;
-  const [estado, despachar] = useReducer(reducir, total, estadoInicial);
+  const huella = controlador.documento.huella;
+  // Lo que se lee al abrir: las preferencias de ese momento y la posición
+  // guardada. Cambiarlas después no mueve el documento abierto.
+  const [inicial] = useState(() => {
+    const prefs = obtenerPreferencias();
+    const posicion = prefs.recordarPosicion && huella ? recuperarPosicion(huella) : null;
+    return { pdf: prefs.pdf, posicion };
+  });
+  const [estado, despachar] = useReducer(reducir, total, (n) =>
+    estadoInicial(n, {
+      zoom: inicial.posicion?.zoom ?? inicial.pdf.zoom,
+      vista: inicial.pdf.vista,
+      modo: inicial.pdf.modo,
+      miniaturas: inicial.pdf.miniaturas,
+    }),
+  );
+  const preferencias = usePreferences();
   const [tamanos, setTamanos] = useState<Tamano[]>(() =>
     Array.from({ length: total }, () => primera),
   );
@@ -284,10 +306,11 @@ export function Visor({
   }, []);
 
   // --- Atajos de una tecla y su ayuda (Fase 6) ----------------------------
-  const [unaTecla, setUnaTeclaEstado] = useState(atajosDeUnaTecla.activos);
+  // El interruptor es una preferencia guardada (Fase 10): el de la ayuda y el del
+  // diálogo de preferencias escriben la misma.
+  const unaTecla = preferencias.atajosUnaTecla;
   const setUnaTecla = useCallback((activos: boolean) => {
-    atajosDeUnaTecla.fijar(activos);
-    setUnaTeclaEstado(activos);
+    cambiarPreferencias((p) => ({ ...p, atajosUnaTecla: activos }));
   }, []);
   const [ayuda, setAyuda] = useState(false);
 
@@ -388,6 +411,52 @@ export function Visor({
   );
   useAlCambiar(estado.salto, () => anunciar(t.page(estado.pagina, total)));
   useAlCambiar(pantallaCompleta, () => anunciar(t.announce.fullscreen(pantallaCompleta)));
+
+  // --- Preferencias y posición (Fase 10) ----------------------------------
+  // Abrir o cerrar las miniaturas es un estado que se recuerda para el siguiente PDF.
+  useAlCambiar(estado.miniaturas, () =>
+    cambiarPreferencias((p) => ({ ...p, pdf: { ...p.pdf, miniaturas: estado.miniaturas } })),
+  );
+
+  // La página guardada se restaura con un salto, como cualquier «ir a»: los
+  // tamaños reales llegan después y el ancla mantiene esa página arriba.
+  useEffect(() => {
+    const pagina = inicial.posicion?.page ?? 1;
+    if (pagina > 1) despachar({ tipo: "ir", pagina });
+  }, [inicial]);
+
+  // Guardar la posición: 1 s después del último cambio de página o zoom, al
+  // cerrar el documento (desmontar) y al salir de la página (`pagehide`). Solo si
+  // «Recordar la posición» sigue activado en ese momento.
+  const recordar = useRef(preferencias.recordarPosicion);
+  recordar.current = preferencias.recordarPosicion;
+  const pendiente = useRef<{ page: number; zoom: typeof estado.zoom } | null>(null);
+  const guardarAhora = useCallback(() => {
+    const p = pendiente.current;
+    pendiente.current = null;
+    if (p && huella && recordar.current) guardarPosicion(huella, p);
+  }, [huella]);
+  const posicionActual = useRef({ page: estado.pagina, zoom: estado.zoom });
+  posicionActual.current = { page: estado.pagina, zoom: estado.zoom };
+  // Solo cuando la posición cambia de verdad: abrir un PDF y no moverse no guarda nada.
+  const clavePosicion = `${estado.pagina}|${JSON.stringify(estado.zoom)}`;
+  const ultimaPosicion = useRef(clavePosicion);
+  useEffect(() => {
+    // (Con algo pendiente, sí: StrictMode monta el efecto dos veces y la segunda
+    // tiene que volver a programar la espera que la primera canceló.)
+    if (clavePosicion === ultimaPosicion.current && pendiente.current === null) return;
+    ultimaPosicion.current = clavePosicion;
+    pendiente.current = posicionActual.current;
+    const espera = setTimeout(guardarAhora, ESPERA_POSICION_MS);
+    return () => clearTimeout(espera);
+  }, [clavePosicion, guardarAhora]);
+  useEffect(() => {
+    window.addEventListener("pagehide", guardarAhora);
+    return () => {
+      window.removeEventListener("pagehide", guardarAhora);
+      guardarAhora();
+    };
+  }, [guardarAhora]);
 
   // --- Búsqueda -----------------------------------------------------------
   const [consulta, setConsulta] = useState("");

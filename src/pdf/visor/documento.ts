@@ -33,6 +33,14 @@ export class DocumentoVisor {
     return this.pdf.numPages;
   }
 
+  /**
+   * Huella del documento: `fingerprints[0]` de pdf.js, calculada del ID del
+   * fichero (no del nombre). La usa la memoria de posición (Fase 10, D8).
+   */
+  get huella(): string | null {
+    return this.pdf.fingerprints?.[0] ?? null;
+  }
+
   /** Páginas con su texto en caché (para comprobar la política de memoria). */
   get textosEnCache(): number {
     return this.#textos.size;

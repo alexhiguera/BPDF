@@ -16,7 +16,7 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 | Documentación interna y plan | ✅ | `docs/` |
 | Apertura de archivos (selector, `Ctrl/Cmd+O`, arrastre, validación) | ✅ F3 | `src/documents/`, `src/app/DropZone.tsx`, `src/app/DocumentErrorAlert.tsx` |
 | Capa de plataforma (web) | ✅ F3 (Electron en F14) | `src/platform/` |
-| Preferencias | ⬜ F10 | |
+| Preferencias y posición de lectura (solo PDF) | 🚧 F10 (implementada, pendiente de aprobación) | `src/preferences/`, `src/app/App.tsx` (botón), `src/app/pdf/Visor.tsx`, `src/markdown/MarkdownView.tsx` |
 | Visor PDF | ✅ F4–F6 (la F6: pantalla completa, atajos, búsqueda avanzada y contraseña) | `src/pdf/`, `src/app/pdf/` |
 | Lector de Markdown | ✅ F7 | `src/markdown/`, `src/styles/markdown.css` |
 | Fórmulas (KaTeX) y diagramas (Mermaid, en un marco aislado) | ✅ F8 | `src/markdown/matematicas.ts`, `mermaid*.ts`, `marco-mermaid.ts`, `svg-seguro.ts`, `mermaid.html` |

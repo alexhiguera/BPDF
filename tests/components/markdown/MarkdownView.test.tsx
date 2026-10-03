@@ -374,17 +374,23 @@ describe("MarkdownView: ciclo de vida", () => {
     expect(vi.getTimerCount()).toBe(conAvisos - 2);
   });
 
-  it("no añade listeners globales ni crea URL de objeto", () => {
+  it("no deja listeners globales ni crea URL de objeto", () => {
     const enVentana = vi.spyOn(window, "addEventListener");
+    const quitaDeVentana = vi.spyOn(window, "removeEventListener");
     const enDocumento = vi.spyOn(document, "addEventListener");
     const crearUrl = vi.fn();
     vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: crearUrl }));
     const { unmount } = montar(fixture("gfm.md"));
+    // El único global: el `storage` de las preferencias (Fase 10, la tipografía al día
+    // con otras pestañas), que se quita al desmontar con el mismo manejador.
+    expect(enVentana.mock.calls.map(([tipo]) => tipo)).toEqual(["storage"]);
     unmount();
-    expect(enVentana).not.toHaveBeenCalled();
+    expect(quitaDeVentana.mock.calls.map(([tipo]) => tipo)).toEqual(["storage"]);
+    expect(quitaDeVentana.mock.calls[0]?.[1]).toBe(enVentana.mock.calls[0]?.[1]);
     expect(enDocumento).not.toHaveBeenCalled();
     expect(crearUrl).not.toHaveBeenCalled();
     enVentana.mockRestore();
+    quitaDeVentana.mockRestore();
     enDocumento.mockRestore();
   });
 

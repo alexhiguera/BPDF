@@ -17,11 +17,47 @@
  * Tailwind (preflight), que quita márgenes, tamaños y viñetas.
  */
 
+/*
+ * Tamaño de letra y ancho: preferencias (Fase 10). MarkdownView pone
+ * `data-letra` (px) y `data-ancho`; aquí se traducen a `--md-letra` (en rem, para
+ * respetar el tamaño de letra del navegador: 17 px = 1.0625rem) y `--md-ancho`.
+ * Sin ellos, los valores de siempre. En pantallas estrechas, un píxel menos
+ * (17 → 16 px, como antes). Sin `style` en línea: el contenido de un documento
+ * solo admite el de las celdas de tabla (corpus de XSS).
+ */
+.md-contenido[data-letra="15"] {
+  --md-letra: 0.9375rem;
+}
+.md-contenido[data-letra="16"] {
+  --md-letra: 1rem;
+}
+.md-contenido[data-letra="17"] {
+  --md-letra: 1.0625rem;
+}
+.md-contenido[data-letra="18"] {
+  --md-letra: 1.125rem;
+}
+.md-contenido[data-letra="20"] {
+  --md-letra: 1.25rem;
+}
+.md-contenido[data-letra="22"] {
+  --md-letra: 1.375rem;
+}
+.md-contenido[data-ancho="estrecho"] {
+  --md-ancho: 60ch;
+}
+.md-contenido[data-ancho="normal"] {
+  --md-ancho: 72ch;
+}
+.md-contenido[data-ancho="ancho"] {
+  --md-ancho: 90ch;
+}
+
 .md-contenido {
-  max-width: 72ch;
+  max-width: var(--md-ancho, 72ch);
   margin-inline: auto;
   padding: 2rem 1.5rem 4rem;
-  font-size: 1.0625rem;
+  font-size: var(--md-letra, 1.0625rem);
   line-height: 1.7;
   color: var(--color-fg);
   overflow-wrap: break-word;
@@ -30,7 +66,7 @@
 @media (max-width: 40rem) {
   .md-contenido {
     padding: 1.25rem 1rem 3rem;
-    font-size: 1rem;
+    font-size: calc(var(--md-letra, 1.0625rem) - 0.0625rem);
   }
 }
 
