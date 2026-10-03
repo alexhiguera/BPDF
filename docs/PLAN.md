@@ -3,7 +3,9 @@
 > **Estado:** escrito en la Fase 0 (*2026-09-29*); D1–D4 y D15 confirmadas y Fase 1
 > cerrada el mismo día. D16 confirmada y §4.2 y §5 implementados en la Fase 3
 > (*2026-09-29*). Revisado el *2026-09-30* con las Fases 5, 7, 7 bis, 8 y 6 cerradas (D13
-> confirmada e implementada en la 6), y el *2026-10-01* con la 9 en curso (D9: CodeMirror 6; abierta, no aprobada). Este documento describe **cómo será** BPDF. Cómo es hoy:
+> confirmada e implementada en la 6), el *2026-10-01* con la 9 (D9: CodeMirror 6), y el
+> *2026-10-03* con la 9 cerrada y aprobada (con una excepción de rendimiento) y D8
+> confirmada para la Fase 10. Este documento describe **cómo será** BPDF. Cómo es hoy:
 > `ARCHITECTURE.md`, `STACK.md` y `STRUCTURE.md`.
 >
 > Documentos hermanos: [SEGURIDAD.md](SEGURIDAD.md) (modelo de amenazas y controles),
@@ -197,7 +199,7 @@ Reglas:
   `incompatible`, `folder-no-markdown`, `folder-too-large` y `mixed-drop`; cada uno con su
   texto en `messages.ts` (§9.3).
 - **Un documento a la vez en v1** (D16, confirmada). Abrir otro lo sustituye; si la
-  apertura falla, el documento abierto se conserva. Con cambios sin guardar (🚧 F9), toda
+  apertura falla, el documento abierto se conserva. Con cambios sin guardar (✅ F9), toda
   sustitución y cerrar piden confirmación después de validar lo nuevo y antes de aplicarlo
   ([ARCHITECTURE.md](ARCHITECTURE.md) §4 octies). El estado vive en
   [`DocumentProvider`](../src/documents/DocumentProvider.tsx): pestañas o varios
@@ -225,7 +227,7 @@ src/
 ├── markdown/                ✅ F7–F8: pipeline.ts · MarkdownView.tsx · url-policy.ts · toc.ts ·
 │                            matematicas.ts · mermaid*.ts · svg-seguro.ts · imagenes.ts ·
 │                            components/ (BloqueCodigo, Enlace, Imagen, Formula, Diagrama, Indice…)
-├── editor/                  🚧 F9: EditorMarkdown.tsx (CodeMirror 6, a demanda) · ModeSwitch.tsx ·
+├── editor/                  ✅ F9: EditorMarkdown.tsx (CodeMirror 6, a demanda) · ModeSwitch.tsx ·
 │                            SplitView.tsx · sincronia.ts · tipos.ts
 └── preferences/             F10: esquema zod, almacén versionado, hook
 electron/                    F14: main.ts · preload.ts · protocol.ts · ipc.ts
@@ -239,7 +241,7 @@ electron/                    F14: main.ts · preload.ts · protocol.ts · ipc.ts
 | Carpeta | ✅ F7 bis: botón «Abrir carpeta», `<input type="file" webkitdirectory>`; con varios `.md`, el usuario elige | Diálogo nativo de carpeta en el main; el main entrega rutas relativas |
 | Arrastrar y soltar | ✅ F3: zona a pantalla completa con manejadores de React sobre la raíz de la app (sin listeners en `window`). ✅ F7 bis: varios ficheros (un `.md` con sus imágenes) o una carpeta (`webkitGetAsEntry`, capturado dentro del evento) | Igual (DOM); `webUtils.getPathForFile` en el preload solo si hace falta guardar o resolver relativos |
 | Argumentos / «Abrir con…» | No aplica | `process.argv` (Windows/Linux), `open-file` (macOS), `second-instance` con bloqueo de instancia única; el main lee y valida, y envía el contenido |
-| Guardar (Markdown) | 🚧 F9: `showSaveFilePicker` si existe (Chromium; el usuario elige destino la primera vez, el handle vive en memoria), si no descarga con `<a download>` y Blob. Nunca se sobrescribe en silencio el fichero abierto | IPC `saveDocument(id, texto)`: el main solo escribe en ficheros que el usuario abrió o eligió con «Guardar como» |
+| Guardar (Markdown) | ✅ F9: `showSaveFilePicker` si existe (Chromium; el usuario elige destino la primera vez, el handle vive en memoria), si no descarga con `<a download>` y Blob. Nunca se sobrescribe en silencio el fichero abierto | IPC `saveDocument(id, texto)`: el main solo escribe en ficheros que el usuario abrió o eligió con «Guardar como» |
 
 La interfaz `Platform` ([ELECTRON.md](ELECTRON.md) §3) existe desde la Fase 3 con la
 implementación web ([`src/platform/`](../src/platform/)). Hoy: `pickDocument()`,
@@ -372,7 +374,7 @@ Diseño implementado: [ARCHITECTURE.md](ARCHITECTURE.md) §4 quinquies.
   tercero la IP y el momento de lectura (píxeles espía) y obliga a abrir la CSP. Se
   muestra el texto alternativo y el enlace.
 
-### 7.3 Edición (🚧 Fase 9, abierta: no aprobada)
+### 7.3 Edición (✅ Fase 9, aprobada con una excepción de rendimiento)
 
 Modos: **lectura**, **edición**, **dividido** (editor + vista previa con desplazamiento
 sincronizado por encabezados). Editor: **CodeMirror 6** (D9, confirmada; MIT, modular,
@@ -382,7 +384,9 @@ DOM para no tocar la CSP). Vista previa: el mismo lector, refrescado 200 ms desp
 actualiza a mano (decisión de la F9: con 1 MB, cada refresco bloqueaba la escritura
 segundos). Guardado explícito (`Ctrl/Cmd+S` o botón), confirmación antes de perder
 cambios y `beforeunload`. Sin autoguardado ni borradores en v1. Diseño:
-[ARCHITECTURE.md](ARCHITECTURE.md) §4 octies.
+[ARCHITECTURE.md](ARCHITECTURE.md) §4 octies. **Excepción aceptada al aprobar la fase:**
+en Dividido, teclear con 1 MB + KaTeX o con 1 MB de encabezados supera los objetivos de
+latencia (cifras en [FASES.md](FASES.md), Fase 9).
 
 ## 8. Persistencia y privacidad
 
@@ -390,24 +394,38 @@ Todo en `localStorage` del origen de la app (en Electron también: el protocolo 
 origen estándar y seguro, así que **no hace falta IPC para preferencias**). Sin cookies: no
 hay servidor que las lea.
 
+Implementación: **Fase 10** (sin empezar; especificación y esquemas exactos en
+[FASES.md](FASES.md), Fase 10). Decisiones del *2026-10-03* reflejadas en la tabla.
+
 | Dato | ¿Se guarda? | Clave / forma | Motivo |
 |---|---|---|---|
-| Modo de página PDF (oscura/original) | Sí | `bpdf:prefs` | Preferencia visual |
-| Zoom por defecto, modo continuo/página, panel de miniaturas abierto | Sí | `bpdf:prefs` | Preferencia del visor |
+| Modo de página PDF (oscura/original) por defecto | Sí | `bpdf:prefs` | Preferencia visual |
+| Zoom y vista (continua/página) por defecto del PDF | Sí | `bpdf:prefs` | Preferencia del visor |
+| Panel de miniaturas abierto o cerrado | Sí (el último estado) | `bpdf:prefs` | Preferencia del visor |
 | Tamaño de letra y ancho de columna de Markdown | Sí | `bpdf:prefs` | Lectura |
 | Atajos de una sola tecla activados | Sí | `bpdf:prefs` | WCAG 2.1.4 |
-| Última página y zoom **por documento** | **Opcional (D8)** | `bpdf:positions`: `{ [huella]: { page, zoom, t } }`, máx. 50 entradas LRU | Útil, pero es un historial de lectura: guarda una huella (no el nombre ni el contenido) |
+| Recordar la posición de los PDF (activado o no) | Sí | `bpdf:prefs` | D8 |
+| Última página y zoom **por PDF** | **Sí, activado por defecto (D8 ✅)**; se puede desactivar y olvidar | `bpdf:positions`: `{ v: 1, docs: { [huella]: { page, zoom, t } } }`, máx. 50 entradas LRU | Útil, pero es un historial de lectura: guarda una huella (no el nombre ni el contenido) |
+| Posición en un Markdown | **No** (decisión del *2026-10-03*) | — | Un Markdown no tiene páginas, y su huella cambiaría al editarlo |
+| Opciones de búsqueda del PDF (mayúsculas, palabra completa) | **No** (decisión del *2026-10-03*) | — | Estado de la sesión del visor |
+| Estado del editor (modo Lectura/Edición/Dividido, separador) | **No** (decisión del *2026-10-03*) | — | Fuera de la Fase 10 |
 | Nombres de ficheros, rutas, historial de abiertos | **No** | — | Privacidad |
 | Contenido de documentos | **No** | — | Principio rector |
+| Contraseñas de PDF | **No** | — | D13 |
 | Borradores sin guardar del editor | **No en v1** | — | Se reevalúa si hay demanda (sería contenido) |
 
 - **Huella de documento:** `pdfDocument.fingerprints[0]` en PDF (lo calcula pdf.js a
-  partir del ID del fichero); SHA-256 del texto en Markdown (`crypto.subtle`). Nunca el
-  nombre.
-- **Esquema versionado** con `zod`: `{ v: 1, … }`. Un valor corrupto o de versión
-  desconocida se descarta y se usan los valores por defecto (nunca rompe el arranque).
-  Todo acceso a `localStorage` va en `try/catch` (modo privado, cuota, bloqueo).
-- En preferencias: **«Olvidar posiciones guardadas»** y **«Restablecer preferencias»**.
+  partir del ID del fichero). Nunca el nombre. Los Markdown no tienen huella: no se guarda
+  su posición, así que no se calcula ningún SHA-256 de su texto.
+- **Esquema versionado** con `zod`: `{ v: 1, … }` en las dos claves, con una tabla de
+  migraciones paso a paso (vacía en la v1, que es la primera). Un valor corrupto se
+  descarta (campo a campo en `bpdf:prefs`) y se usan los valores por defecto; una versión
+  futura se ignora en memoria sin reescribirla (nunca rompe el arranque). Todo acceso a
+  `localStorage` va en `try/catch` (modo privado, cuota, bloqueo).
+- **Borrar:** en el diálogo de preferencias (botón «Preferencias» de la cabecera, también
+  sin documento), **«Olvidar posiciones guardadas»** (borra `bpdf:positions`) y
+  **«Restablecer preferencias»** (borra `bpdf:prefs`). Desactivar «recordar» deja de leer y
+  escribir posiciones sin borrarlas.
 
 ## 9. UI/UX y sistema de diseño
 
@@ -458,7 +476,7 @@ con un bloque `[data-theme="light"]`.
   oscura/original, buscar, cerrar); panel de miniaturas a la izquierda. ✅ F6: girar a la
   izquierda, pantalla completa (del área de lectura), ayuda de atajos, opciones de búsqueda
   (mayúsculas, palabra completa) y el diálogo de contraseña.
-- **Markdown** (✅ F7–F8; 🚧 F9): barra (índice, modos lectura/edición/dividido, «Sin guardar»,
+- **Markdown** (✅ F7–F9): barra (índice, modos lectura/edición/dividido, «Sin guardar»,
   guardar, cerrar); índice a la izquierda en lectura; hoja centrada con ancho de lectura
   (~72 caracteres); en dividido, editor y vista previa con un separador. Tamaño de letra, en
   la F10.
@@ -488,7 +506,7 @@ los dos visores existían.
 | Mostrar u ocultar miniaturas (PDF) | `T` * | ✅ F6 |
 | Pantalla completa (entrar o salir) | `F` * (salir también con `Esc`, del navegador) y `F11` (Electron) | ✅ F6 (`F11`: F14) |
 | Ayuda de atajos | `?` * | ✅ F6 |
-| Guardar (Markdown) | `Ctrl/Cmd+S` | 🚧 F9 |
+| Guardar (Markdown) | `Ctrl/Cmd+S` | ✅ F9 |
 
 \* Atajos de una tecla (WCAG 2.1.4): solo actúan con el foco fuera de campos de texto y
 elementos editables, y se pueden **desactivar** con un interruptor en la ayuda (`?`, que
@@ -501,9 +519,9 @@ botón): [FASES.md](FASES.md), Fase 6.
 incluye): `I` para página oscura/original, y `T` para el índice de un Markdown. Volverán
 solo con una fase que los especifique.
 
-**Estado (*2026-09-30*).** Implementados los marcados ✅ (tabla y motivo en
-[ARCHITECTURE.md](ARCHITECTURE.md) §4 quater), los de la Fase 6 incluidos. Quedan `F11`
-(Electron, Fase 14) y `Ctrl/Cmd+S` (Fase 9).
+**Estado (*2026-10-03*).** Implementados los marcados ✅ (tabla y motivo en
+[ARCHITECTURE.md](ARCHITECTURE.md) §4 quater), los de las Fases 6 y 9 incluidos. Queda
+`F11` (Electron, Fase 14).
 
 ## 10. Accesibilidad
 
@@ -588,7 +606,7 @@ terceros sin licencia clara.
 
 ## 14. Decisiones
 
-### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3; D17 y D18 al empezar la Fase 5; D6 y D7 con la Fase 7; D13 al especificar la Fase 6; D9 al empezar la Fase 9)
+### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3; D17 y D18 al empezar la Fase 5; D6 y D7 con la Fase 7; D13 al especificar la Fase 6; D9 al empezar la Fase 9; D8 al especificar de nuevo la Fase 10)
 
 | ID | Decisión | Dónde se aplica |
 |---|---|---|
@@ -604,13 +622,13 @@ terceros sin licencia clara.
 | **D7** | Imágenes remotas en Markdown **bloqueadas** en v1: marcador y enlace para abrirla fuera (confirmada con el encargo de la Fase 7) | Fase 7: `components/Imagen.tsx`; CSP `img-src 'self'` |
 | **D13** | PDFs con contraseña **soportados** con un diálogo accesible: reintento, cancelar cierra el documento, la contraseña no se guarda (confirmada al especificar la Fase 6, *2026-09-30*) | Fase 6: `engine.ts`, `VisorPdf.tsx` ([FASES.md](FASES.md)) |
 | **D9** | Editor de Markdown: **CodeMirror 6** (frente a `<textarea>`; confirmada al empezar la Fase 9, *2026-10-01*) | Fase 9: `src/editor/` ([ARCHITECTURE.md](ARCHITECTURE.md) §4 octies) |
+| **D8** | Recordar página y zoom **por PDF**: **activado por defecto**, con la huella de pdf.js (no el nombre), máx. 50 entradas (LRU), botón «Olvidar posiciones guardadas»; sin nombres ni contenido. Solo PDF: los Markdown no guardan posición (confirmada el *2026-10-03*) | Fase 10: `src/preferences/positions.ts` ([§8](#8-persistencia-y-privacidad), [FASES.md](FASES.md)) |
 
 ### 14.1 Pendientes de confirmación (usuario)
 
 | ID | Decisión | Recomendación | Afecta a |
 |---|---|---|---|
 | **D5** | Hosting web y dominio | Hosting estático que permita cabeceras (Vercel o Cloudflare Pages). GitHub Pages **no** permite cabeceras (CSP solo por `<meta>`, sin `frame-ancestors`). *De hecho, la web ya está publicada en Vercel (`bpdf.r3zon.com`) con `vercel.json` generado ([DEPLOYMENT.md](DEPLOYMENT.md)); falta formalizarla y cambiar el dominio de `project.ts`* | Fases 12 y 15 |
-| **D8** | Recordar página y zoom por documento | **Activado**, con huella (no nombre), máx. 50 y botón de olvidar | Fase 10 |
 | **D10** | Tema claro de interfaz | **No en v1** (solo «página original» en PDF) | Fase 11 |
 | **D11** | Escritorio: plataformas, firma de código, auto-actualización | Windows, macOS y Linux; **sin auto-actualización en v1**; firma según presupuesto (sin firma, SmartScreen y Gatekeeper avisan) | Fase 15 |
 | **D12** | Móvil / tablet en web | Escritorio como objetivo; diseño adaptable básico sin optimizar gestos | Fase 11 |

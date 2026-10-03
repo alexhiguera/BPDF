@@ -13,28 +13,29 @@ archivos, tests, criterios de aceptación). El diseño que construyen: [PLAN.md]
 ## Estado hoy — *2026-10-03*
 
 Medido con Node 24.21.0 y npm 11.19.0 en **WSL2 (Ubuntu) sobre Windows**, al cerrar la
-**Fase 9** (iteración 14), tras una instalación limpia (`npm ci`). E2E con el Chromium de
-Playwright. Cerradas las Fases 0–8 (la 6 se hizo después de las 7, 7 bis y 8, por orden del
-usuario, y conserva su número). **La 9 está abierta y no aprobada** (*2026-10-02*: retraso al
-teclear en Dividido con 1 MB + KaTeX; iteración 15).
+**Fase 9** (iteración 20). E2E con el Chromium de Playwright. Cerradas las Fases 0–9 (la 6
+se hizo después de las 7, 7 bis y 8, por orden del usuario, y conserva su número). **La 9 se
+aprobó con una excepción de rendimiento** (*2026-10-03*): teclear en Dividido con 1 MB +
+KaTeX o con 1 MB de encabezados supera los objetivos de latencia ([FASES.md](FASES.md),
+Fase 9). Siguiente: **Fase 10**, especificada y sin empezar.
 
 | Comprobación | Resultado |
 |---|---|
-| Código | SPA estática de Vite 8 + React 19. Abre un PDF o un Markdown local, uno a la vez (D16). **Los PDF se leen** en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo oscuro selectivo en un worker, vistas continua y página a página, zoom, giro a los dos lados, capa de texto, enlaces, búsqueda (con mayúsculas, palabra completa y palabras partidas con guion), miniaturas navegables con flechas, pantalla completa del área de lectura, atajos de una tecla desactivables con su ayuda y PDF con contraseña ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quater). **Los Markdown se leen** en un lector GFM: HTML como texto, política de URLs propia, código resaltado con copiar, índice (§4 quinquies), **con sus imágenes locales** si se entregan con el `.md` (varios ficheros o una carpeta; §4 sexies), **fórmulas con KaTeX** y **diagramas con Mermaid** en un marco aislado (`mermaid.html`, iframe con `sandbox` y CSP propia; §4 septies), y **se editan** con CodeMirror 6 (Lectura, Edición y Dividido; vista previa con el mismo lector, desplazamiento sincronizado, confirmación antes de perder cambios y guardado local con `showSaveFilePicker` o descarga; §4 octies). **Web publicada** en Vercel (`bpdf.r3zon.com`) con `vercel.json` generado; las Fases 7 bis, 8 y 6 ya están en `origin/main`; el ajuste `2c65357` y la Fase 9, no |
+| Código | SPA estática de Vite 8 + React 19. Abre un PDF o un Markdown local, uno a la vez (D16). **Los PDF se leen** en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo oscuro selectivo en un worker, vistas continua y página a página, zoom, giro a los dos lados, capa de texto, enlaces, búsqueda (con mayúsculas, palabra completa y palabras partidas con guion), miniaturas navegables con flechas, pantalla completa del área de lectura, atajos de una tecla desactivables con su ayuda y PDF con contraseña ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quater). **Los Markdown se leen** en un lector GFM: HTML como texto, política de URLs propia, código resaltado con copiar, índice (§4 quinquies), **con sus imágenes locales** si se entregan con el `.md` (varios ficheros o una carpeta; §4 sexies), **fórmulas con KaTeX** y **diagramas con Mermaid** en un marco aislado (`mermaid.html`, iframe con `sandbox` y CSP propia; §4 septies), y **se editan** con CodeMirror 6 (Lectura, Edición y Dividido; vista previa con el mismo lector, desplazamiento sincronizado, confirmación antes de perder cambios y guardado local con `showSaveFilePicker` o descarga; §4 octies). **Web publicada** en Vercel (`bpdf.r3zon.com`) con `vercel.json` generado; en `origin/main` hasta `f0f38b7` (primer commit de la Fase 9); `3eb39e9` y `4abd868` (iteraciones 15–19) y el cierre de la Fase 9 (iteración 20), aún sin subir |
 | `npm run lint` · `typecheck` | ✅ |
 | `npm run test:run` | ✅ 904 tests en 46 ficheros (incluye pdf.js y KaTeX reales en Node, la edición de Markdown con un editor falso en jsdom, la búsqueda sobre el texto real de pdf.js, el corpus de XSS de Markdown, la resolución de recursos, el saneador y el verificador del SVG de Mermaid y la sincronía de `vercel.json` con la fuente) |
 | `npm run test:e2e` | ✅ 97 tests en 8 ficheros contra la build de producción (`vite preview`): 18 del editor (Fase 9: CodeMirror con la CSP real, modos, espera de la vista previa, recursos, KaTeX y Mermaid hostiles, Markdown hostil, escribir y pegar sobre una selección, guardar, confirmación, `beforeunload`, 1 MB, sincronía sin y con fórmulas, apilado de los paneles, separador, pantalla estrecha), 30 del visor PDF (8 de la Fase 6: contraseña, pantalla completa con las cabeceras reales, atajos, búsqueda avanzada, miniaturas), 11 del lector de Markdown (con los bloques con fórmulas que se saltan fuera de la vista), 1 de memoria (al cambiar de documento se libera el anterior, con CDP), 8 de recursos locales y 7 de fórmulas y diagramas (KaTeX y Mermaid hostiles, aislamiento del marco comprobado desde dentro, documento sin fórmulas ni diagramas sin descargas) |
 | `npm run build` · `build:tamano` | ✅ arranque 92,5 KB gzip (límite 150; +2 KB en la F9: textos, el diálogo de descarte y los cambios sin guardar en `DocumentProvider`; CodeMirror no entra). A demanda: visor PDF 15 KB + 0,8 KB CSS, pdf.js 148 KB, lector de Markdown 76,5 KB + 1,8 KB CSS, **editor (CodeMirror) 98 KB, solo al entrar en Edición o Dividido**, KaTeX 77 KB + 4 KB CSS y sus fuentes, Mermaid (en el marco) ~50 KB + ~870 KB en trozos por tipo de diagrama, worker del modo oscuro 3 KB, worker de pdf.js 1,3 MB · avisos conocidos e inocuos: 2 de `"use client"` (`lucide-react`) y el de un trozo de Mermaid de más de 500 kB (solo se carga en el marco, a demanda) |
 | CSP | ✅ `default-src 'none'`; la Fase 4 añadió `worker-src 'self'` y `font-src 'self'`, la Fase 5 `connect-src 'self'` (cmaps de pdf.js); la Fase 7, nada; la Fase 7 bis, `blob:` solo en `img-src` (imágenes locales de Markdown); la Fase 8, `frame-src 'self'` (el marco aislado de Mermaid, `/mermaid.html`, con su propia política: `style-src 'unsafe-inline'` confinado a un origen opaco y sin red); la Fase 9, nada (CodeMirror en un Shadow DOM con hojas construibles, y escribir sobre una selección sin la edición nativa del navegador). Sin `data:` en la build (`assetsInlineLimit: 0`). Sin `unsafe-*`, sin `'wasm-unsafe-eval'`, sin orígenes externos; cero violaciones y ninguna petición externa en los E2E; comprobada con `curl -I` |
-| `npm run docs:validar` · `docs:enlaces` | ✅ · ✅ (247 enlaces en 18 ficheros) |
+| `npm run docs:validar` · `docs:enlaces` | ✅ · ✅ (254 enlaces en 18 ficheros) |
 | `npm audit --audit-level=high` | ✅ 0 vulnerabilidades · 0 overrides · 0 scripts de instalación sin aprobar |
 | Dependencias de runtime | 19: `react`, `react-dom`, `lucide-react`, `clsx`, `tailwind-merge`, `pdfjs-dist` (6.3.289), `react-markdown` (10.1.0), `remark-gfm` (4.0.1), `lowlight` (3.3.0), `highlight.js` (11.11.1); de la Fase 8, `remark-math` (6.0.0), `katex` (0.18.9) y `mermaid` (11.17.2); de la Fase 9, `@codemirror/state` (6.7.6), `@codemirror/view` (6.43.13), `@codemirror/commands` (6.11.1), `@codemirror/language` (6.12.4), `@codemirror/lang-markdown` (6.5.2) y `@lezer/highlight` (1.2.5); todas las de contenido no confiable con versión exacta |
 | Benchmark (`npm run bench:pdf`, Ryzen 7 5800X) | Modo oscuro en el hilo principal: sin worker 18–28 ms a 2,2 Mpx y 113–141 ms a 16,8 Mpx; con worker 9–13 ms y 60–66 ms. 300 páginas: primera página ~0,9 s, máx. 4 lienzos (≤ 34 MiB a DPR 1), heap ~60 MiB |
 | Benchmark (`npm run bench:markdown`, mismo equipo) | Hasta ver el primer encabezado: 1 KB 0,33 s · 100 KB 0,5–0,9 s · **1 MB 3,3–7,3 s** · 5000 encabezados 0,6–1,0 s · 2000 bloques de código 0,8–1,1 s · listas cortas 200 KB 2,3–2,8 s (cuadrático) · 50 imágenes de 6 Mpx entregadas con 50 sin usar: texto 0,64 s, primera imagen 0,67 s, 50 URL `blob:`, heap 14 MiB · Fase 8: 1500 fórmulas en 2,4 s, 30 diagramas en 2,2 s (~60 ms cada uno), sin cambios para un Markdown sin fórmulas ni diagramas |
-| Benchmark (`npm run bench:editor`, mismo equipo) | Por pulsación (Event Timing por interacción; tres ejecuciones, ≈ 280 pulsaciones; *2026-10-02*, iteración 16). **Edición** 1 MB: P95 24, P99 32, máx. 32 ms; 1 MB + KaTeX: máx. 88 ms. **Dividido** 1 MB: P95 32, P99 56, máx. 64 ms; **1 MB + KaTeX: P95 112, P99 320, máx. 400 ms, tarea larga 223–288 ms**; 1 MB + Mermaid: máx. 64 ms; 1 MB de encabezados: P95 56, P99 104 ms. Vista previa: 208 ms (2 KB) a 335 ms (100 KB); 1 MB en pausa, 1,3–1,5 s al pulsar «Actualizar». Firefox (iteración 17, con los localizadores corregidos): 1 MB máx. 24–32 ms; 1 MB + KaTeX en Dividido P95 56–72, máx. 88 ms; entrar en un modo, 0,5–3 s. WebKit sin datos. Los recuentos de eventos ≥ 50 ms de las iteraciones 14 y 15 estaban multiplicados ×1 a ×6. Tablas en [FASES.md](FASES.md), Fase 9 |
+| Benchmark (`npm run bench:editor`, mismo equipo) | Por pulsación (Event Timing por interacción; tres ejecuciones, ≈ 285 pulsaciones; *2026-10-03*, iteración 18, el código con el que se aprobó la Fase 9). **Edición** 1 MB: máx. 32 ms; 1 MB + KaTeX: máx. 32 ms; 1 MB de encabezados: P95 40, máx. 48 ms. **Dividido** 1 MB: P95 48, máx. 56 ms; 1 MB + Mermaid: P95 24, máx. 56 ms; **excepción aceptada: 1 MB + KaTeX P95 96, P99 216, máx. 256 ms, tarea larga 97–203 ms; 1 MB de encabezados P95 64, P99 112, máx. 120 ms**. Iteración 16 (antes del apilado): 1 MB + KaTeX en Dividido P95 112, P99 320, máx. 400 ms. Vista previa: 208 ms (2 KB) a 335 ms (100 KB); 1 MB en pausa, 1,3–1,5 s al pulsar «Actualizar». Firefox (iteración 17, con los localizadores corregidos): 1 MB máx. 24–32 ms; 1 MB + KaTeX en Dividido P95 56–72, máx. 88 ms; entrar en un modo, 0,5–3 s. WebKit sin datos. Los recuentos de eventos ≥ 50 ms de las iteraciones 14 y 15 estaban multiplicados ×1 a ×6. Tablas en [FASES.md](FASES.md), Fase 9 |
 | Markdown reales | 14 probados (los de `docs/` y README de paquetes con HTML, insignias remotas, tablas y código): sin errores, peticiones externas, `img` ni `href` fuera de la política |
 | PDF reales | 9 probados (papers, formulario, corpus de pdf.js, generados con Chromium): sin errores ni peticiones externas; límites del modo oscuro en ARCHITECTURE §4 quater |
-| CI en GitHub | ✅ en verde en su primera ejecución (commit `04c1291`); las Fases 7 bis, 8 y 6 aún no se han subido |
+| CI en GitHub | ✅ en verde en su primera ejecución (commit `04c1291`); no se ha vuelto a comprobar con los commits subidos después |
 | Licencia | ✅ Apache-2.0 |
 
 ## Decisiones pendientes de confirmación
@@ -44,7 +45,9 @@ fase no empieza con una decisión que necesita sin confirmar.
 
 - [ ] 🟡 **D14** Formularios de PDF: solo se muestran (recomendado). **Aplicado así en la F5** (el encargo excluía formularios): falta confirmarlo
 - [ ] 🟡 **Navegador mínimo del visor PDF**: pdf.js 6 carga su worker como módulo ES y necesita Firefox 114, pero `build.target` dice Firefox 111. Subir el mínimo a Firefox 114 (recomendado) o aceptar que en 111–113 un PDF no abra ([STACK.md](STACK.md), `pdfjs-dist`)
-- [ ] 🟡 **D8** Recordar página y zoom por documento (activado con huella, recomendado) — bloquea F10
+- [ ] 🟡 **F10 · Valores de tipografía de Markdown**: tamaños de letra 15/16/17/18/20/22 px
+  (17 por defecto) y anchos 60/72/90 ch (72 por defecto), propuestos en FASES, Fase 10.
+  Confirmarlos antes de empezar la fase (son visibles para el usuario)
 - [ ] 🟡 **D10** Tema claro de interfaz: no en v1 (recomendado) — bloquea F11
 - [ ] 🟡 **D12** Móvil/tablet: adaptable básico (recomendado) — bloquea F11
 - [ ] 🟡 **D5** Hosting web con cabeceras y dominio — bloquea F12 (configuración) y F15; mientras tanto el dominio es `app.example.com`
@@ -52,31 +55,9 @@ fase no empieza con una decisión que necesita sin confirmar.
 
 ## Fases
 
-- [~] 🔴 **F9** Editor Markdown, vista previa y modo dividido: **abierta, no aprobada**. Benchmark
-  ampliado (iteración 16; tablas en FASES, Fase 9, y en la bitácora). **No cumple 1 MB + KaTeX en
-  Dividido** (por pulsación: P95 112, P99 320, máx. 400 ms; tarea larga 223–288 ms). Siguiente:
-  decidir el criterio técnico propuesto en la iteración 16 (P95 ≤ 50, P99 ≤ 100, máx. ≤ 200 ms,
-  0 pulsaciones ≥ 100 ms, tarea larga ≤ 100 ms, Dividido ≤ 16 ms sobre Edición), con el que
-  tampoco cumple 1 MB de encabezados (P95 56 ms ya en Edición); después, corregir lo que falle
-- [ ] 🔴 **F9 · Chromium, 1 MB + KaTeX en Dividido** (iteración 18): P95 96, P99 216, máx.
-  256 ms, 5–11 eventos ≥ 100 ms, tarea larga 97–203 ms. Causa de la cola (iteración 19): al
-  saltar de zona, Chromium materializa los bloques con `content-visibility` que entran en la
-  vista (PrePaint 60–115 ms + composición 22–52 ms). A eso se suman CodeMirror (parser en
-  `requestIdleCallback`, 40–100 ms por tramo), la sincronía (~30 ms) y los detectores de
-  anuncios. Opción a medir con el benchmark oficial antes de decidir: quitar
-  `content-visibility` de los bloques con fórmulas, ahora que el apilado resuelve el hit
-  test (en diagnóstico, la primera tecla tras saltar pasa de 360 a 208 ms)
-- [ ] 🟠 **F9 · 1 MB de encabezados: parser de Markdown del editor** (iteración 18). Lezer
-  reequilibra 56 000 bloques de primer nivel en cada tecla: ~15 ms editando al final.
-  Dividido: P95 64, P99 112, máx. 120 ms. Decisión del usuario (iteración 19): se mantiene el
-  resaltado; limitación documentada (ARCHITECTURE §4 octies)
-- [ ] 🟠 **F9 · Firefox: teclear en 1 MB + KaTeX en Dividido** (iteración 17, dos ejecuciones):
-  P95 56–72, P99 72–88, máx. 88 ms y 11 eventos ≥ 50 ms por ejecución. 1 MB: máx. 24–32 ms.
-  Cambiar de modo ya no es el problema: las cifras de minutos eran los localizadores de
-  Playwright. Medido desde la página, Edición → Dividido con KaTeX tarda 6,3–7,9 s (Chromium
-  3,7–3,9 s; parser ~1,9 s, KaTeX + DOM ~1,3 s, layout ~2,7 s), porque el preview se
-  reconstruye entero al salir de Edición
-- [ ] 🟡 **F10** Preferencias (infraestructura con `zod`, panel, posición por documento, borrado)
+- [ ] 🟡 **F10** Preferencias: infraestructura con `zod`, diálogo desde la cabecera, posición
+  por documento **solo PDF** (D8), borrado. Especificada de nuevo el *2026-10-03* (FASES,
+  Fase 10); sin empezar
 - [ ] 🟡 **F11** UI/UX final
 - [ ] 🔴 **F12** Seguridad: endurecimiento y auditoría
 - [ ] 🟠 **F13** Accesibilidad y rendimiento (medición)

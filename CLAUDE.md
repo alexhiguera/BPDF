@@ -14,9 +14,12 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   objetivo en [`docs/PLAN.md`](docs/PLAN.md).
 - **Principio rector:** los documentos del usuario **no salen del dispositivo**. Sin
   backend, API, base de datos, cuentas, sincronización ni telemetría.
-- **Estado:** Fases 0–8 cerradas, 7 bis incluida (la 6 se hizo después de la 8 y conserva
-  su número). **Fase 9 ABIERTA / NO APROBADA**: teclear en Dividido con 1 MB tiene retraso
-  perceptible (medido; [`docs/FASES.md`](docs/FASES.md)). La app es una SPA estática de Vite + React (D1)
+- **Estado:** Fases 0–9 cerradas, 7 bis incluida (la 6 se hizo después de la 8 y conserva
+  su número). La 9 se aprobó (*2026-10-03*) con una **excepción de rendimiento
+  documentada**: teclear en Dividido con 1 MB + KaTeX, o con 1 MB de encabezados, supera
+  los objetivos de latencia (medido; [`docs/FASES.md`](docs/FASES.md), Fase 9). Siguiente:
+  **Fase 10** (preferencias; D8 confirmada, posición solo para PDF), especificada y sin
+  empezar. La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
   oscuro selectivo en un worker, búsqueda avanzada, pantalla completa, atajos de una tecla
@@ -25,7 +28,7 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   usuario entrega con el `.md` (varios ficheros o una carpeta), fórmulas (KaTeX) y
   diagramas (Mermaid, en un iframe aislado con su propia CSP) (§4 quinquies a septies), y se
   editan con CodeMirror 6 (D9; en un Shadow DOM, sin tocar la CSP), con vista previa,
-  modo dividido y guardado local (§4 octies; en curso, Fase 9). Plan y estado:
+  modo dividido y guardado local (§4 octies, Fase 9). Plan y estado:
   [`docs/FASES.md`](docs/FASES.md) y [`docs/TAREAS_PENDIENTES.md`](docs/TAREAS_PENDIENTES.md).
 - **Estática, siempre:** la build (`dist/`) son ficheros. Nada de servidor, SSR, API ni
   funciones serverless, ni variables de entorno.

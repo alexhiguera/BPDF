@@ -10,7 +10,81 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 20 — *2026-10-03* — Fase 9 cerrada y aprobada, con una excepción de rendimiento; Fase 10 especificada de nuevo
+
+**Contexto.** Al preparar la Fase 10, la auditoría previa encontró que la Fase 9 no estaba
+cerrada en ningún sentido: los documentos decían «abierta, no aprobada», y el commit
+`4abd868` (que lleva las entradas de las iteraciones 17–19) **había borrado la regla de
+`content-visibility` de `markdown.css`** sin contarlo en ninguna entrada. La iteración 19
+dice «sin cambios de código» y describe esa regla como vigente; el E2E que la protege
+(`markdown.spec.ts`, «bloques con fórmulas fuera de la vista…») fallaba (96/97).
+
+**Qué pasó en realidad, en orden** (para leer las iteraciones 17–19 sin confusión):
+
+1. Iteraciones 17 y 18: cambios de código reales y documentados (el ShadowRoot del editor
+   en un nodo propio; el panel del editor por encima en el apilado, `relative z-1`). Las
+   cifras del benchmark de la iteración 18 se midieron **con** `content-visibility`.
+2. Iteración 19: investigación sin cambios de código; propuso, como opción a medir, quitar
+   `content-visibility` de los bloques con fórmulas.
+3. Después, como experimento, se quitó la regla y se midió. Ese cambio quedó dentro del
+   commit `4abd868` sin entrada propia: es el origen de la inconsistencia.
+4. Resultado del experimento (medición del usuario; **sus cifras no están en el
+   repositorio**): mejoraba el P99 y el máximo, pero empeoraba el P95, los eventos ≥ 50 ms,
+   la memoria y el tiempo de entrar en Dividido. Decisión: **se conserva
+   `content-visibility`**.
+5. Esta iteración: el usuario restauró `src/styles/markdown.css` desde `3eb39e9`
+   (idéntico byte a byte; comprobado con `git diff 3eb39e9`). El código vuelve a ser el
+   que midieron las iteraciones 18 y 19, así que sus cifras siguen valiendo y no se repitió
+   el benchmark.
+
+**Decisión del usuario: la Fase 9 queda CERRADA y APROBADA** con una excepción de
+rendimiento documentada (FASES, Fase 9; ARCHITECTURE §4 octies):
+
+- **1 MB + KaTeX en Dividido** no cumple los objetivos de latencia propuestos en la
+  iteración 16 (P95 ≤ 50, P99 ≤ 100, máx. ≤ 200 ms…). Última medición oficial, iteración
+  18 (Chromium, 3 ejecuciones): P95 96, P99 216, máx. 256 ms; 5–11 eventos ≥ 100 ms por
+  ejecución; tarea larga 97–203 ms. Firefox (iteración 17): P95 56–72, máx. 88 ms.
+- **1 MB con una cantidad extrema de encabezados** (56 000 bloques) puede superarlos por el
+  coste del parser de Lezer: Dividido P95 64, P99 112, máx. 120 ms (iteración 18).
+- Motivo: el comportamiento está perfilado y su causa identificada (materializar bloques
+  con fórmulas al saltar de zona; Lezer reequilibrando bloques de primer nivel); la
+  alternativa probada empeoraba otras métricas; los documentos normales no tienen el
+  problema (2 KB–200 KB y 1 MB sin KaTeX: máx. ≤ 64 ms en Dividido, iteración 16–18).
+- **No se afirma que se cumpla el criterio** «1 MB sin retraso perceptible» en esos dos
+  casos: se acepta como excepción.
+
+**Fase 10: decisiones del usuario** (FASES, Fase 10, especificada de nuevo; PLAN §8 y §14):
+
+- **D8 confirmada:** recordar posición activado por defecto, con huella, 50 entradas y
+  «Olvidar posiciones guardadas»; sin nombres ni contenido.
+- Posición **solo para PDF**: ni posición ni SHA-256 de Markdown.
+- Opciones de búsqueda: **no se guardan** (estado de sesión).
+- Panel de miniaturas abierto/cerrado: **sí** (PLAN §8).
+- Estado del editor (modo, separador): **fuera** de la Fase 10.
+- «Preferencias» en la cabecera, también sin documento abierto.
+- Sin página pública de privacidad en la Fase 10; la documentación técnica (PLAN §8,
+  SEGURIDAD §6) describe qué se guarda y cómo se borra.
+- Migración: el mecanismo de versiones se diseña y se prueba con versiones sintéticas; no
+  hay una «migración v1 → v2» de usuario, porque la v1 es la primera.
+- El E2E de posición usa un PDF con páginas suficientes (`modo-oscuro.pdf`, 8 páginas).
+
+**Cambios.** Solo documentación: CLAUDE.md, FASES, TAREAS, PLAN, ARCHITECTURE, MODULES,
+SEGURIDAD y esta bitácora (más la nota de la iteración 19). Ningún test se tocó. El CSS
+lo restauró el usuario.
+
+**Verificación.** `lint`, `typecheck`, `test:run` (904), `build`, `build:tamano` (92,5 KB),
+`docs:enlaces`, `docs:validar` y `test:e2e` **97/97** (con la vigilancia de siempre: cero
+errores de consola, cero violaciones de CSP, ninguna petición externa).
+
+**Error propio del camino.** En la auditoría previa interpreté el borrado de la regla como
+«el experimento revertido» y lo di por bueno; era al revés: el experimento era el borrado.
+
 ### Iteración 19 — *2026-10-03* — Fase 9: la cola de 1 MB + KaTeX en Dividido, investigada (sin cambios de código; sigue sin aprobar)
+
+> **Nota (iteración 20).** Esta investigación no cambió código. Pero el commit que la
+> contiene (`4abd868`) borró además la regla de `content-visibility` de `markdown.css`, como
+> experimento de la opción 1 de abajo, sin contarlo aquí. Ese experimento se midió después,
+> se descartó y la regla se restauró: ver la iteración 20.
 
 **Objetivo.** Por orden del usuario, solo investigar la cola que queda en 1 MB + KaTeX en
 Dividido: 184–368 ms en las primeras teclas tras saltar a otra zona.

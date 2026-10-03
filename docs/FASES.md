@@ -424,7 +424,8 @@ capa de texto; `PanelMiniaturas.tsx` es una lista de botones; `engine.ts` convie
 
 **Fuera de alcance.** Atajo `I` (página oscura/original) y cualquier otro atajo no
 listado arriba; esquema/marcadores del PDF (outline), candidato posterior; anotaciones;
-persistir el interruptor de atajos o las opciones de búsqueda (Fase 10); índice de
+persistir el interruptor de atajos (Fase 10) o las opciones de búsqueda (decidido el
+*2026-10-03*: no se guardan, ni en la Fase 10); índice de
 Markdown con `T`; tokens de color nuevos para la búsqueda (el resaltado de la F5 ya usa el
 acento: PLAN §9.2).
 
@@ -622,15 +623,41 @@ dentro, KaTeX y Mermaid hostiles, documento sin fórmulas ni diagramas sin desca
 
 ---
 
-## Fase 9 — Editor Markdown, vista previa y modo dividido 🚧
+## Fase 9 — Editor Markdown, vista previa y modo dividido ✅
 
-**ABIERTA / NO APROBADA** (*2026-10-02*). Se dio por cerrada el 2026-10-01 (iteración 14) y
-se reabrió al revisar el benchmark: el criterio de aceptación «editar un .md de 1 MB sin
-retraso perceptible al teclear» falla en el modo Dividido. No se cierra hasta que se
-cumpla. Diseño: [ARCHITECTURE.md](ARCHITECTURE.md) §4 octies. D9 confirmada al empezar:
+**CERRADA / APROBADA** el 2026-10-03 (iteración 20), **con una excepción de rendimiento**
+(abajo). Historia: se dio por cerrada el 2026-10-01 (iteración 14), se reabrió el
+2026-10-02 al revisar el benchmark (el criterio «editar un .md de 1 MB sin retraso
+perceptible al teclear» fallaba en Dividido) y se investigó en las iteraciones 15–19.
+Diseño: [ARCHITECTURE.md](ARCHITECTURE.md) §4 octies. D9 confirmada al empezar:
 **CodeMirror 6**.
 
-Benchmark definitivo de la iteración 14 (`npm run bench:editor`, *2026-10-01*; Chromium
+**Excepción de rendimiento aceptada** (decisión del usuario, *2026-10-03*). El criterio
+«1 MB sin retraso perceptible» **no se cumple** en dos casos extremos, y se acepta así:
+
+| Caso (Dividido) | Última medición oficial (`bench:editor`, iteración 18, Chromium, 3 ejecuciones) |
+|---|---|
+| 1 MB + KaTeX | P95 96 · P99 216 · máx. 256 ms; 5–11 eventos ≥ 100 ms por ejecución; tarea larga 97–203 ms. Firefox (iteración 17): P95 56–72, máx. 88 ms |
+| 1 MB de encabezados (56 000 bloques) | P95 64 · P99 112 · máx. 120 ms (coste del parser de Lezer; Edición: máx. 48 ms) |
+
+- Objetivos que no se alcanzan: los propuestos en la iteración 16 (P95 ≤ 50, P99 ≤ 100,
+  máx. ≤ 200 ms, 0 pulsaciones ≥ 100 ms, tarea larga ≤ 100 ms).
+- Causas, perfiladas: en KaTeX, al saltar de zona Chromium materializa los bloques con
+  fórmulas que entran en la vista (PrePaint y composición), más el análisis en segundo
+  plano de CodeMirror y los detectores de anuncios del navegador (iteración 19); en
+  encabezados, Lezer reequilibra los bloques de primer nivel en cada tecla (iteración 18).
+- **`content-visibility` se conserva.** Se probó quitarlo de los bloques con fórmulas:
+  mejoraba el P99 y el máximo, pero empeoraba el P95, los eventos ≥ 50 ms, la memoria y el
+  tiempo de entrar en Dividido (medición del usuario; sus cifras no están en el
+  repositorio). Detalle: bitácora, iteraciones 19 y 20.
+- Los documentos normales no tienen el problema: 2 KB–200 KB, y 1 MB sin KaTeX ni
+  encabezados extremos, máx. ≤ 64 ms en Dividido (iteraciones 16–18).
+- El resaltado con muchos encabezados se mantiene tal cual (decisión de la iteración 19).
+
+El resto de esta sección es el registro de la investigación (iteraciones 14–17) y la
+especificación original.
+
+Benchmark de la iteración 14 (`npm run bench:editor`, *2026-10-01*; Chromium
 headless, 1400×900, build de producción; Event Timing API: duración de cada evento de
 teclado, de la tecla al pintado, solo los de 16 ms o más; 22 teclas a 50 ms, 5 teclas con
 pausas de 400 ms, deshacer y rehacer, al principio, en medio y al final). «Lentos» = eventos
@@ -647,7 +674,7 @@ de 50 ms o más por zona:
 
 **Resultado: el criterio «1 MB sin retraso perceptible» se cumple en Edición y NO en
 Dividido**, también con la vista previa en pausa (sin refrescos): el retraso no viene del
-refresco. Por eso la Fase 9 está abierta y no aprobada (*2026-10-02*).
+refresco. Por eso la Fase 9 se reabrió (*2026-10-02*).
 
 **Diagnóstico con trazas de Chromium (*2026-10-02*, iteración 15).** La tabla anterior
 mezcla dos cosas:
@@ -676,8 +703,9 @@ Benchmark tras la corrección (mismo método, sin traza de Playwright, dos ejecu
 Sin la traza de Playwright y antes de la corrección (una ejecución), KaTeX en Dividido
 daba mediana 48 · máx. 120–208 ms · 130–342 lentos.
 
-**Pendiente para aprobar la fase.** Que el criterio se cumpla en 1 MB + KaTeX en
-Dividido. Lo que queda, según la traza: hit test de ~30 ms por tecla (los bloques sin
+**Pendiente para aprobar la fase (en la iteración 15; resuelto con la excepción de
+arriba).** Que el criterio se cumpla en 1 MB + KaTeX en Dividido. Lo que quedaba, según la
+traza: hit test de ~30 ms por tecla (los bloques sin
 fórmulas siguen pintados); una vez por segundo, los detectores de anuncios de Chromium y
 un Commit (~100 ms); y un primer fotograma de ~270 ms tras saltar al final (PrePaint). Que
 1 MB en Dividido (máx. 24–72 ms) se dé por bueno lo decide quien aprueba la fase.
@@ -732,11 +760,12 @@ en la entrada de la iteración 16 de [CHANGELOG.md](CHANGELOG.md).
 - **Firefox medido sin el ruido de Playwright.** Las cifras de minutos al cambiar de modo
   eran sus localizadores (perfil de Gecko). Teclear con 1 MB + KaTeX en Dividido: P95
   56–72, máx. 88 ms; con 1 MB, máx. 24–32 ms.
-- **Pendiente para aprobar:** lo de Chromium de la iteración 16 (KaTeX en Dividido y 1 MB
-  de encabezados), KaTeX en Dividido en Firefox y WebKit sin medir. Detalle en la
+- **Pendiente para aprobar (en la iteración 17; resuelto con la excepción de arriba):** lo
+  de Chromium de la iteración 16 (KaTeX en Dividido y 1 MB de encabezados) y KaTeX en
+  Dividido en Firefox. WebKit sigue sin medir (tarea propia en TAREAS). Detalle en la
   bitácora.
 
-**Implementado hasta ahora** (todo verificado salvo el criterio anterior). Modos Lectura / Edición / Dividido (`ModeSwitch`); editor CodeMirror 6 a demanda
+**Implementado** (verificado; el criterio de 1 MB, con la excepción de arriba). Modos Lectura / Edición / Dividido (`ModeSwitch`); editor CodeMirror 6 a demanda
 (98 KB gzip, trozo propio) con Markdown (GFM), historial, teclado e indentación; vista
 previa con el mismo lector, 200 ms después de la última tecla; `SplitView` con separador
 accesible (teclado, 20–80 %) que se apila en pantallas estrechas; desplazamiento
@@ -780,12 +809,15 @@ Mermaid hostiles, Markdown hostil, escribir y pegar sobre una selección, guarda
 y `showSaveFilePicker`), confirmación, `beforeunload`, 1 MB, sincronía, separador y
 pantalla estrecha. Benchmark: `npm run bench:editor`.
 
-**Pendiente de la fase**: corregir el retraso al teclear en Dividido con documentos grandes
-(primero localizar la causa con trazas) y, después, ampliar el benchmark (P50/P95/P99, 100 KB,
-desglose de la vista previa, memoria, Mermaid en el navegador, carga aislada del editor).
-Resto en [TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md).
+E2E añadidos durante la investigación: `memoria.spec.ts` (el documento anterior se libera),
+el apilado de los paneles (`editor.spec.ts`), la sincronía con fórmulas y los bloques con
+fórmulas fuera de la vista (`markdown.spec.ts`). Benchmark ampliado (P50/P95/P99, 100 KB,
+desglose de la vista previa, memoria, Mermaid, carga del editor; iteración 16).
 
-La especificación de la fase, que sigue, sigue vigente.
+**Pendiente de la fase**: nada bloqueante. Lo que sale (Firefox y Safari, WebKit en el
+benchmark, IME, búsqueda en el editor) está en [TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md).
+
+La especificación aprobada, que sigue, se conserva como referencia.
 
 **Objetivo.** Editar Markdown con vista previa en vivo y guardar localmente.
 
@@ -831,7 +863,8 @@ System Access API solo vive en memoria. El texto no se persiste.
   documento con cambios pide confirmación.
 
 **Criterios de aceptación.** Definición de hecho común; editar un `.md` de 1 MB sin
-retraso perceptible al teclear (medir en F13 si hay duda).
+retraso perceptible al teclear (medir en F13 si hay duda). *Al cerrar: se cumple salvo en
+1 MB + KaTeX y 1 MB de encabezados en Dividido, aceptados como excepción (arriba).*
 
 **Documentación.** PLAN §7.3, STACK, bitácora, TAREAS.
 
@@ -841,42 +874,182 @@ retraso perceptible al teclear (medir en F13 si hay duda).
 
 ## Fase 10 — Preferencias
 
-**Objetivo.** Panel de preferencias, memoria por documento y borrado de datos locales.
+> **Especificada de nuevo el *2026-10-03*** (iteración 20), con la Fase 9 cerrada y las
+> decisiones del usuario: **D8 confirmada**; posición **solo para PDF**; opciones de
+> búsqueda y estado del editor **no se guardan**; panel de miniaturas **sí**; acceso desde
+> la cabecera también sin documento; sin página pública de privacidad en esta fase.
 
-**Dependencias.** F6, F9 (para conocer todas las preferencias). **D8** confirmada.
+**Objetivo.** Preferencias guardadas en local, un diálogo para cambiarlas, recordar la
+posición de lectura de cada PDF y poder borrarlo todo desde la interfaz.
+
+**Dependencias.** F6 ✅, F9 ✅ (cerrada el *2026-10-03*). **D8** ✅ (confirmada el
+*2026-10-03*: activado por defecto, huella, 50 entradas, «Olvidar posiciones guardadas»,
+sin nombres ni contenido).
+
+**Punto de partida (código).** `atajosDeUnaTecla` (`src/app/pdf/atajos.ts`) guarda el
+interruptor en una variable de módulo; `estadoInicial` (`src/app/pdf/estado.ts`) fija
+página 1, zoom «ancho», vista continua, modo oscuro y miniaturas cerradas; el tamaño de
+letra (`1.0625rem`, 1rem en pantallas estrechas) y el ancho (`72ch`) de Markdown son
+fijos en `src/styles/markdown.css`; nada se guarda en `localStorage` y varios tests lo
+comprueban (abajo). `DocumentoVisor` no expone la huella del PDF. La cabecera de `App`
+solo muestra botones con un documento abierto.
 
 **Alcance**
 
-- **Infraestructura** (aplazada desde la Fase 2): reinstalar **`zod`** (con su fila en
-  `STACK.md`); `src/preferences/schema.ts` (`{ v: 1, … }` con los campos de PLAN §8 y sus
-  valores por defecto), `store.ts` (leer/escribir `bpdf:prefs` con `try/catch`, descarte
-  de valores inválidos, migración por versión) y `usePreferences.ts` (hook con
-  suscripción al evento `storage` para varias pestañas). Los ajustes que las fases 5–9
-  dejaron en memoria pasan a leerse de aquí.
-- `src/preferences/PreferencesDialog.tsx`: modo de página PDF por defecto, zoom por
-  defecto, modo continuo/página, tamaño de letra y ancho de Markdown, atajos de una tecla,
-  recordar posición (D8), «Olvidar posiciones guardadas», «Restablecer preferencias».
-- `src/preferences/positions.ts`: `bpdf:positions` (huella → `{ page, zoom, t }`), LRU de
-  50, huella de PLAN §8; restaurar al abrir si está activado; guardar con *debounce*.
-- Migración de esquema `v1 → v2` si esta fase añade campos (con test).
+- **Infraestructura** (aplazada desde la Fase 2):
+  - `zod` con **versión exacta** y su fila en `STACK.md` (revisar `allowScripts`).
+  - `src/preferences/schema.ts`: esquema de `bpdf:prefs` (abajo) con sus valores por
+    defecto. Cada campo se valida **por separado**: uno inválido vuelve a su valor por
+    defecto sin arrastrar a los demás.
+  - `src/preferences/store.ts`: leer y escribir con todo acceso a `localStorage` en
+    `try/catch` (modo privado, cuota, bloqueo); JSON roto o sin `v` entero → valores por
+    defecto; **mecanismo de versiones** (abajo).
+  - `src/preferences/usePreferences.ts`: gancho sobre una fuente externa
+    (`useSyncExternalStore`) que avisa de los cambios de la propia pestaña y de los de
+    otras (evento `storage`, que no se dispara en la pestaña que escribe). Devuelve un
+    objeto estable: si nada cambia, no hay render.
+  - `zod` y el almacén **no entran en el arranque** (`build:tamano`): los cargan los
+    trozos a demanda (visor PDF, lector de Markdown, diálogo).
+- **Preferencias guardadas** (`bpdf:prefs`) y cuándo se aplican:
+  - PDF, **valores al abrir** un documento (no cambian el que ya está abierto): modo de
+    página (oscura / original), zoom (ajustar al ancho, a la página o un porcentaje fijo) y
+    vista (continua / página a página). Cambiarlos en la barra del visor sigue siendo solo
+    para ese documento, como hoy.
+  - PDF, **panel de miniaturas abierto o cerrado**: es un estado que se recuerda. Se guarda
+    al abrirlo o cerrarlo (`T` o el botón) y se aplica al abrir el siguiente PDF. No sale
+    en el diálogo; «Restablecer preferencias» lo cierra.
+  - Markdown: **tamaño de letra y ancho de columna**, aplicados al momento (también en la
+    vista previa de Dividido) con propiedades CSS en `.md-contenido`; sin volver a
+    renderizar el documento.
+  - **Atajos de una tecla** activados o no, aplicados al momento. El interruptor de la
+    ayuda (`?`) y el del diálogo escriben la misma preferencia.
+  - **Recordar la posición de los PDF** (D8), activado por defecto.
+- **Posición por documento, solo PDF** (`src/preferences/positions.ts`, `bpdf:positions`):
+  - Huella: `pdfDocument.fingerprints[0]` de pdf.js (siempre definido; lo calcula del ID
+    del fichero). Nunca el nombre. `DocumentoVisor` la expone.
+  - Se guarda la página y el zoom (`{ page, zoom, t }`) con espera (1 s sin cambios) y al
+    cerrar el documento, abrir otro o salir de la página (`pagehide`).
+  - Al abrir un PDF, si la opción está activada y hay entrada: página (acotada al total) y
+    zoom del documento, por encima de los valores por defecto. El acceso actualiza `t`.
+  - LRU de 50 por `t`: al pasar de 50 se borra la más antigua.
+  - Desactivar la opción deja de leer y de escribir posiciones, **sin borrar** las que hay
+    (el diálogo lo dice junto al botón «Olvidar posiciones guardadas», que las borra).
+  - Un PDF con contraseña también guarda su posición (la huella no es la contraseña).
+- **Diálogo** (`src/preferences/PreferencesDialog.tsx`, cargado a demanda): `<dialog>`
+  modal; modo de página, zoom y vista por defecto del PDF; tamaño de letra y ancho de
+  Markdown; atajos de una tecla; recordar posición; «Olvidar posiciones guardadas» (borra
+  `bpdf:positions`) y «Restablecer preferencias» (borra `bpdf:prefs`; no toca las
+  posiciones). Cada acción se anuncia; el foco vuelve al botón que lo abrió.
+- **Acceso:** botón «Preferencias» en la cabecera de `App`, **visible siempre**, también en
+  el estado vacío. Sin atajo de teclado nuevo.
 
-**Fuera de alcance.** Tema claro (D10); sincronización (nunca).
+**Esquema de `bpdf:prefs` (v1).** Todos los campos tienen valor por defecto, que es el
+comportamiento actual:
 
-**Archivos esperados.** `src/preferences/*`, `src/app/pdf/Visor.tsx` (el visor PDF; no
-existe `PdfViewer.tsx`, D17), `src/markdown/MarkdownView.tsx`, `src/app/App.tsx`, `package.json`, tests y E2E.
+```ts
+{
+  v: 1,
+  pdf: {
+    modo: "oscuro" | "original",                       // "oscuro"
+    zoom: { tipo: "ancho" } | { tipo: "pagina" }
+        | { tipo: "fijo"; valor: number },             // { tipo: "ancho" }; valor 0,25–5
+    vista: "continua" | "pagina",                      // "continua"
+    miniaturas: boolean,                               // false
+  },
+  markdown: {
+    tamanoLetra: 15 | 16 | 17 | 18 | 20 | 22,          // 17 (px; hoy 1.0625rem)
+    ancho: "estrecho" | "normal" | "ancho",            // "normal" (60ch | 72ch | 90ch)
+  },
+  atajosUnaTecla: boolean,                             // true
+  recordarPosicion: boolean,                           // true (D8)
+}
+```
 
-**Seguridad y privacidad.** Nunca nombres de fichero ni contenido: un test abre un
-documento con nombre conocido, recorre `localStorage` y no lo encuentra.
+Los valores de `tamanoLetra` y `ancho` son una **propuesta que se confirma al empezar la
+fase** (son visibles para el usuario). En pantallas estrechas (≤ 40rem) se mantiene la
+regla de hoy: un píxel menos que en escritorio.
 
-**Tests.** Unitarios: preferencias (valor válido, corrupto, versión futura,
-`localStorage` que lanza), LRU, huella, migración. Componentes + jest-axe:
-diálogo. E2E: abrir PDF → página 7 → recargar y reabrir → vuelve a 7; desactivar → no
-vuelve; «olvidar» vacía `bpdf:positions`.
+**Esquema de `bpdf:positions` (v1).**
 
-**Criterios de aceptación.** Definición de hecho común; el test de privacidad pasa.
+```ts
+{
+  v: 1,
+  docs: {
+    [huella: string]: { page: number /* entero ≥ 1 */, zoom: Zoom /* el de arriba */, t: number /* ms epoch */ }
+  }                                                    // máx. 50 entradas (LRU por t)
+}
+```
 
-**Documentación.** PLAN §8 (implementado), SEGURIDAD §6, página de privacidad si D4,
-bitácora, TAREAS.
+Respecto a PLAN §8 (`{ [huella]: … }`), se envuelve en `{ v, docs }` para que tenga el mismo
+mecanismo de versiones. Una entrada inválida se descarta sola; un fichero roto, entero.
+
+**Mecanismo de versiones** (las dos claves). La v1 es la primera: **no hay ninguna
+migración de usuario** que hacer en esta fase. Lo que se construye y se prueba:
+
+- `VERSION = 1` y una tabla de migraciones paso a paso (`n → n + 1`), vacía en la v1.
+- Leído con `v` menor que la actual → se aplican los pasos en orden y se valida el resultado.
+- `v` mayor que la actual (una versión futura de BPDF en otra pestaña) → valores por
+  defecto **en memoria**, sin reescribir la clave mientras el usuario no cambie nada.
+- `v` ausente, no entera o datos que no validan tras migrar → valores por defecto.
+- Tests con una **tabla sintética** inyectada (p. ej. v1 → v2 → v3 de prueba): orden de los
+  pasos, paso que lanza, versión futura, versión sin paso.
+
+**Fuera de alcance.** Posición de documentos Markdown (y cualquier SHA-256 de su texto);
+opciones de búsqueda del PDF («Distinguir mayúsculas», «Palabra completa»: siguen en
+memoria del visor); estado del editor (modo Lectura/Edición/Dividido, posición del
+separador, cualquier otro); página pública de privacidad en `public_docs/`; tema claro
+(D10); sincronización (nunca); atajos nuevos; cambios de rendimiento de la Fase 9.
+
+**Archivos esperados.** `src/preferences/*`; `src/app/App.tsx` (botón); `src/app/pdf/`
+(`atajos.ts`, `estado.ts`, `Visor.tsx`, `VisorPdf.tsx`); `src/pdf/visor/documento.ts`
+(huella); `src/markdown/MarkdownView.tsx` y `src/styles/markdown.css` (propiedades CSS de
+tipografía, sin tocar la regla de `content-visibility`); `src/i18n/messages.ts`;
+`package.json` y lockfile; tests y E2E. **No** cambian `security-headers.ts` ni
+`vercel.json`.
+
+**Seguridad y privacidad.** Solo dos claves: `bpdf:prefs` y `bpdf:positions`. Nunca nombres
+de fichero, rutas, contenido ni contraseñas. Lo leído de `localStorage` se trata como
+hostil (otra pestaña, manipulación): se valida y nunca rompe el arranque (SEGURIDAD §1.4).
+
+**Tests**
+
+- Unitarios: esquema (válido, cada campo inválido por separado, tipos raros, `__proto__`);
+  almacén (JSON roto, `localStorage` que lanza al leer y al escribir, versión futura que
+  no se reescribe, tabla de migraciones sintética); gancho (cambio en la pestaña, evento
+  `storage`, objeto estable); posiciones (LRU de 50, `t`, entrada inválida, desactivado,
+  olvidar); `estado` con valores iniciales; huella expuesta por `DocumentoVisor`.
+- Componentes + jest-axe: diálogo (etiquetas, valores, restablecer, olvidar, anuncio,
+  foco de vuelta, Esc); botón de la cabecera con y sin documento; `Visor` que abre con los
+  valores guardados y guarda las miniaturas; `MarkdownView` con la tipografía.
+- **Tests existentes que comprueban almacenamiento vacío** (`atajos.test.ts`,
+  `Visor.test.tsx`, `App.test.tsx`, `DocumentProvider.test.tsx`, `editor.spec.ts`,
+  `visor-pdf.spec.ts`): se sustituyen por comprobaciones **igual de estrictas** donde el
+  comportamiento cambie (solo las dos claves permitidas, sin nombre, contenido ni
+  contraseña), y se dejan como están donde nada deba guardarse (abrir o guardar un
+  Markdown, el diálogo de contraseña antes de abrir). El de la contraseña de
+  `visor-pdf.spec.ts` busca la contraseña «bpdf» en todo el almacenamiento: con la clave
+  `bpdf:prefs` fallaría por el nombre de la clave, así que debe buscarla en los valores y
+  comprobar aparte que las claves son solo las permitidas.
+- E2E (vigilancia de siempre: cero errores de consola, cero violaciones de CSP, ninguna
+  petición externa), con `tests/fixtures/pdf/modo-oscuro/modo-oscuro.pdf` (**8 páginas**,
+  versionado): ir a la página 7 → recargar → reabrir → vuelve a la 7 con su zoom;
+  desactivar «recordar» → vuelve a la 1; «Olvidar» → `bpdf:positions` desaparece;
+  preferencias que sobreviven a recargar (modo, zoom, vista, miniaturas, atajos, tipografía);
+  `bpdf:prefs` corrupto o de versión futura → la app arranca con los valores por defecto;
+  **privacidad**: abrir un PDF y un Markdown con nombres y contenido conocidos y
+  distintivos, recorrer `localStorage` y `sessionStorage` (claves y valores) y no
+  encontrarlos.
+- Tras implementar: `npm run bench:editor` para comprobar que la Fase 9 no empeora (toca
+  `MarkdownView` y `markdown.css`); solo se mide, no se optimiza.
+
+**Criterios de aceptación.** Definición de hecho común; el test de privacidad pasa; las
+preferencias corruptas no rompen el arranque; `build:tamano` sin `zod` en el arranque;
+`bench:editor` sin empeorar respecto a la iteración 18.
+
+**Documentación.** PLAN §8 (implementado), SEGURIDAD §6 (qué se guarda y cómo se borra),
+ARCHITECTURE (sección nueva), STACK, STRUCTURE, MODULES, `tests/fixtures/README.md` si
+cambia algún uso, CLAUDE.md §0, bitácora, TAREAS. Anuncio de cambios visibles al entregar
+(CLAUDE §8). Sin página pública de privacidad.
 
 **Resultado esperado.** Preferencias completas y transparentes para el usuario.
 

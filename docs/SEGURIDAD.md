@@ -383,8 +383,14 @@ Resumen; el diseño completo está en [ELECTRON.md](ELECTRON.md).
   destino elegido (`FileSystemFileHandle`) solo se recuerda en memoria mientras ese
   documento sigue abierto. Los tests comprueban que no se toca `localStorage` ni
   `sessionStorage`.
-- Persistencia mínima ([PLAN.md](PLAN.md) §8): preferencias y, si D8 lo confirma,
-  posiciones por huella, sin nombres ni contenido. Borrables desde la interfaz.
+- Persistencia mínima ([PLAN.md](PLAN.md) §8; llega con la **Fase 10**, sin empezar): solo
+  dos claves de `localStorage`. `bpdf:prefs`: preferencias (valores por defecto del PDF,
+  panel de miniaturas, tipografía de Markdown, atajos de una tecla, recordar posición).
+  `bpdf:positions`: página y zoom por PDF (D8 ✅, activado por defecto), indexados por la
+  huella de pdf.js, máx. 50. **Nunca** nombres, rutas, contenido, contraseñas, opciones de
+  búsqueda, estado del editor ni posición de Markdown. Se borran desde el diálogo de
+  preferencias de la cabecera: «Olvidar posiciones guardadas» y «Restablecer preferencias».
+  Lo leído se valida como dato hostil y nunca rompe el arranque (§1, punto 4).
 - Sin cookies.
 - En web, el hosting ve la carga de la app (IP, hora), como cualquier web estática, pero
   **nunca** los documentos. Se dirá en el README y en la página de privacidad.

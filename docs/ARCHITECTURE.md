@@ -725,6 +725,11 @@ materializa los bloques con fórmulas que entran en la vista.
 - Sin `content-visibility` (diagnóstico), ese fotograma no aparece: la primera tecla baja
   de 360 a 208 ms.
 - Ocultar bloques es barato, y las capas de KaTeX no son la causa.
+- **Aun así, `content-visibility` se conserva** (iteración 20). Se probó quitarlo de los
+  bloques con fórmulas y medirlo con el benchmark: mejoraba el P99 y el máximo, pero
+  empeoraba el P95, los eventos ≥ 50 ms, la memoria y el tiempo de entrar en Dividido
+  (medición del usuario; sus cifras no están en el repositorio). El coste que queda es la
+  excepción de rendimiento con la que se aprobó la fase (abajo, «Rendimiento»).
 
 **CSP: el editor vive en un Shadow DOM.** CodeMirror inyecta sus estilos con `style-mod`:
 con el `document` como raíz, en una etiqueta `<style>` que `style-src 'self'` bloquea; con un
@@ -821,8 +826,9 @@ y al final; dos ejecuciones). «Lentos» = eventos de 50 ms o más por zona:
 | 1 MB + Mermaid | 16–32 · 16–32 ms · 0 | 16–24 · 24–72 ms · 0–20 (en pausa) |
 | 1 MB de encabezados | 16–32 · 16–64 ms · 0–3 | 24–32 · 40–112 ms · 0–20 (en pausa) |
 
-**Resultado: el criterio «1 MB sin retraso perceptible» se cumple en Edición y NO en
-Dividido con KaTeX.** Por eso la Fase 9 sigue abierta y no aprobada. Las cifras de la
+**Resultado (iteración 15): el criterio «1 MB sin retraso perceptible» se cumple en
+Edición y NO en Dividido con KaTeX.** Las cifras finales y la excepción con la que se
+aprobó la fase están al final de este apartado. Las cifras de la
 iteración 14 (1 MB en Dividido: máx. 224–256 ms; KaTeX: 784–1104 ms) estaban infladas por
 la traza de Playwright: aunque solo se guarde si algo falla, se graba siempre, y su
 instantánea del DOM en cada acción bloqueaba el hilo principal (~0,9 s con 1 MB, ~3,9 s
@@ -844,11 +850,28 @@ dos veces por fotograma (medido; Dividido pasó a máx. 168–608 ms). Efectos:
   con todos los bloques saltados: `getComputedStyle` de 90 000 nodos, 8 s en vez de 41 ms.
   Ningún encabezado de primer nivel queda dentro de uno, así que la sincronía no lo paga.
 
-Lo que queda en KaTeX en Dividido, según la traza:
+Lo que quedaba en KaTeX en Dividido según la traza de la iteración 15, y qué fue de ello:
 
-- Un hit test de ~30 ms por tecla: los bloques sin fórmulas siguen pintados.
-- Una vez por segundo, los detectores de anuncios de Chromium y un Commit (~100 ms).
-- Un primer fotograma de ~270 ms tras saltar al final del documento (PrePaint).
+- Un hit test de ~30 ms por tecla (los bloques sin fórmulas siguen pintados): **resuelto**
+  en la iteración 18 poniendo el editor por encima en el apilado (arriba).
+- Una vez por segundo, los detectores de anuncios de Chromium y un Commit (~100 ms): del
+  navegador; queda.
+- Un primer fotograma de ~270 ms tras saltar a otra zona (PrePaint): materializar bloques
+  con `content-visibility` (iteración 19); queda.
+
+**Excepción de rendimiento con la que se aprobó la Fase 9** (*2026-10-03*, iteración 20;
+decisión del usuario). En Dividido, dos casos extremos **no cumplen** los objetivos
+propuestos en la iteración 16 (P95 ≤ 50, P99 ≤ 100, máx. ≤ 200 ms, 0 pulsaciones ≥ 100 ms,
+tarea larga ≤ 100 ms). Última medición oficial (iteración 18, Chromium, 3 ejecuciones):
+
+| Caso (Dividido) | P95 | P99 | Máx. | Eventos ≥ 100 ms | Tarea larga |
+|---|--:|--:|--:|--:|--:|
+| 1 MB + KaTeX | 96 | 216 | 256 | 5–11 por ejecución | 97–203 |
+| 1 MB de encabezados | 64 | 112 | 120 | 4 (así lo da la iteración 18) | sin dato |
+
+Firefox (iteración 17), 1 MB + KaTeX en Dividido: P95 56–72, máx. 88 ms. Los documentos
+normales no lo sufren: 2 KB–200 KB y 1 MB sin KaTeX ni encabezados extremos, máx. ≤ 64 ms
+en Dividido (iteraciones 16–18).
 
 **Límites conocidos.**
 
