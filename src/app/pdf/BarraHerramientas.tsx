@@ -25,7 +25,7 @@ import {
 import { messages } from "@/i18n/messages";
 import { cn } from "@/lib/utils";
 import { leerPagina, ZOOM_MAXIMO, ZOOM_MINIMO } from "@/pdf/visor/disposicion";
-import { ID_CAMPO_PAGINA } from "./atajos";
+import { ATAJOS_BOTON, anuncioDeAtajo, ID_CAMPO_PAGINA } from "./atajos";
 import type { Accion, EstadoVisor } from "./estado";
 
 const t = messages.pdf;
@@ -33,7 +33,9 @@ const t = messages.pdf;
 /**
  * Botón de la barra: icono con nombre accesible (`aria-label`) y el mismo
  * texto como información emergente (`title`). Los que cambian un modo llevan
- * además texto visible y `aria-pressed`: el estado no depende de un icono.
+ * además texto visible y `aria-pressed`: el estado no depende de un icono. Los
+ * que tienen atajo lo anuncian en `title` y `aria-keyshortcuts` (Fase 11,
+ * `anuncioDeAtajo`), sin tocar el nombre accesible.
  */
 function Boton({
   etiqueta,
@@ -71,6 +73,7 @@ export function BarraHerramientas({
   pantallaCompleta,
   onPantallaCompleta,
   onAyuda,
+  unaTecla,
 }: {
   nombre: string;
   estado: EstadoVisor;
@@ -82,7 +85,11 @@ export function BarraHerramientas({
   onPantallaCompleta: () => void;
   /** Abre la ayuda de atajos (también con los de una tecla desactivados). */
   onAyuda: () => void;
+  /** ¿Están activados los atajos de una tecla? Si no, sus botones no los anuncian. */
+  unaTecla: boolean;
 }) {
+  const atajo = (accion: Parameters<typeof anuncioDeAtajo>[0], etiqueta: string) =>
+    anuncioDeAtajo(accion, etiqueta, unaTecla);
   const oscuro = estado.modo === "oscuro";
   // Al terminar de cargar, el foco pasa del título provisional a este.
   const titulo = useRef<HTMLHeadingElement>(null);
@@ -114,6 +121,7 @@ export function BarraHerramientas({
       >
         <Boton
           etiqueta={estado.miniaturas ? t.hideThumbnails : t.showThumbnails}
+          {...atajo("miniaturas", estado.miniaturas ? t.hideThumbnails : t.showThumbnails)}
           aria-pressed={estado.miniaturas}
           onClick={() => despachar({ tipo: "miniaturas" })}
         >
@@ -122,6 +130,7 @@ export function BarraHerramientas({
         <Separador />
         <Boton
           etiqueta={t.previous}
+          {...atajo("anterior", t.previous)}
           disabled={estado.pagina <= 1}
           onClick={() => despachar({ tipo: "anterior" })}
         >
@@ -130,6 +139,7 @@ export function BarraHerramientas({
         <CampoPagina estado={estado} despachar={despachar} />
         <Boton
           etiqueta={t.next}
+          {...atajo("siguiente", t.next)}
           disabled={estado.pagina >= estado.total}
           onClick={() => despachar({ tipo: "siguiente" })}
         >
@@ -138,6 +148,7 @@ export function BarraHerramientas({
         <Separador />
         <Boton
           etiqueta={t.zoomOut}
+          {...atajo("alejar", t.zoomOut)}
           disabled={porcentaje <= ZOOM_MINIMO * 100}
           onClick={() => despachar({ tipo: "paso-zoom", actual: porcentaje / 100, direccion: -1 })}
         >
@@ -145,6 +156,7 @@ export function BarraHerramientas({
         </Boton>
         <Boton
           etiqueta={t.zoomReset(porcentaje)}
+          {...atajo("zoom100", t.zoomReset(porcentaje))}
           className="w-16 tabular-nums"
           onClick={() => despachar({ tipo: "zoom", zoom: { tipo: "fijo", valor: 1 } })}
         >
@@ -152,6 +164,7 @@ export function BarraHerramientas({
         </Boton>
         <Boton
           etiqueta={t.zoomIn}
+          {...atajo("acercar", t.zoomIn)}
           disabled={porcentaje >= ZOOM_MAXIMO * 100}
           onClick={() => despachar({ tipo: "paso-zoom", actual: porcentaje / 100, direccion: 1 })}
         >
@@ -171,10 +184,18 @@ export function BarraHerramientas({
         >
           <Maximize aria-hidden="true" className={icono} />
         </Boton>
-        <Boton etiqueta={t.rotateLeft} onClick={() => despachar({ tipo: "girar", sentido: -1 })}>
+        <Boton
+          etiqueta={t.rotateLeft}
+          {...atajo("girarIzquierda", t.rotateLeft)}
+          onClick={() => despachar({ tipo: "girar", sentido: -1 })}
+        >
           <RotateCcw aria-hidden="true" className={icono} />
         </Boton>
-        <Boton etiqueta={t.rotate} onClick={() => despachar({ tipo: "girar" })}>
+        <Boton
+          etiqueta={t.rotate}
+          {...atajo("girarDerecha", t.rotate)}
+          onClick={() => despachar({ tipo: "girar" })}
+        >
           <RotateCw aria-hidden="true" className={icono} />
         </Boton>
         <Separador />
@@ -216,6 +237,7 @@ export function BarraHerramientas({
         <Separador />
         <Boton
           etiqueta={t.search}
+          {...atajo("buscar", t.search)}
           aria-pressed={estado.busqueda}
           onClick={() => despachar({ tipo: "busqueda", abierta: !estado.busqueda })}
         >
@@ -224,13 +246,19 @@ export function BarraHerramientas({
         {pantallaCompleta !== null && (
           <Boton
             etiqueta={t.fullscreen}
+            {...atajo("pantallaCompleta", t.fullscreen)}
             aria-pressed={pantallaCompleta}
             onClick={onPantallaCompleta}
           >
             <Fullscreen aria-hidden="true" className={icono} />
           </Boton>
         )}
-        <Boton etiqueta={t.shortcuts} aria-haspopup="dialog" onClick={onAyuda}>
+        <Boton
+          etiqueta={t.shortcuts}
+          {...atajo("ayuda", t.shortcuts)}
+          aria-haspopup="dialog"
+          onClick={onAyuda}
+        >
           <Keyboard aria-hidden="true" className={icono} />
         </Boton>
       </div>
@@ -273,6 +301,7 @@ function CampoPagina({ estado, despachar }: { estado: EstadoVisor; despachar: Di
         inputMode="numeric"
         autoComplete="off"
         aria-label={t.pageInput}
+        aria-keyshortcuts={ATAJOS_BOTON.irAPagina.aria}
         aria-describedby={invalido ? `${idTotal} ${idAviso}` : idTotal}
         aria-invalid={invalido || undefined}
         value={texto}

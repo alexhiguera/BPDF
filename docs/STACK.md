@@ -10,7 +10,7 @@ Fase 7 el pipeline de Markdown (`react-markdown`, `remark-gfm`) y el resaltado d
 
 | Capa | Tecnología | Por qué |
 |---|---|---|
-| Build | **Vite 8** (Rolldown), SPA **estática** en `dist/` | D1 ([PLAN.md](PLAN.md) §3): sin servidor e `index.html` sin scripts en línea (CSP estricta). Sustituyó a Next.js 16 en la Fase 2 |
+| Build | **Vite 8** (Rolldown), SPA **estática** en `dist/` | D1 ([PLAN.md](PLAN.md) §3): sin servidor e `index.html` sin scripts en línea (CSP estricta). Sustituyó a Next.js 16 en la Fase 2. Desde la Fase 11, `define` fija la versión y la licencia de `package.json` en el código al compilar (`src/config/compilacion.ts`): nada se lee ni se evalúa en el navegador |
 | UI | **React 19** + **Tailwind CSS 4** «CSS-first» (`@tailwindcss/vite`) + **lucide-react** | Tokens en `:root` como tripletes RGB: tema cambiable en runtime y modificadores de opacidad que siguen funcionando |
 | Lenguaje | **TypeScript 7** estricto, con `noUncheckedIndexedAccess` | |
 | Lint y formato | **Biome 2** | Un binario, sin ESLint ni Prettier |

@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import {
+  ATAJOS_BOTON,
+  anuncioDeAtajo,
   atajoDe,
   CONTEXTO_INICIAL,
   type ContextoAtajos,
   esCampoDeTexto,
   ID_CAMPO_BUSQUEDA,
 } from "@/app/pdf/atajos";
+import { messages } from "@/i18n/messages";
 
 const tecla = (
   key: string,
@@ -200,5 +203,65 @@ describe("con un diálogo modal abierto", () => {
       expect(atajoDe(tecla(k), modal)).toBeNull();
     }
     expect(atajoDe(tecla("f", { ctrlKey: true }), modal)).toBeNull();
+  });
+});
+
+describe("atajos anunciados en los botones (Fase 11)", () => {
+  it("un botón con atajo lo anuncia en `title` (teclas visibles) y en `aria-keyshortcuts`", () => {
+    expect(anuncioDeAtajo("acercar", "Acercar", true)).toEqual({
+      title: messages.withShortcut("Acercar", messages.keys.acercar),
+      "aria-keyshortcuts": "Control+Plus Meta+Plus",
+    });
+    expect(messages.withShortcut("Acercar", messages.keys.acercar)).toBe("Acercar (Ctrl/⌘ +)");
+    expect(anuncioDeAtajo("anterior", "Página anterior", false)["aria-keyshortcuts"]).toBe(
+      "PageUp",
+    );
+  });
+
+  it("los de una tecla solo se anuncian con esos atajos activados", () => {
+    for (const accion of [
+      "miniaturas",
+      "girarDerecha",
+      "girarIzquierda",
+      "pantallaCompleta",
+      "ayuda",
+    ] as const) {
+      expect(ATAJOS_BOTON[accion].unaTecla).toBe(true);
+      expect(anuncioDeAtajo(accion, "X", false)).toEqual({ title: "X" });
+      expect(anuncioDeAtajo(accion, "X", true)["aria-keyshortcuts"]).toBe(
+        ATAJOS_BOTON[accion].aria,
+      );
+    }
+    // Los demás no dependen de la preferencia.
+    expect(anuncioDeAtajo("buscar", "Buscar", false)["aria-keyshortcuts"]).toBe("Control+F Meta+F");
+  });
+
+  it("cada atajo anunciado tiene sus teclas visibles en la misma tabla que la ayuda", () => {
+    for (const accion of Object.keys(ATAJOS_BOTON) as (keyof typeof ATAJOS_BOTON)[]) {
+      expect(messages.keys[accion].length, accion).toBeGreaterThan(0);
+    }
+    const filas = messages.pdf.help.rows.map((f) => f.keys);
+    for (const accion of [
+      "miniaturas",
+      "girarDerecha",
+      "girarIzquierda",
+      "pantallaCompleta",
+      "ayuda",
+      "acercar",
+      "buscar",
+      "abrir",
+    ] as const) {
+      expect(filas, accion).toContain(messages.keys[accion]);
+    }
+  });
+
+  it("la sintaxis de `aria-keyshortcuts` es la de ARIA: modificadores con nombre y «Plus» para «+»", () => {
+    for (const { aria } of Object.values(ATAJOS_BOTON)) {
+      for (const combinacion of aria.split(" ")) {
+        expect(combinacion).toMatch(
+          /^((Control|Meta|Shift|Alt)\+)*([A-Z0-9?-]|F\d+|PageUp|PageDown|Escape|Plus)$/,
+        );
+      }
+    }
   });
 });

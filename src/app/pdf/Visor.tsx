@@ -546,6 +546,7 @@ export function Visor({
         pantallaCompleta={soportaPantallaCompleta ? pantallaCompleta : null}
         onPantallaCompleta={alternarPantallaCompleta}
         onAyuda={() => setAyuda(true)}
+        unaTecla={unaTecla}
       />
       {estado.busqueda && (
         <BarraBusqueda

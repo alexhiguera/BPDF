@@ -10,6 +10,7 @@ import type { OpcionesBusqueda } from "@/pdf/visor/busqueda";
 import type { ControladorVisor, EstadoBusqueda } from "@/pdf/visor/controlador";
 import type { DestinoEnlace } from "@/pdf/visor/enlaces";
 import type { ParametrosPintura } from "@/pdf/visor/superficie";
+import { cambiarPreferencias } from "@/preferences/store";
 
 const t = messages.pdf;
 const A4 = { ancho: 595, alto: 842 };
@@ -680,5 +681,43 @@ describe("Visor: preferencias y posición (Fase 10)", () => {
     fireEvent.click(boton(t.searchWholeWord));
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.length).toBe(0);
+  });
+});
+
+describe("Visor: atajos anunciados en la barra (Fase 11)", () => {
+  it("cada botón con atajo lo anuncia en title y aria-keyshortcuts, sin cambiar su nombre accesible", () => {
+    montar(20);
+    const acercar = boton(t.zoomIn);
+    expect(acercar).toHaveAttribute(
+      "title",
+      messages.withShortcut(t.zoomIn, messages.keys.acercar),
+    );
+    expect(acercar).toHaveAttribute("aria-keyshortcuts", "Control+Plus Meta+Plus");
+    expect(boton(t.next)).toHaveAttribute("aria-keyshortcuts", "PageDown");
+    expect(boton(t.search)).toHaveAttribute("aria-keyshortcuts", "Control+F Meta+F");
+    expect(screen.getByRole("textbox", { name: t.pageInput })).toHaveAttribute(
+      "aria-keyshortcuts",
+      "Control+G Meta+G",
+    );
+    // Sin atajo: su title es solo su nombre.
+    expect(boton(t.fitWidth)).toHaveAttribute("title", t.fitWidth);
+    expect(boton(t.fitWidth)).not.toHaveAttribute("aria-keyshortcuts");
+  });
+
+  it("los de una tecla solo se anuncian mientras están activados", () => {
+    montar(20);
+    const miniaturas = () => boton(t.showThumbnails);
+    expect(miniaturas()).toHaveAttribute("aria-keyshortcuts", "T");
+    expect(boton(t.rotate)).toHaveAttribute(
+      "title",
+      messages.withShortcut(t.rotate, messages.keys.girarDerecha),
+    );
+    act(() => cambiarPreferencias((p) => ({ ...p, atajosUnaTecla: false })));
+    expect(miniaturas()).not.toHaveAttribute("aria-keyshortcuts");
+    expect(miniaturas()).toHaveAttribute("title", t.showThumbnails);
+    expect(boton(t.rotate)).toHaveAttribute("title", t.rotate);
+    expect(boton(t.shortcuts)).not.toHaveAttribute("aria-keyshortcuts");
+    // Los que no son de una tecla siguen igual.
+    expect(boton(t.zoomIn)).toHaveAttribute("aria-keyshortcuts", "Control+Plus Meta+Plus");
   });
 });

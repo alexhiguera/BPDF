@@ -596,3 +596,29 @@ describe("App: preferencias (Fase 10)", () => {
     expect(localStorage.getItem("bpdf:prefs")).not.toContain("notas");
   });
 });
+
+describe("App: interfaz (Fase 11)", () => {
+  it("los dos botones «Abrir archivo» anuncian Ctrl/⌘+O, sin cambiar su nombre", async () => {
+    montar(new PlataformaEnMemoria().elegira(fichero("notas.md", "# Notas")));
+    const vacio = screen.getByRole("button", { name: messages.open.button });
+    expect(vacio).toHaveAttribute("aria-keyshortcuts", "Control+O Meta+O");
+    expect(vacio).toHaveAttribute(
+      "title",
+      messages.withShortcut(messages.open.button, messages.keys.abrir),
+    );
+    await abrir();
+    await screen.findByRole("heading", { level: 1, name: "notas.md" });
+    const cabecera = within(screen.getByRole("banner")).getByRole("button", {
+      name: messages.open.button,
+    });
+    expect(cabecera).toHaveAttribute("aria-keyshortcuts", "Control+O Meta+O");
+  });
+
+  it("el título de la ventana no cambia al abrir un documento: nunca lleva su nombre", async () => {
+    document.title = project.name;
+    montar(new PlataformaEnMemoria().elegira(fichero("zq-secreto-4471.md", "# Hola")));
+    await abrir();
+    await screen.findByRole("heading", { level: 1, name: "zq-secreto-4471.md" });
+    expect(document.title).toBe(project.name);
+  });
+});

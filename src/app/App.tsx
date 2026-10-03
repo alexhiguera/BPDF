@@ -5,11 +5,13 @@ import { project } from "@/config/project";
 import { DocumentProvider, useDocument } from "@/documents/DocumentProvider";
 import { messages } from "@/i18n/messages";
 import type { Platform } from "@/platform";
+import { Cargando } from "./Cargando";
 import { ConfirmarDescarte } from "./ConfirmarDescarte";
 import { DocumentErrorAlert } from "./DocumentErrorAlert";
 import { DropZone } from "./DropZone";
 import { ElegirMarkdown } from "./ElegirMarkdown";
 import { EmptyState } from "./EmptyState";
+import { anuncioDeAtajo } from "./pdf/atajos";
 
 /**
  * Los visores se cargan a demanda, al abrir el primer documento de su tipo: ni
@@ -80,7 +82,11 @@ function Shell({ platform }: { platform: Platform }) {
               <Button variant="secondary" onClick={openFolder}>
                 {messages.open.folder}
               </Button>
-              <Button variant="secondary" onClick={openWithPicker}>
+              <Button
+                variant="secondary"
+                {...anuncioDeAtajo("abrir", messages.open.button, true)}
+                onClick={openWithPicker}
+              >
                 {messages.open.button}
               </Button>
             </>
@@ -112,7 +118,7 @@ function Shell({ platform }: { platform: Platform }) {
         {error && <DocumentErrorAlert error={error} onDismiss={dismissError} />}
         {choice && <ElegirMarkdown choice={choice} onChoose={choose} onCancel={cancelChoice} />}
         {document?.kind === "pdf" ? (
-          <Suspense fallback={<p className="p-6 text-fg-muted">{messages.pdf.loading}</p>}>
+          <Suspense fallback={<Cargando texto={messages.pdf.loading} />}>
             <VisorPdf
               key={document.id}
               documento={document}
@@ -121,7 +127,7 @@ function Shell({ platform }: { platform: Platform }) {
             />
           </Suspense>
         ) : document?.kind === "markdown" ? (
-          <Suspense fallback={<p className="p-6 text-fg-muted">{messages.markdown.loading}</p>}>
+          <Suspense fallback={<Cargando texto={messages.markdown.loading} />}>
             <MarkdownView
               key={document.id}
               documento={document}

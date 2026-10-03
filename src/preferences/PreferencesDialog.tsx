@@ -1,6 +1,8 @@
 import { X } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { project } from "@/config/project";
+import { licencia, version } from "@/config/version";
 import { messages } from "@/i18n/messages";
 import { PASOS_ZOOM, type Zoom } from "@/pdf/visor/disposicion";
 import { olvidarPosiciones } from "./positions";
@@ -185,6 +187,19 @@ export default function PreferencesDialog({ onCerrar }: { onCerrar: () => void }
             {aviso}
           </p>
         </div>
+
+        {/* «Acerca de» (Fase 11): sin enlace al repositorio hasta la Fase 16. */}
+        <section
+          aria-labelledby={`${id}-acerca`}
+          className="flex flex-col gap-1 border-t border-border pt-3 text-fg-muted"
+        >
+          <h3 id={`${id}-acerca`} className="font-semibold text-fg">
+            {t.about.title(project.name)}
+          </h3>
+          <p>{t.about.version(version)}</p>
+          <p>{t.about.license(licencia)}</p>
+          <p>{messages.emptyState.privacy}</p>
+        </section>
       </div>
     </dialog>
   );
@@ -267,7 +282,7 @@ function Casilla({
         checked={marcada}
         onChange={(e) => onCambio(e.target.checked)}
         aria-describedby={pista ? `${id}-pista` : undefined}
-        className="mt-1 size-4 accent-accent"
+        className="size-6 shrink-0 accent-accent"
       />
       <div>
         <label htmlFor={id}>{etiqueta}</label>

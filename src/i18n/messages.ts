@@ -10,6 +10,35 @@
  * El nombre y la descripción del producto no están aquí: son identidad y viven
  * en `src/config/project.ts`.
  */
+
+/** Cómo se escriben los modificadores en la interfaz. */
+const tecla = { ctrl: "Ctrl/⌘", mayus: "Mayús" } as const;
+
+/**
+ * Las teclas de cada atajo, tal como se ven: una sola tabla para la ayuda de
+ * atajos (`pdf.help.rows`) y los tooltips de los botones (Fase 11). Los valores
+ * de `aria-keyshortcuts` (no visibles) viven junto a la lógica, en
+ * `src/app/pdf/atajos.ts` y en `App.tsx`.
+ */
+const teclas = {
+  abrir: [tecla.ctrl, "O"],
+  anterior: ["RePág"],
+  siguiente: ["AvPág"],
+  alejar: [tecla.ctrl, "−"],
+  zoom100: [tecla.ctrl, "0"],
+  acercar: [tecla.ctrl, "+"],
+  buscar: [tecla.ctrl, "F"],
+  irAPagina: [tecla.ctrl, "G"],
+  coincidenciaSiguiente: ["F3"],
+  coincidenciaAnterior: [tecla.mayus, "F3"],
+  cerrarBusqueda: ["Esc"],
+  miniaturas: ["T"],
+  girarDerecha: ["R"],
+  girarIzquierda: [tecla.mayus, "R"],
+  pantallaCompleta: ["F"],
+  ayuda: ["?"],
+} as const;
+
 export const messages = {
   app: {
     skipToContent: "Saltar al contenido",
@@ -22,10 +51,15 @@ export const messages = {
       "¿Un Markdown con imágenes? Selecciona el .md junto con las imágenes que usa, o abre la carpeta que lo contiene.",
     privacy: "Tus documentos no salen de este dispositivo.",
   },
+  /** Un botón con su atajo, para `title` (Fase 11). */
+  withShortcut: (etiqueta: string, combinacion: readonly string[]) =>
+    `${etiqueta} (${combinacion.join(" ")})`,
+  keys: teclas,
   open: {
     button: "Abrir archivo",
     folder: "Abrir carpeta",
-    shortcut: "Atajo: Ctrl+O (⌘O en Mac)",
+    /** Las mismas teclas que la ayuda y los tooltips (Fase 11). */
+    shortcut: `Atajo: ${teclas.abrir.join(" ")}`,
   },
   dropZone: {
     hint: "Suelta el archivo para abrirlo (o un Markdown con sus imágenes, o su carpeta)",
@@ -143,16 +177,16 @@ export const messages = {
       singleKeyMark: "una tecla",
       rows: [
         {
-          keys: ["F"],
+          keys: teclas.pantallaCompleta,
           action: "Entrar o salir de pantalla completa (Esc también sale)",
           single: true,
         },
-        { keys: ["T"], action: "Mostrar u ocultar las miniaturas", single: true },
-        { keys: ["R"], action: "Girar 90° a la derecha", single: true },
-        { keys: ["Mayús", "R"], action: "Girar 90° a la izquierda", single: true },
-        { keys: ["?"], action: "Abrir esta ayuda", single: true },
-        { keys: ["AvPág"], action: "Página siguiente" },
-        { keys: ["RePág"], action: "Página anterior" },
+        { keys: teclas.miniaturas, action: "Mostrar u ocultar las miniaturas", single: true },
+        { keys: teclas.girarDerecha, action: "Girar 90° a la derecha", single: true },
+        { keys: teclas.girarIzquierda, action: "Girar 90° a la izquierda", single: true },
+        { keys: teclas.ayuda, action: "Abrir esta ayuda", single: true },
+        { keys: teclas.siguiente, action: "Página siguiente" },
+        { keys: teclas.anterior, action: "Página anterior" },
         { keys: ["Espacio"], action: "Página siguiente" },
         { keys: ["Mayús", "Espacio"], action: "Página anterior" },
         { keys: ["→"], action: "Página siguiente (en «Página a página»)" },
@@ -161,17 +195,23 @@ export const messages = {
         { keys: ["Fin"], action: "Última página" },
         { keys: ["↓"], action: "Bajar (en «Página a página», al final pasa de página)" },
         { keys: ["↑"], action: "Subir (en «Página a página», al principio vuelve de página)" },
-        { keys: ["Ctrl/⌘", "G"], action: "Ir al número de página" },
-        { keys: ["Ctrl/⌘", "+"], action: "Acercar" },
-        { keys: ["Ctrl/⌘", "−"], action: "Alejar" },
-        { keys: ["Ctrl/⌘", "0"], action: "Zoom al 100 %" },
-        { keys: ["Ctrl/⌘", "F"], action: "Buscar en el documento" },
+        { keys: teclas.irAPagina, action: "Ir al número de página" },
+        { keys: teclas.acercar, action: "Acercar" },
+        { keys: teclas.alejar, action: "Alejar" },
+        { keys: teclas.zoom100, action: "Zoom al 100 %" },
+        { keys: teclas.buscar, action: "Buscar en el documento" },
         { keys: ["Intro"], action: "En la búsqueda: coincidencia siguiente" },
         { keys: ["Mayús", "Intro"], action: "En la búsqueda: coincidencia anterior" },
-        { keys: ["F3"], action: "Con la búsqueda abierta: coincidencia siguiente" },
-        { keys: ["Mayús", "F3"], action: "Con la búsqueda abierta: coincidencia anterior" },
+        {
+          keys: teclas.coincidenciaSiguiente,
+          action: "Con la búsqueda abierta: coincidencia siguiente",
+        },
+        {
+          keys: teclas.coincidenciaAnterior,
+          action: "Con la búsqueda abierta: coincidencia anterior",
+        },
         { keys: ["Esc"], action: "Cerrar la búsqueda, esta ayuda o la pantalla completa" },
-        { keys: ["Ctrl/⌘", "O"], action: "Abrir otro archivo" },
+        { keys: teclas.abrir, action: "Abrir otro archivo" },
       ],
     },
     /** Diálogo de contraseña (Fase 6, D13). La contraseña no se guarda. */
@@ -222,6 +262,12 @@ export const messages = {
     forgotten: "Posiciones guardadas olvidadas.",
     reset: "Restablecer preferencias",
     resetDone: "Preferencias restablecidas.",
+    /** «Acerca de», al final del diálogo (Fase 11). Sin enlace al repositorio hasta la Fase 16. */
+    about: {
+      title: (nombre: string) => `Acerca de ${nombre}`,
+      version: (version: string) => `Versión ${version}`,
+      license: (licencia: string) => `Software libre con licencia ${licencia}`,
+    },
   },
   /** Cambios sin guardar al sustituir o cerrar un documento (Fase 9). */
   discard: {

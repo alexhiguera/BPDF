@@ -391,6 +391,9 @@ enlace bloqueado no hace nada. Casos:
   lanza) y E2E de privacidad (`preferencias.spec.ts`: documentos con nombre y contenido
   conocidos; ni nombres, ni contenido, ni posición de Markdown; solo las dos claves). La CSP
   no cambia: `zod` va con `jitless` para no probar `new Function`.
+- **El título de la ventana es siempre «BPDF»** (Fase 11): el nombre del documento nunca va
+  a `document.title`, porque el navegador guarda el título de cada visita en su historial
+  (y lo sincroniza con su cuenta). Lo vigilan un E2E y un test de componente.
 - Sin cookies.
 - En web, el hosting ve la carga de la app (IP, hora), como cualquier web estática, pero
   **nunca** los documentos. Se dirá en el README y en la página de privacidad.

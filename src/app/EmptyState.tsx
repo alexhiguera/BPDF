@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/Button";
 import { messages } from "@/i18n/messages";
+import { anuncioDeAtajo } from "./pdf/atajos";
 
 /** Lo que se ve sin documento abierto (docs/PLAN.md §9.3). Toda la ventana acepta ficheros soltados. */
 export function EmptyState({
@@ -20,7 +21,9 @@ export function EmptyState({
       </h1>
       <p className="text-fg-muted">{t.body}</p>
       <div className="flex flex-wrap justify-center gap-2">
-        <Button onClick={onOpen}>{messages.open.button}</Button>
+        <Button {...anuncioDeAtajo("abrir", messages.open.button, true)} onClick={onOpen}>
+          {messages.open.button}
+        </Button>
         <Button variant="secondary" onClick={onOpenFolder}>
           {messages.open.folder}
         </Button>

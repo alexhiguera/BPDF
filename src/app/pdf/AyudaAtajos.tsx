@@ -63,7 +63,7 @@ export function AyudaAtajos({
             checked={unaTecla}
             onChange={(e) => onUnaTecla(e.target.checked)}
             aria-describedby={idPista}
-            className="mt-1 size-4 accent-accent"
+            className="size-6 shrink-0 accent-accent"
           />
           <div>
             <label htmlFor={idCasilla} className="font-medium">

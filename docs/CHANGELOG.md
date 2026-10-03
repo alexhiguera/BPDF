@@ -10,6 +10,73 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 23 — *2026-10-03* — Fase 11: interfaz final (implementada, pendiente de revisión)
+
+**Contexto.** Tras la auditoría previa, el usuario confirmó **D10** (sin tema claro en v1) y
+**D12** (adaptación básica: sin desplazamiento horizontal a 375 px, controles ≥ 24 px, barras
+que se reparten, sin gestos) y decidió: título de la ventana siempre «BPDF»; «Acerca de»
+dentro de Preferencias; sin enlace al repositorio (F16); favicon SVG sencillo; sin
+navegación con flechas en las barras (F13); sin capturas visuales. **La fase queda
+implementada y pendiente de su revisión.** Lista de revisión: PLAN §9.5 (nueva).
+
+**Documentación primero.** D10 y D12 a PLAN §14.0; PLAN §9.3 (cabecera, «Acerca de», título,
+favicon; el tamaño de letra ya es de la F10), §9.5 (la lista que la especificación citaba y
+no existía) y §10 (decía que la barra navega con flechas, y no lo hace); FASES, Fase 11
+reescrita con las decisiones, y la Fase 13 hereda lo de las flechas y el separador; TAREAS
+(fuera D10, D12 y el favicon; dentro la limpieza de `readDocument.id`).
+
+**Hecho, y por qué así:**
+- **Atajos anunciados** (`title` y `aria-keyshortcuts`) en los botones del visor PDF, el campo
+  de página, la barra de búsqueda y los dos «Abrir archivo». Para no duplicar: **una sola
+  tabla de teclas visibles** (`messages.keys`), que ahora usan también la ayuda (`?`) y el
+  estado vacío; los valores de ARIA viven junto a la lógica de las teclas (`ATAJOS_BOTON`).
+  `anuncioDeAtajo` deja el nombre accesible intacto (el que leen los lectores de pantalla y
+  los E2E): ningún test existente cambió. Los de una tecla solo se anuncian con
+  `atajosUnaTecla` activado (un tooltip «(T)» con la tecla desactivada prometería algo
+  falso).
+- **Estados de carga:** los `fallback` de `App` eran los únicos sin `role="status"`; ahora usan
+  `Cargando`.
+- **D12:** medido primero con una sonda y fijado después en un E2E (`interfaz.spec.ts`) que
+  recorre a 375 px la pantalla vacía, Preferencias, el PDF con búsqueda y miniaturas, la ayuda
+  de atajos, la contraseña, Markdown con índice, Edición, Dividido y el diálogo de cambios sin
+  guardar. Solo fallaban las casillas de los diálogos (16 px): pasan a 24 px. No cuenta el
+  contenido del documento (enlaces del texto, anotaciones del PDF).
+- **Título:** ya era «BPDF»; un E2E con documentos de nombre conocido y un test de componente
+  lo vigilan.
+- **«Acerca de»:** versión y licencia de `package.json` por `define` de Vite (y de Vitest, que
+  tiene su propia configuración), desde `src/config/compilacion.ts`: se sustituye al compilar,
+  sin leer `package.json` ni evaluar nada en el navegador.
+- **Favicon:** `public/favicon.svg`, una hoja clara (`fg`) con la esquina doblada en el acento,
+  sobre el fondo de la app (`app`), con dos renglones; sin texto (no dependería de fuentes y
+  se lee a 16 px). Los colores van escritos (un SVG de favicon no lee las propiedades CSS) y un
+  test comprueba que son tokens. Retirada la tolerancia al 404 de `vigilancia.ts`. `curl -I`
+  contra `vite preview`: `200`, `image/svg+xml` y las cabeceras de la app.
+- **Texto:** el estado vacío decía «Atajo: Ctrl+O (⌘O en Mac)» y la ayuda «Ctrl/⌘ O»; ahora
+  los dos salen de la misma tabla («Atajo: Ctrl/⌘ O»).
+
+**Pasada visual (PLAN §9.5), resultado:** espaciados y alturas coherentes (botones de barra
+de 32 px en PDF y Markdown, diálogos con el mismo marco); iconos `lucide` `size-4` con
+`aria-hidden` en todas partes; ningún icono sin nombre; nada se anima salvo el indicador de
+carga (anulado con `prefers-reduced-motion`) y no hay desplazamientos suaves; todo texto en
+`messages.ts` (las 201 claves están en uso). **Quedan para la Fase 13**: el separador de
+Dividido (6 px de ancho en escritorio, por debajo de 24 px; a 375 px no aparece) y la
+navegación con flechas de las barras. `markdown.css` no se tocó (ni `content-visibility`):
+sin benchmark.
+
+**Descartado.** Un PNG/ICO junto al SVG: generarlo exigiría un rasterizador o una
+dependencia; anotado en TAREAS por si se echa en falta. Un botón «Acerca de» en la cabecera
+(decisión del usuario: dentro de Preferencias).
+
+**Errores propios del camino.** La sonda de 375 px pulsó Esc antes de que el diálogo de
+Preferencias (a demanda) terminara de abrirse y midió con él encima; se corrigió esperando
+al diálogo. Un script con heredoc rompió una expresión regular (`\b`); se reescribió con la
+herramienta de ficheros.
+
+**Verificación.** `lint`, `typecheck`, `npm test` **986/986** (52 ficheros), `test:e2e`
+**114/114**, `build`, `build:tamano` (**94,4 KB** gzip: +1,1 KB por `atajos.ts` y `Cargando`
+en el arranque), `docs:enlaces` (263), `docs:validar`, `npm audit` (0) y `curl -I` del favicon.
+La CSP no cambia.
+
 ### Iteración 22 — *2026-10-03* — Fase 10 cerrada; D19: BPDF es solo una aplicación web (Fase 14 cancelada, Fase 15 reescrita)
 
 **Contexto.** El usuario hizo las pruebas manuales 1–10 de la Fase 10 en la build de

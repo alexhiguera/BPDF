@@ -29,6 +29,8 @@
  * no actúa sobre un botón, enlace o casilla (ahí los activa). `F3` con la
  * búsqueda cerrada no se toca: es del navegador.
  */
+import { messages } from "@/i18n/messages";
+
 export type Atajo =
   | "siguiente"
   | "anterior"
@@ -177,4 +179,50 @@ export function atajoDe(e: Tecla, contexto: ContextoAtajos = CONTEXTO_INICIAL): 
     default:
       return null;
   }
+}
+
+/**
+ * Atajos que anuncian los botones del visor en `aria-keyshortcuts` (Fase 11), con
+ * la sintaxis de ARIA (`Control`, `Meta`, `Shift`; `Plus` es la tecla «+»). Son
+ * los que `atajoDe` resuelve; las teclas tal como se ven están en
+ * `messages.keys`. `unaTecla`: solo se anuncian si esos atajos están activados.
+ */
+export const ATAJOS_BOTON = {
+  anterior: { aria: "PageUp", unaTecla: false },
+  siguiente: { aria: "PageDown", unaTecla: false },
+  alejar: { aria: "Control+- Meta+-", unaTecla: false },
+  zoom100: { aria: "Control+0 Meta+0", unaTecla: false },
+  acercar: { aria: "Control+Plus Meta+Plus", unaTecla: false },
+  buscar: { aria: "Control+F Meta+F", unaTecla: false },
+  irAPagina: { aria: "Control+G Meta+G", unaTecla: false },
+  coincidenciaSiguiente: { aria: "F3", unaTecla: false },
+  coincidenciaAnterior: { aria: "Shift+F3", unaTecla: false },
+  cerrarBusqueda: { aria: "Escape", unaTecla: false },
+  miniaturas: { aria: "T", unaTecla: true },
+  girarDerecha: { aria: "R", unaTecla: true },
+  girarIzquierda: { aria: "Shift+R", unaTecla: true },
+  pantallaCompleta: { aria: "F", unaTecla: true },
+  ayuda: { aria: "?", unaTecla: true },
+  // El de la app (abrir), para sus dos botones «Abrir archivo».
+  abrir: { aria: "Control+O Meta+O", unaTecla: false },
+} as const;
+export type AccionConAtajo = keyof typeof ATAJOS_BOTON;
+
+/**
+ * Lo que un botón dice de su atajo: `title` con las teclas tal como se ven y
+ * `aria-keyshortcuts`. Un atajo de una tecla desactivado no se anuncia (el botón
+ * conserva su `title` sin teclas): anunciarlo sería prometer algo que no hace.
+ * El nombre accesible (`aria-label`) no cambia nunca.
+ */
+export function anuncioDeAtajo(
+  accion: AccionConAtajo,
+  etiqueta: string,
+  unaTecla: boolean,
+): { title: string; "aria-keyshortcuts"?: string } {
+  const atajo = ATAJOS_BOTON[accion];
+  if (atajo.unaTecla && !unaTecla) return { title: etiqueta };
+  return {
+    title: messages.withShortcut(etiqueta, messages.keys[accion]),
+    "aria-keyshortcuts": atajo.aria,
+  };
 }

@@ -1,6 +1,7 @@
 import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, type Plugin } from "vite";
+import { constantesDeCompilacion } from "./src/config/compilacion.ts";
 import { htmlLang, project } from "./src/config/project.ts";
 import { robotsTxt, sitemapXml } from "./src/config/public-site.ts";
 import {
@@ -73,6 +74,8 @@ export default defineConfig(({ command }) => ({
   // dar 404 como en cualquier hosting estático, no la app.
   appType: "mpa",
   plugins: [tailwindcss(), bpdf(command === "build")],
+  // Versión y licencia de package.json, sustituidas en el código al compilar (Fase 11).
+  define: constantesDeCompilacion(import.meta.dirname),
   resolve: {
     alias: { "@": path.resolve(import.meta.dirname, "src") },
   },

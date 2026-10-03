@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from "node:fs";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { describe, expect, it, vi } from "vitest";
+import { project } from "@/config/project";
 import { messages } from "@/i18n/messages";
 import PreferencesDialog from "@/preferences/PreferencesDialog";
 import { preferenciasPorDefecto } from "@/preferences/schema";
@@ -124,5 +126,22 @@ describe("PreferencesDialog (Fase 10)", () => {
     const { dialogo, onCerrar } = montar();
     fireEvent.click(within(dialogo).getByRole("button", { name: t.close }));
     expect(onCerrar).toHaveBeenCalled();
+  });
+});
+
+describe("PreferencesDialog: «Acerca de» (Fase 11)", () => {
+  it("muestra la versión y la licencia de package.json y la frase de privacidad, sin enlaces", async () => {
+    const paquete = JSON.parse(readFileSync("package.json", "utf8")) as {
+      version: string;
+      license: string;
+    };
+    const { container, dialogo } = montar();
+    const acerca = within(dialogo).getByRole("region", { name: t.about.title(project.name) });
+    expect(acerca).toHaveTextContent(t.about.version(paquete.version));
+    expect(acerca).toHaveTextContent(t.about.license(paquete.license));
+    expect(acerca).toHaveTextContent(messages.emptyState.privacy);
+    expect(within(acerca).queryAllByRole("link")).toHaveLength(0);
+    expect(within(acerca).getByRole("heading", { level: 3 })).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
   });
 });

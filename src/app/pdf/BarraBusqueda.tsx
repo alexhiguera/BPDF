@@ -3,7 +3,7 @@ import { messages } from "@/i18n/messages";
 import { cn } from "@/lib/utils";
 import type { OpcionesBusqueda } from "@/pdf/visor/busqueda";
 import type { EstadoBusqueda } from "@/pdf/visor/controlador";
-import { ID_CAMPO_BUSQUEDA } from "./atajos";
+import { anuncioDeAtajo, ID_CAMPO_BUSQUEDA } from "./atajos";
 
 const t = messages.pdf;
 const boton =
@@ -97,7 +97,7 @@ export function BarraBusqueda({
         type="button"
         className={boton}
         aria-label={t.searchPrevious}
-        title={t.searchPrevious}
+        {...anuncioDeAtajo("coincidenciaAnterior", t.searchPrevious, false)}
         disabled={total === 0}
         onClick={() => onSiguiente(-1)}
       >
@@ -107,7 +107,7 @@ export function BarraBusqueda({
         type="button"
         className={boton}
         aria-label={t.searchNext}
-        title={t.searchNext}
+        {...anuncioDeAtajo("coincidenciaSiguiente", t.searchNext, false)}
         disabled={total === 0}
         onClick={() => onSiguiente(1)}
       >
@@ -120,7 +120,7 @@ export function BarraBusqueda({
         type="button"
         className={`${boton} ml-auto`}
         aria-label={t.searchClose}
-        title={t.searchClose}
+        {...anuncioDeAtajo("cerrarBusqueda", t.searchClose, false)}
         onClick={onCerrar}
       >
         <X aria-hidden="true" className="size-4" />

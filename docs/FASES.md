@@ -50,7 +50,7 @@ web); conserva su número, sin trabajo pendiente.
 | 8 | Markdown: matemáticas y Mermaid | **Separada** de la 7: son las dos dependencias más pesadas y con más historial de vulnerabilidades |
 | 9 | Editor Markdown + vista previa + dividido | Igual (D9: CodeMirror 6). La vista previa de un documento grande se pausa en dividido (medido) |
 | 10 | Preferencias | Infraestructura, panel, memoria por documento y borrado. La infraestructura estaba prevista en la F2 y se aplazó aquí, a su primer uso real |
-| 11 | UI/UX final | Igual |
+| 11 | UI/UX final | Igual. Al especificarla: título fijo, «Acerca de» dentro de Preferencias, sin enlace al repositorio (F16) |
 | 12 | Seguridad: endurecimiento y auditoría | Ya no «añade» seguridad: cada fase implementa la suya. Aquí se verifica, se endurece (CSP final, Trusted Types) y se audita |
 | 13 | Accesibilidad y rendimiento | Los tests viven en cada fase; esta fase **mide** con el corpus grande y corrige |
 | 14 | ~~Electron: aplicación~~ | **Cancelada** el *2026-10-03*: BPDF es solo una aplicación web (D19) |
@@ -1088,34 +1088,85 @@ cambia algún uso, CLAUDE.md §0, bitácora, TAREAS. Anuncio de cambios visibles
 
 ---
 
-## Fase 11 — UI/UX final
+## Fase 11 — UI/UX final 🚧
 
-**Objetivo.** Pasada de diseño completa: consistencia, estados, detalles de lectura y
-adaptación a pantallas pequeñas según D12.
+**IMPLEMENTADA / PENDIENTE DE REVISIÓN** (*2026-10-03*, iteración 23). No se da por cerrada
+hasta que el usuario la apruebe (y, si quiere, la compruebe a mano). Lista de revisión:
+[PLAN.md](PLAN.md) §9.5.
 
-**Dependencias.** F10. **D10** y **D12** confirmadas.
+**Decisiones del usuario al empezar** (*2026-10-03*): **D10** sin tema claro en v1; **D12**
+adaptación básica (sin desplazamiento horizontal a 375 px, controles ≥ 24 px, barras que se
+reparten, sin gestos nuevos); **título de la ventana siempre «BPDF»**, nunca el nombre del
+documento (la especificación anterior pedía mostrarlo: el navegador lo guardaría en su
+historial, contra CLAUDE.md §4); **«Acerca de» dentro de Preferencias**, sin botón propio;
+**sin enlace al repositorio** hasta la Fase 16; favicon SVG sencillo con los tokens; **sin
+navegación con flechas** en las barras (se evalúa en la F13; PLAN §10 corregido); **sin
+capturas visuales** en los E2E.
 
-**Alcance.** Revisión de todas las pantallas contra PLAN §9 (espaciados, iconos
-`lucide-react` coherentes, tooltips con su atajo, estados de carga, transiciones que
-respetan `prefers-reduced-motion`); icono y favicon de BPDF (`public/`); título de ventana
-con el nombre del documento; diseño adaptable (D12); pantalla «Acerca de» (versión,
-licencia, frase de privacidad, enlace al repositorio); limpieza de textos en
-`messages.ts`.
+**Hecho.**
+- **Atajos anunciados:** los botones del visor PDF (página anterior y siguiente, zoom,
+  buscar, miniaturas, girar, pantalla completa, ayuda), el campo de página, la barra de
+  búsqueda y los dos «Abrir archivo» llevan el atajo en `title` y en `aria-keyshortcuts`
+  (`anuncioDeAtajo`, `src/app/pdf/atajos.ts`). Los de una tecla, solo con
+  `atajosUnaTecla` activado. El nombre accesible no cambia. Una sola tabla de teclas
+  visibles (`messages.keys`) para la ayuda, los tooltips y el estado vacío.
+- **Estados de carga:** los de `App` (`Suspense`) pasan a `Cargando`, con `role="status"`,
+  como los demás.
+- **D12:** las casillas de Preferencias y de la ayuda de atajos, de 16 a 24 px. El resto ya
+  cumplía (medido).
+- **Título:** sigue siendo «BPDF»; un E2E y un test de componente lo vigilan.
+- **«Acerca de»** al final de Preferencias: versión y licencia de `package.json`, fijadas al
+  compilar (`define` de Vite y Vitest, `src/config/compilacion.ts`, `src/config/version.ts`),
+  y la frase de privacidad. Sin enlaces.
+- **Favicon:** `public/favicon.svg` (hoja clara con la esquina doblada en el acento, sobre el
+  fondo de la app), enlazado en `index.html`; sin la tolerancia al 404 en `vigilancia.ts`.
 
-**Fuera de alcance.** Funciones nuevas; tema claro si D10 = no.
+**Desviaciones y decisiones al implementar:**
+- El texto del estado vacío pasa de «Atajo: Ctrl+O (⌘O en Mac)» a «Atajo: Ctrl/⌘ O», la
+  forma de la ayuda y los tooltips (coherencia de textos).
+- Los colores del favicon van escritos (un SVG de favicon no lee las propiedades CSS de la
+  página); un test comprueba que son exactamente tokens.
+- Solo SVG, sin variante PNG/ICO: generarla exigiría una herramienta o un rasterizador.
+  Los navegadores que no usen favicons SVG mostrarán el icono genérico.
+- Fuera, para la Fase 13: el separador de Dividido (6 px de ancho en escritorio) y la
+  navegación con flechas de las barras.
 
-**Archivos esperados.** `src/components/**`, `src/styles/*`, `public/` (iconos),
-`src/i18n/messages.ts`; capturas de referencia para E2E visuales solo si se decide usarlas
-(`toHaveScreenshot`, solo Chromium y con tolerancia).
+**Objetivo.** Pasada de diseño: consistencia, estados, detalles y pantallas pequeñas (D12).
 
-**Seguridad.** Nada nuevo.
+**Dependencias.** F10 ✅. **D10** y **D12** ✅ (confirmadas el *2026-10-03*).
 
-**Tests.** jest-axe de todo componente tocado; E2E de humo por pantalla.
+**Alcance.** Recorrer todas las pantallas con la lista de PLAN §9.5 (espaciados, tamaños,
+estados, iconos, áreas de pulsación, pantalla estrecha, textos); tooltips con su atajo;
+estados de carga anunciados; transiciones que respeten `prefers-reduced-motion`; favicon
+en `public/`; título de la ventana fijo; «Acerca de» en Preferencias (versión, licencia,
+privacidad); textos coherentes en `messages.ts`.
 
-**Criterios de aceptación.** Definición de hecho común; lista de revisión de PLAN §9
-recorrida y registrada en la bitácora.
+**Fuera de alcance.** Funciones nuevas; tema claro (D10); experiencia móvil propia y gestos
+(D12); enlace al repositorio (F16); navegación con flechas en las barras (F13); capturas
+visuales; cualquier cambio de rendimiento o de `content-visibility`.
 
-**Documentación.** PLAN §9 con los valores finales, anuncio de cambios visibles, bitácora.
+**Archivos esperados.** `src/app/` (`App.tsx`, `EmptyState.tsx`, `Cargando.tsx`, `pdf/`),
+`src/preferences/PreferencesDialog.tsx`, `src/config/` (versión), `src/i18n/messages.ts`,
+`public/favicon.svg`, `index.html`, `vite.config.ts` y `vitest.config.ts` (`define`),
+`e2e/vigilancia.ts`, tests y E2E. Sin tocar `markdown.css`.
+
+**Seguridad y privacidad.** El título no lleva nombres de documento. El favicon es del propio
+origen y no pide nada (la CSP no cambia). La versión se sustituye al compilar: nada se lee
+ni se evalúa en el navegador.
+
+**Tests.** Unitarios: `anuncioDeAtajo` (con y sin atajos de una tecla, sintaxis de ARIA, una
+sola tabla de teclas), favicon (colores = tokens, autónomo, enlazado). Componentes +
+jest-axe: `Cargando`, «Acerca de», atajos en la barra del visor, «Abrir archivo» y título
+en `App`. E2E (`interfaz.spec.ts`): pantalla estrecha a 375 px en las pantallas y diálogos
+principales (sin desplazamiento horizontal y controles ≥ 24 px), título con documentos de
+nombre conocido, «Acerca de» con la versión real, favicon servido con las cabeceras de la
+app, atajos anunciados según la preferencia.
+
+**Criterios de aceptación.** Definición de hecho común; lista de PLAN §9.5 recorrida y
+registrada en la bitácora; aprobación del usuario.
+
+**Documentación.** PLAN §9 (con §9.5) y §10, D10 y D12, anuncio de cambios visibles,
+bitácora, TAREAS.
 
 **Resultado esperado.** Producto web visualmente terminado.
 
@@ -1188,6 +1239,9 @@ accesibilidad de pantallas completas.
 - `@axe-core/playwright` (dev) en cada pantalla y estado (vacío, PDF, Markdown, editor,
   diálogos); revisión manual con teclado y con un lector de pantalla (NVDA o VoiceOver),
   anotando el resultado.
+- Heredado de la Fase 11: **evaluar la navegación con flechas** entre los botones de las
+  barras con `role="toolbar"` (hoy cada uno es una parada de Tab) y el **área de pulsación
+  del separador** de Dividido (6 px de ancho en escritorio; WCAG 2.5.8).
 
 **Fuera de alcance.** Funcionalidades nuevas.
 

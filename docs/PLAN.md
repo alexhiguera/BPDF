@@ -475,8 +475,17 @@ con un bloque `[data-theme="light"]`.
   (mayúsculas, palabra completa) y el diálogo de contraseña.
 - **Markdown** (✅ F7–F9): barra (índice, modos lectura/edición/dividido, «Sin guardar»,
   guardar, cerrar); índice a la izquierda en lectura; hoja centrada con ancho de lectura
-  (~72 caracteres); en dividido, editor y vista previa con un separador. Tamaño de letra, en
-  la F10.
+  (~72 caracteres); en dividido, editor y vista previa con un separador. Tamaño de letra y
+  ancho de columna: preferencias (✅ F10).
+- **Cabecera** (✅ F3, F10, F11): el nombre del producto; con un documento abierto, «Abrir
+  carpeta» y «Abrir archivo»; siempre, «Preferencias» (solo el icono en pantalla estrecha).
+  Su diálogo termina con **«Acerca de»** (✅ F11): versión, licencia y la frase de
+  privacidad, sin enlace al repositorio hasta la Fase 16.
+- **Título de la ventana** (✅ F11): siempre «BPDF», **nunca el nombre del documento**: el
+  navegador guarda el título de cada visita en su historial (y lo sincroniza si se usa una
+  cuenta), y eso sería guardar un nombre de fichero (CLAUDE.md §4).
+- **Favicon** (✅ F11): `public/favicon.svg`, una hoja con la esquina doblada en los colores
+  de los tokens, servida desde el propio origen.
 - **Errores:** fichero no soportado, demasiado grande, PDF dañado, Markdown no UTF-8 y los
   de la apertura de varios ficheros o carpetas (F7 bis). Cada uno con texto claro y sin
   detalles técnicos crudos. Los de apertura (✅ F3) se muestran como aviso
@@ -519,12 +528,39 @@ solo con una fase que los especifique.
 [ARCHITECTURE.md](ARCHITECTURE.md) §4 quater), los de las Fases 6 y 9 incluidos. No queda ninguno (`F11` era de la versión de escritorio,
 cancelada: D19).
 
+### 9.5 Lista de revisión de la interfaz (Fase 11)
+
+La pasada de la Fase 11 recorre esta lista en cada pantalla (vacía, PDF con su búsqueda,
+miniaturas y diálogos, Markdown en sus tres modos, cambios sin guardar, preferencias). Lo
+que se puede medir tiene test; el resultado de la pasada está en la bitácora.
+
+1. **Espaciado y tamaños.** Botones de barra de 32 px (`h-8`, `.md-boton`), separación
+   `gap-1`/`gap-2`; diálogos con el mismo marco (`bg-elevated`, borde, `p-4`).
+2. **Áreas de pulsación** ≥ 24 × 24 px en todo control de la interfaz (WCAG 2.5.8; D12).
+   No cuenta el contenido del documento (enlaces del texto, anotaciones del PDF). E2E.
+3. **Pantalla estrecha** (D12): sin desplazamiento horizontal a 375 px en ninguna pantalla;
+   las barras se reparten en varias líneas; sin gestos propios. E2E.
+4. **Estados:** carga anunciada (`role="status"`), errores (`role="alert"`), modos con
+   `aria-pressed` y texto visible, deshabilitados atenuados.
+5. **Iconografía:** solo `lucide-react`, `size-4`, `aria-hidden`; ningún icono sin nombre
+   accesible en su botón.
+6. **Atajos:** todo botón con atajo lo anuncia en `title` y `aria-keyshortcuts`; los de
+   una tecla, solo si están activados (preferencia). El nombre accesible no cambia.
+7. **Textos:** todos en `messages.ts`, el mismo tono y la misma forma de escribir las
+   teclas (una sola tabla, `messages.keys`).
+8. **Movimiento:** nada se anima salvo el indicador de carga, anulado con
+   `prefers-reduced-motion`; ningún desplazamiento suave.
+9. **Identidad y título:** favicon del propio origen; el título de la ventana no cambia.
+10. **Color:** solo tokens (el favicon también, con su test); contraste con su test.
+
 ## 10. Accesibilidad
 
 Objetivo **WCAG 2.2 AA**.
 
 - Todo operable con teclado; orden de foco lógico; foco visible con `--rgb-accent`.
-- Barra con `role="toolbar"` y navegación con flechas; campo de página con etiqueta; región
+- Barra con `role="toolbar"` (la **navegación con flechas** entre sus botones **no existe**:
+  cada botón es una parada de Tab; se evalúa en la Fase 13, decisión de la Fase 11); campo de
+  página con etiqueta; región
   `aria-live="polite"` para «Página 3 de 120» y «4 de 17 coincidencias».
 - La capa de texto de pdf.js deja el texto del PDF en el DOM: seleccionable y legible por
   lectores de pantalla. Los PDFs escaneados sin OCR no son accesibles (limitación que se
@@ -600,7 +636,7 @@ terceros sin licencia clara.
 
 ## 14. Decisiones
 
-### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3; D17 y D18 al empezar la Fase 5; D6 y D7 con la Fase 7; D13 al especificar la Fase 6; D9 al empezar la Fase 9; D8 al especificar de nuevo la Fase 10; D19 el *2026-10-03*)
+### 14.0 Confirmadas (*2026-09-29*; D16 al empezar la Fase 3; D17 y D18 al empezar la Fase 5; D6 y D7 con la Fase 7; D13 al especificar la Fase 6; D9 al empezar la Fase 9; D8 al especificar de nuevo la Fase 10; D19 el *2026-10-03*; D10 y D12 al empezar la Fase 11)
 
 | ID | Decisión | Dónde se aplica |
 |---|---|---|
@@ -617,6 +653,8 @@ terceros sin licencia clara.
 | **D13** | PDFs con contraseña **soportados** con un diálogo accesible: reintento, cancelar cierra el documento, la contraseña no se guarda (confirmada al especificar la Fase 6, *2026-09-30*) | Fase 6: `engine.ts`, `VisorPdf.tsx` ([FASES.md](FASES.md)) |
 | **D9** | Editor de Markdown: **CodeMirror 6** (frente a `<textarea>`; confirmada al empezar la Fase 9, *2026-10-01*) | Fase 9: `src/editor/` ([ARCHITECTURE.md](ARCHITECTURE.md) §4 octies) |
 | **D8** | Recordar página y zoom **por PDF**: **activado por defecto**, con la huella de pdf.js (no el nombre), máx. 50 entradas (LRU), botón «Olvidar posiciones guardadas»; sin nombres ni contenido. Solo PDF: los Markdown no guardan posición (confirmada el *2026-10-03*) | Fase 10: `src/preferences/positions.ts` ([§8](#8-persistencia-y-privacidad), [FASES.md](FASES.md)) |
+| **D10** | **Sin tema claro en v1**: solo el tema oscuro (en PDF sigue la «página original»). Sin infraestructura para un tema claro (confirmada al empezar la Fase 11, *2026-10-03*) | Fase 11 |
+| **D12** | Móvil y tablet: **adaptación básica**, no una experiencia móvil propia: sin desplazamiento horizontal a 375 px, controles ≥ 24 px, barras que se reparten, sin gestos ni zoom con los dedos nuevos (confirmada al empezar la Fase 11) | Fase 11: E2E `interfaz.spec.ts` |
 | **D19** | **BPDF es solo una aplicación web: sin versión de escritorio (Electron) ni sustituto.** Decisión de producto del usuario (*2026-10-03*). Sustituye toda la planificación anterior de Electron | La Fase 14 se cancela; la 15 se reescribe solo para la web; D11 y T-5 dejan de aplicar; [ELECTRON.md](ELECTRON.md) queda como histórico |
 
 ### 14.1 Pendientes de confirmación (usuario)
@@ -624,8 +662,6 @@ terceros sin licencia clara.
 | ID | Decisión | Recomendación | Afecta a |
 |---|---|---|---|
 | **D5** | Hosting web y dominio | Hosting estático que permita cabeceras (Vercel o Cloudflare Pages). GitHub Pages **no** permite cabeceras (CSP solo por `<meta>`, sin `frame-ancestors`). *De hecho, la web ya está publicada en Vercel (`bpdf.r3zon.com`) con `vercel.json` generado ([DEPLOYMENT.md](DEPLOYMENT.md)); falta formalizarla y cambiar el dominio de `project.ts`* | Fases 12 y 15 |
-| **D10** | Tema claro de interfaz | **No en v1** (solo «página original» en PDF) | Fase 11 |
-| **D12** | Móvil / tablet en web | Escritorio como objetivo; diseño adaptable básico sin optimizar gestos | Fase 11 |
 | ~~**D11**~~ | ~~Escritorio: plataformas, firma de código, auto-actualización~~ | **Ya no aplica** (D19: sin escritorio) | — |
 | **D14** | Formularios y anotaciones de PDF | Solo se muestran; no se rellenan ni se editan. *Aplicado así en la Fase 5 (apariencias pintadas en el lienzo, sin interacción), que excluía formularios: falta confirmarlo* | Fase 5 |
 

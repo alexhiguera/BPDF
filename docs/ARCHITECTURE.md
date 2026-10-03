@@ -957,6 +957,31 @@ visor PDF, el lector de Markdown o el diálogo. El arranque solo suma el botón 
 - Los orígenes son distintos en `vite dev`, `vite preview` y la web publicada: cada uno
   tiene sus propias preferencias.
 
+### 4 decies. La interfaz final (Fase 11)
+
+> **Implementada el *2026-10-03*, pendiente de revisión del usuario.** Lista de revisión:
+> [PLAN.md](PLAN.md) §9.5; especificación: [FASES.md](FASES.md), Fase 11.
+
+- **El título de la ventana no cambia: siempre «BPDF».** Poner el nombre del documento
+  sería cómodo, pero el navegador guarda el título de cada visita en su historial (y lo
+  sincroniza con su cuenta): un nombre de fichero acabaría guardado fuera del control de
+  BPDF (CLAUDE.md §4). Decisión del usuario; lo vigilan un E2E y un test de componente.
+- **Atajos anunciados.** Una sola tabla de teclas visibles (`messages.keys`) para la ayuda,
+  los tooltips y el estado vacío; los valores de `aria-keyshortcuts` viven junto a la
+  lógica de las teclas (`ATAJOS_BOTON`, `src/app/pdf/atajos.ts`). `anuncioDeAtajo` da a cada
+  botón su `title` y su `aria-keyshortcuts` sin tocar su nombre accesible, que es lo que
+  usan los lectores de pantalla y los tests. Un atajo de una tecla desactivado no se anuncia.
+- **«Acerca de» dentro de Preferencias**, no como botón propio: no añade nada a la cabecera
+  estrecha ni al arranque (el diálogo se carga a demanda). La versión y la licencia salen de
+  `package.json` por `define` al compilar.
+- **Favicon SVG con los colores de los tokens escritos** (un SVG de favicon no lee las
+  propiedades CSS de la página); `tests/unit/favicon.test.ts` comprueba que coinciden.
+- **D12, medido:** a 375 px ninguna pantalla desplaza en horizontal y ningún control de la
+  interfaz mide menos de 24 × 24 px (`e2e/specs/interfaz.spec.ts`). No cuenta el contenido
+  del documento.
+- **Arranque:** +1,1 KB gzip (94,4 KB): `App` importa `atajos.ts` para anunciar Ctrl/⌘+O y
+  el componente `Cargando`.
+
 ### 5. La menor complejidad que cumpla los requisitos
 
 Ante dos soluciones válidas: menos código, menos dependencias, menos superficie de ataque,

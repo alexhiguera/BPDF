@@ -21,6 +21,7 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   ├── EmptyState.tsx    vista sin documento: «Abrir archivo», «Abrir carpeta», atajo, privacidad
 │   │   ├── ElegirMarkdown.tsx  carpeta con varios .md: el usuario elige el principal (F7 bis)
 │   │   ├── ConfirmarDescarte.tsx  «Hay cambios sin guardar» antes de sustituir o cerrar (F9)
+│   │   ├── Cargando.tsx      aviso de carga anunciado (role="status") de los trozos a demanda (F11)
 │   │   ├── pdf/              interfaz del visor PDF (F5, F6), cargada a demanda
 │   │   │   ├── VisorPdf.tsx  carga del PDF, estados cargando/contraseña/error y ciclo de vida
 │   │   │   ├── Visor.tsx     área de lectura: disposición, desplazamiento, teclado, búsqueda,
@@ -37,6 +38,8 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   ├── config/
 │   │   ├── project.ts        ÚNICO punto con la identidad del producto
 │   │   ├── security-headers.ts  ÚNICA fuente de la CSP y las cabeceras
+│   │   ├── version.ts        versión y licencia de package.json, fijadas al compilar (F11)
+│   │   ├── compilacion.ts    las constantes de `define` (solo vite.config y vitest.config)
 │   │   └── public-site.ts    robots.txt y sitemap.xml (fechas literales)
 │   ├── i18n/messages.ts      TODOS los textos visibles (D2)
 │   ├── styles/globals.css    Tailwind 4 + tokens de diseño
@@ -57,7 +60,7 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   ├── guardar-web.ts    saveText en web: showSaveFilePicker (destino en memoria) o descarga (F9)
 │   │   └── index.ts          createPlatform(): la web (única plataforma: D19)
 │   ├── lib/                  utils.ts (cn()) · format.ts (tamaños legibles) · url-externa.ts (política de URLs)
-│   ├── vite-env.d.ts         tipos de Vite (imports de CSS)
+│   ├── vite-env.d.ts         tipos de Vite (imports de CSS) y de las constantes de compilación
 │   │
 │   ├── pdf/                  el motor y el visor de PDF, sin React
 │   │   ├── engine.ts         carga de pdf.js (legacy) y del documento: bytes, cancelación, errores
@@ -105,7 +108,8 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │                         markdown.spec.ts (visor Markdown) · recursos.spec.ts (imágenes locales) ·
 │   │                         formulas-diagramas.spec.ts (KaTeX y Mermaid) · editor.spec.ts (editor, F9) ·
 │   │                         memoria.spec.ts (al cambiar de documento se libera el anterior; CDP, sin traza) ·
-│   │                         preferencias.spec.ts (preferencias, posición y privacidad del almacenamiento, F10)
+│   │                         preferencias.spec.ts (preferencias, posición y privacidad del almacenamiento, F10) ·
+│   │                         interfaz.spec.ts (pantalla estrecha D12, título, «Acerca de», favicon, atajos; F11)
 │   ├── bench/                benchmarks (no son tests; `npm run bench:pdf` · `bench:markdown` · `bench:editor`)
 │   └── vigilancia.ts         consola, CSP y red vigiladas en cada carga
 ├── scripts/                  herramientas (.mjs, sin dependencias extra)
@@ -120,7 +124,8 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 └── .claude/settings.json     permisos de Claude Code para el repo
 ```
 
-`dist/` (la build) y `public/pdfjs/` (recursos de pdf.js copiados de `node_modules`) no se
+`public/favicon.svg` (F11) sí se versiona. `dist/` (la build) y `public/pdfjs/` (recursos de
+pdf.js copiados de `node_modules`) no se
 versionan.
 
 ## Dónde va cada cosa

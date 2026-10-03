@@ -132,9 +132,8 @@ npm run test:e2e      # build de producción + Playwright (Chromium)
   cualquier petición fuera del propio origen (`e2e/vigilancia.ts`), con un test de
   control que comprueba que esa vigilancia funciona; también la consola de los workers.
   **No ve** una violación de CSP dentro de un worker (el navegador no la notifica al
-  documento): lo que un worker necesita de la CSP se prueba por su efecto. Única tolerancia: el 404 de
-  `/favicon.ico`, que pide Google Chrome (no el Chromium de CI) mientras no haya favicon
-  (Fase 11).
+  documento): lo que un worker necesita de la CSP se prueba por su efecto. Sin
+  tolerancias: la del 404 de `/favicon.ico` se retiró en la Fase 11, con el favicon.
 - El selector de archivos se prueba con el evento `filechooser` de Playwright (el
   `<input type="file">` se crea al vuelo, fuera del DOM), y arrastrar y soltar con eventos
   sintéticos y un `DataTransfer` real del navegador.

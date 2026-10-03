@@ -13,7 +13,6 @@ export async function abrir(page: Page, ruta = "/"): Promise<Vigilancia> {
   const origen = new URL(test.info().project.use.baseURL ?? "").origin;
   page.on("console", (m) => {
     if (m.type() !== "error" && m.type() !== "warning") return;
-    if (esFaviconAusente(m.location().url, origen)) return;
     v.errores.push(m.text());
   });
   page.on("pageerror", (e) => v.errores.push(e.message));
@@ -41,14 +40,4 @@ export async function abrir(page: Page, ruta = "/"): Promise<Vigilancia> {
   });
   await page.goto(ruta);
   return v;
-}
-
-/**
- * BPDF aún no tiene favicon (llega en la Fase 11, TAREAS_PENDIENTES) y el
- * navegador lo pide igualmente. El Chromium «headless shell» de CI no lo pide,
- * pero Google Chrome sí, y anota el 404 en consola. Se tolera **solo** ese
- * error y solo de ese recurso del propio origen; con el favicon, esto se borra.
- */
-function esFaviconAusente(url: string, origen: string): boolean {
-  return url === `${origen}/favicon.ico`;
 }
