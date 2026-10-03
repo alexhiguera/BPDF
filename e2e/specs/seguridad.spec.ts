@@ -2,6 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { cabecerasPara } from "../../src/config/security-headers";
 import { messages } from "../../src/i18n/messages";
 import { crearPdfFormulario, FORMULARIO } from "../../tests/fixtures/pdf/visor/generar.mjs";
+import { soloChromium } from "../navegadores";
 import { leerPortapapeles } from "../portapapeles";
 import { abrir, type Vigilancia } from "../vigilancia";
 
@@ -88,7 +89,11 @@ test("cada ruta servida lleva exactamente las cabeceras de la fuente única", as
 test("Permissions-Policy: la app no puede leer el portapapeles, aunque el navegador lo permita; escribir sí", async ({
   page,
   context,
+  browserName,
 }) => {
+  // Firefox no aplica `Permissions-Policy` y WebKit no la aplica al portapapeles; en
+  // los dos, leer exige además un gesto y un menú del navegador (BPDF nunca lo hace).
+  soloChromium(browserName, "Permissions-Policy (clipboard-read) solo la aplica Chromium");
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const v = await abrir(page);
   const lectura = await page.evaluate(() =>

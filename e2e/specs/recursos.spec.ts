@@ -222,7 +222,18 @@ test("soltar un Markdown con su imagen la muestra", async ({ page }) => {
 
 test("sustituir el documento revoca las URL del anterior; y de Markdown a PDF y vuelta", async ({
   page,
+  browserName,
 }) => {
+  // Cada URL que BPDF revoca, apuntada al vuelo (en los tres navegadores).
+  await page.addInitScript(() => {
+    const w = window as unknown as { __revocadas: string[] };
+    w.__revocadas = [];
+    const original = URL.revokeObjectURL.bind(URL);
+    URL.revokeObjectURL = (u: string) => {
+      w.__revocadas.push(u);
+      original(u);
+    };
+  });
   const v = await vigilar(page);
   await elegir(page, botonCarpeta(page), RECURSOS);
   await anchoNatural(imagen(page, "Imagen"));
@@ -237,6 +248,18 @@ test("sustituir el documento revoca las URL del anterior; y de Markdown a PDF y 
     path.join(MD, "basico.md"),
   );
   await expect(titulo(page)).toHaveText("basico.md");
+  // BPDF revocó TODAS las del documento anterior.
+  const revocadas = await page.evaluate(
+    () => (window as unknown as { __revocadas: string[] }).__revocadas,
+  );
+  expect(viejas.filter((u) => !revocadas.includes(u))).toEqual([]);
+  // El efecto, solo en Chromium: Firefox sirve desde su caché de imágenes una imagen que
+  // ya se pintó con una URL `blob:` aunque esa URL esté revocada (medido en la Fase 13
+  // con una imagen cualquiera, sin BPDF), así que ahí la sonda no prueba nada.
+  if (browserName !== "chromium") {
+    await seguir(page, v);
+    return;
+  }
   // Una URL revocada ya no carga (se prueba como imagen: img-src permite blob:).
   // Cada intento deja en consola «Failed to load resource»: son de esta sonda.
   const antes = v.errores.length;
@@ -259,7 +282,11 @@ test("sustituir el documento revoca las URL del anterior; y de Markdown a PDF y 
   await expect.poll(() => v.errores.length - antes).toBe(viejas.length);
   const deLaSonda = v.errores.splice(antes);
   expect(deLaSonda.every((e) => /Failed to load resource/.test(e))).toBe(true);
+  await seguir(page, v);
+});
 
+/** De Markdown a PDF y vuelta (segunda mitad del test de revocar). */
+async function seguir(page: Page, v: Vigilancia) {
   await elegir(
     page,
     page.getByRole("banner").getByRole("button", { name: messages.open.button }),
@@ -273,4 +300,4 @@ test("sustituir el documento revoca las URL del anterior; y de Markdown a PDF y 
   ]);
   expect(await anchoNatural(imagen(page, "Imagen"))).toBe(64);
   limpia(v);
-});
+}

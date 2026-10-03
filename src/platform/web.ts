@@ -161,15 +161,24 @@ function elegir(doc: Document, modo: "ficheros" | "carpeta"): Promise<File[] | n
       input.multiple = true;
       input.accept = ACCEPT_ARCHIVOS;
     }
+    // Fase 13: al responder (elegir o cancelar) se quitan LOS DOS escuchadores y se vacía
+    // el campo. Antes, el de «cancel» se quedaba colgado del <input> tras elegir (con
+    // `once` solo se quita el que se dispara): uno más por apertura (medido con CDP).
+    const fin = new AbortController();
+    const responder = (files: File[] | null) => {
+      fin.abort();
+      input.value = "";
+      resolve(files);
+    };
     input.addEventListener(
       "change",
       () => {
         const files = Array.from(input.files ?? []);
-        resolve(files.length > 0 ? files : null);
+        responder(files.length > 0 ? files : null);
       },
-      { once: true },
+      { signal: fin.signal },
     );
-    input.addEventListener("cancel", () => resolve(null), { once: true });
+    input.addEventListener("cancel", () => responder(null), { signal: fin.signal });
     input.click();
   });
 }

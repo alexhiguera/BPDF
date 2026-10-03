@@ -10,6 +10,132 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 29 — *2026-10-04* — Fase 13: accesibilidad, rendimiento y compatibilidad (implementada, pendiente de revisión)
+
+**Contexto.** La Fase 13 según su especificación y el encargo del usuario: accesibilidad,
+rendimiento, memoria y compatibilidad real entre navegadores, sin funciones nuevas. **Queda
+IMPLEMENTADA / PENDIENTE DE REVISIÓN.** Detalle y cifras: ARCHITECTURE §4 undecies, PLAN §10
+y §11.
+
+**Accesibilidad.**
+- **Barra del visor PDF: una sola parada de Tab** y ← / → entre controles (patrón «toolbar»
+  de WAI-ARIA, `barra-teclado.ts`). Los desactivados se saltan y la parada sigue al último
+  control usado. **Inicio y Fin se dejaron a los atajos del visor** (primera y última
+  página), para no romperlos. ← / → del campo de página mueven el cursor y solo salen desde
+  un borde.
+- **Separador de Dividido:** 24 px de área de pulsación y una línea de 6 px; `touch-action:
+  none` para el dedo. Descartado: solaparlo sobre los paneles, que tapaba la barra de
+  desplazamiento del editor.
+- **Foco en los diálogos.** «Cambios sin guardar» lo devuelve al editor, buscándolo dentro de
+  su Shadow DOM. «Elegir Markdown» se cancela con Esc y deja el foco en el título o en
+  `<main>`. Cancelar la contraseña cierra el diálogo antes de cerrar el documento: con el modal
+  abierto, `<main>` está inerte y el foco se perdía en Firefox. El editor lleva `tabindex="0"`
+  (axe no reconocía el `contenteditable`).
+- **axe** (`@axe-core/playwright`, nueva dependencia de desarrollo) en cada pantalla y estado,
+  sin violaciones. Teclado, foco y separador con E2E (`e2e/specs/a11y.spec.ts`).
+
+**Compatibilidad.**
+- La suite E2E entera en **Firefox y WebKit** (`npm run test:e2e:compat`). Primera pasada:
+  216/240. Clasificados los 24 fallos:
+  - **del arnés:** permisos del portapapeles, CDP, `Permissions-Policy` y
+    `content-visibility` solo en Chromium, `runBeforeUnload` en WebKit, y el DPR 2 del perfil
+    de Safari;
+  - **avisos de consola de Firefox** que no son fallos (listados con su motivo en
+    `AVISOS_CONOCIDOS`);
+  - **dos fallos reales de BPDF**, abajo.
+
+  El portapapeles se lee y se escribe ahora **con el teclado** en una página auxiliar:
+  funciona en los tres y sigue siendo el portapapeles real.
+- **El campo de página perdía lo escrito** si la página cambiaba mientras se escribía. En
+  WebKit, un evento de desplazamiento tardío convertía «150» en «300» (2 de 8 ejecuciones). En
+  la vida real pasa con el desplazamiento por inercia. Ahora no sigue a la página mientras hay
+  algo escrito sin confirmar. Test de regresión, que falla sin el arreglo.
+- **Firefox sirve desde su caché de imágenes una URL `blob:` ya revocada:** medido sin BPDF. El
+  test de revocar ahora espía `URL.revokeObjectURL` en los tres, y la prueba del efecto se
+  queda en Chromium.
+- **IME:** componer encima de una selección, con `Input.imeSetComposition` de CDP. Texto
+  correcto y sin violaciones de CSP. Firefox y Safari, a mano.
+
+**Rendimiento y memoria.**
+- **Listas cuadráticas: la causa era micromark 4.0.3.** No era `mdast-util-from-markdown`,
+  como se creyó en la Fase 7. El perfil daba el 63 % del tiempo en `EditMap.consume`
+  (micromark#246, abierto). Fijado en 4.0.2 con un `override`: en Node, 400 KB de listas pasan
+  de 25 s a 2,6 s; en el navegador, 200 KB tardan 1,45 s y es lineal. 4.0.3 no traía arreglos
+  de seguridad. Comprobado antes: las últimas versiones publicadas siguen siendo cuadráticas.
+- **Memoria real con CDP** (`npm run bench:memoria`, nuevo). Al cerrar, el montón, los
+  workers y las URL `blob:` vuelven a su sitio. **Corregido:** el escuchador de «cancel» del
+  selector se quedaba colgado del `<input>` tras elegir (uno por apertura); test de regresión.
+  Quedan ~10 nodos por apertura: el `<input>` retenido por la interceptación del selector de
+  Playwright (aunque se libere su manejador) y CDP. BPDF ya no guarda nada de él.
+- **PDF de 1000 páginas:** primera página en 0,95 s y ninguna tarea larga de más de 200 ms al
+  navegar. Con la CPU frenada ×4 (`BPDF_CPU=4`, una aproximación, no un equipo modesto de
+  verdad): 1,3 s y modo oscuro con hasta 226 ms de hilo principal a 400 % y DPR 2. No se
+  optimiza: las cifras siguen siendo razonables.
+- **Markdown de 1 MB:** 3,0 s (F7: 3,3–7,3 s). Comparadas las opciones: worker, pintado por
+  partes y bajar el límite. Ninguna es proporcionada para v1; se propone mantenerlo.
+- **Editor:** en Chromium, como en la F9. En Firefox, bien. **En WebKit, Dividido con 1 MB +
+  KaTeX da P50 ~400 ms y máximo 8 s por tecla**, en dos mediciones. Es la excepción de la F9,
+  mucho peor en ese motor y medida con WebKit en Linux. Queda abierto, para decidir.
+- Los benchmarks existentes no cambian de método. `bench:pdf` gana el caso de 1000 páginas y la
+  CPU frenada opcional. El de memoria es nuevo.
+
+**Errores propios del camino.**
+- En los tests de cambios sin guardar esperaba la confirmación antes del selector: el flujo
+  real es primero elegir y después confirmar.
+- El benchmark de memoria esperaba la página 1 y el zoom al 100 % al reabrir un PDF, pero BPDF
+  recuerda los dos (Fase 10).
+- El caso de 1000 páginas pulsaba Fin con el foco en el campo de página.
+- Al quitar el freno ×4 por `wsl`, la variable se perdió y la primera medida «×4» no estaba
+  frenada; se repitió con un script.
+
+**Trusted Types (T-4):** revisado tras la compatibilidad, sin cambios: no se adopta en v1.
+
+**Verificación.** `lint`, `typecheck`, `npm test` **1011/1011**, `test:e2e` (Chromium)
+**130/130**, `test:e2e:compat` (Firefox y WebKit) **250 pasados y 9 saltados con su motivo. En cada una de las tres pasadas completas del final falló un test de Firefox distinto, y una sola vez: el foco al cancelar la contraseña (fallo real, corregido), una carrera de mi test con el fotograma en que se asienta el foco (corregida, esperando a que se asiente) y una carga de página que agotó los 30 s con dos navegadores a la vez (10 de 10 al repetirla)**, `build`,
+`build:tamano` (95,1 KB, +0,3), `docs:enlaces` (280), `docs:validar`, `npm audit` (0).
+Benchmarks: `bench:markdown`, `bench:memoria`, `bench:pdf` (normal y ×4), `bench:editor` y
+`bench:editor:compat` (Firefox y WebKit; WebKit, dos veces).
+
+### Iteración 28 — *2026-10-03* — Fase 12 cerrada: verificada en producción; T-4 no adoptado
+
+**Contexto.** El usuario aprobó la implementación de la Fase 12 y decidió T-4. Hizo commit y
+push (`96fcafb`). La primera comprobación dio la `Permissions-Policy` antigua y
+`cabeceras:verificar` con 3 diferencias: `main` en GitHub seguía en `00b26fb`, porque el
+push no había llegado. Se informó sin cambiar nada; tras el push, se repitió todo. **La Fase
+12 queda CERRADA / APROBADA.**
+
+- **Cabeceras en producción** (`96fcafb` en `main` y desplegado): `cabeceras:verificar` en
+  verde para `/`, `/mermaid.html` y un módulo del marco. `curl -I` de `/` y
+  `/mermaid.html` da la `Permissions-Policy` con las diez capacidades, la CSP de cada una y
+  el resto de cabeceras como en la fuente (más el `Access-Control-Allow-Origin: *` de
+  Vercel, ya aceptado).
+- **Recorrido con un navegador contra la web publicada**: Markdown normal, «Copiar código»
+  (el portapapeles del sistema tiene el código), Mermaid (4 diagramas,
+  `sandbox="allow-scripts"`), `mermaid-hostil.md` (nada ejecutado, ni enlaces ni imágenes
+  remotas), KaTeX (8 fórmulas), PDF con cmaps (el japonés se ve), PDF con formulario (se ven,
+  no hay controles, teclear no escribe), un PDF de 8 páginas y el editor con pegar Ctrl+V.
+  Resultados:
+  - **cero errores de consola, cero violaciones de CSP, ninguna petición externa**;
+  - el marco de Mermaid solo pidió módulos a `/assets/`;
+  - el único aviso fue el que se provocó a propósito (leer el portapapeles desde la app,
+    bloqueado por la política).
+- **Almacenamiento**: solo `bpdf:prefs`, y `bpdf:positions` al cambiar de página en un PDF.
+  Sin nombres de fichero; ni cookies, ni `sessionStorage`, ni IndexedDB, ni cachés, ni service
+  workers.
+- **Error propio en la verificación**: la primera pasada del recorrido exigía
+  `bpdf:positions` sin haber cambiado de página (los dos PDF eran de una página). BPDF hacía
+  lo correcto, y la comprobación se rehízo con un PDF de 8 páginas.
+- **T-4: no adoptado en v1, riesgo aceptado** (decisión del usuario):
+  - rompe los workers reales al exigir `TrustedScriptURL`;
+  - micromark usa `innerHTML` por dentro;
+  - exigiría una política `default` propia;
+  - no hay sumideros controlados por documentos que lo justifiquen antes de la F13.
+
+  Se revisa tras la F13 (TAREAS).
+- **Pruebas manuales, no bloquean el cierre** (TAREAS / F13): el gestor de contraseñas con la
+  de un PDF; Firefox, Safari y WebKit; más PDF y formularios reales.
+- **Siguiente: Fase 13** (accesibilidad y rendimiento). No se ha empezado.
+
 ### Iteración 27 — *2026-10-03* — Fase 12: seguridad, endurecimiento y auditoría (implementada, pendiente de revisión)
 
 **Contexto.** La Fase 12 según su especificación (FASES): recorrer SEGURIDAD control a

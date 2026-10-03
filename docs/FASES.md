@@ -51,7 +51,7 @@ web); conserva su número, sin trabajo pendiente.
 | 9 | Editor Markdown + vista previa + dividido | Igual (D9: CodeMirror 6). La vista previa de un documento grande se pausa en dividido (medido) |
 | 10 | Preferencias | Infraestructura, panel, memoria por documento y borrado. La infraestructura estaba prevista en la F2 y se aplazó aquí, a su primer uso real |
 | 11 | UI/UX final | Igual. Al especificarla: título fijo, «Acerca de» dentro de Preferencias, sin enlace al repositorio (F16) |
-| 12 | Seguridad: endurecimiento y auditoría | Ya no «añade» seguridad: cada fase implementa la suya. Aquí se verifica, se endurece (CSP final, Trusted Types: medido y no adoptado en v1) y se audita. **Implementada, pendiente de revisión** |
+| 12 | Seguridad: endurecimiento y auditoría | Ya no «añade» seguridad: cada fase implementa la suya. Aquí se verifica, se endurece (CSP final, Trusted Types: medido y no adoptado en v1) y se audita. ✅ **Cerrada** (*2026-10-03*) |
 | 13 | Accesibilidad y rendimiento | Los tests viven en cada fase; esta fase **mide** con el corpus grande y corrige |
 | 14 | ~~Electron: aplicación~~ | **Cancelada** el *2026-10-03*: BPDF es solo una aplicación web (D19) |
 | 15 | Distribución web | Incluye la publicación web (antes no tenía fase). **Reescrita** el *2026-10-03* sin la parte de escritorio (D19) |
@@ -1183,20 +1183,27 @@ bitácora, TAREAS.
 
 ## Fase 12 — Seguridad: endurecimiento y auditoría
 
-> **Estado: IMPLEMENTADA / PENDIENTE DE REVISIÓN** (*2026-10-03*, iteración 27). Falta
-> revisarla con el usuario: cabeceras, CSP, `Permissions-Policy`, producción,
-> dependencias y riesgos aceptados. No se cierra hasta entonces. Resultado en
-> [auditoria.md](auditoria.md) (Auditoría 1).
+> **CERRADA / APROBADA** el *2026-10-03* (implementada en la iteración 27, cerrada en la 28
+> tras verificarla en producción). Resultado en [auditoria.md](auditoria.md) (Auditoría 1).
 >
 > **Qué se hizo.** CSP revisada directiva a directiva: ninguna sobra, queda igual y
 > congelada en un test. `Permissions-Policy` con `clipboard-read=()` y la familia del
 > hardware (`serial`, `hid`, `midi`). Cabeceras revisadas una a una (ninguna añadida
 > por lista; `X-Frame-Options` redundante, se conserva). **T-3 cerrada; T-4 (Trusted
-> Types) medida y no adoptada en v1**, pendiente de confirmar. E2E nuevo
+> Types) medida y no adoptada en v1: riesgo aceptado** (decisión del usuario). E2E nuevo
 > `seguridad.spec.ts` (cabeceras de siete rutas, portapapeles, almacenamiento tras un
 > recorrido completo, formularios PDF de D14). `fsevents` resuelto sin denegación.
-> Producción comprobada con la versión desplegada (anterior a la Fase 11); lo nuevo se
-> comprueba tras el push. Sin funciones nuevas ni cambios fuera de la seguridad.
+> Sin funciones nuevas ni cambios fuera de la seguridad.
+>
+> **Verificado en producción** (*2026-10-03*, `96fcafb` desplegado): `cabeceras:verificar` en
+> verde y la `Permissions-Policy` nueva en `/` y `/mermaid.html`; un recorrido con un navegador
+> (Markdown, «Copiar código», Mermaid, `mermaid-hostil.md`, KaTeX, PDF con cmaps, PDF con
+> formulario, editor y pegar con Ctrl+V) da cero errores, cero violaciones de CSP y ninguna
+> petición externa, con el marco de Mermaid sin red y solo `bpdf:prefs` y `bpdf:positions` en
+> el almacenamiento.
+>
+> Quedan como pruebas manuales o de la F13, no como bloqueo: el gestor de contraseñas con
+> la contraseña de un PDF, Firefox, Safari y WebKit, y más PDF y formularios reales.
 
 **Objetivo.** Verificar cada control de [SEGURIDAD.md](SEGURIDAD.md), endurecer lo que
 quede y registrar una auditoría.
@@ -1244,6 +1251,28 @@ T-3 y T-4 decididos y escritos.
 ---
 
 ## Fase 13 — Accesibilidad y rendimiento
+
+> **Estado: IMPLEMENTADA / PENDIENTE DE REVISIÓN** (*2026-10-04*, iteración 29). No se cierra
+> hasta revisar con el usuario la barra y el separador, Firefox, WebKit, la memoria, el
+> Markdown grande, las listas cuadráticas y los riesgos aceptados. Detalle en
+> [ARCHITECTURE.md](ARCHITECTURE.md) §4 undecies.
+>
+> **Qué se hizo.** Barra del visor con una sola parada de Tab y flechas; separador de 24 px;
+> foco devuelto en los diálogos (también en Firefox); axe en cada pantalla
+> (`e2e/specs/a11y.spec.ts`). Matriz de navegadores: la suite E2E entera en Firefox y WebKit
+> (`npm run test:e2e:compat`), con lo que solo da Chromium saltado con su motivo. Corregido lo
+> que destapó: el campo de página perdía lo escrito si la vista se movía (WebKit), un
+> escuchador colgado por apertura (CDP) y el foco perdido al cancelar la contraseña (Firefox).
+> IME sobre una selección, con CDP. Memoria real con CDP (`npm run bench:memoria`). PDF de 1000
+> páginas y CPU frenada ×4 (`BPDF_CPU`). **Listas cuadráticas: regresión de micromark 4.0.3,
+> fijado en 4.0.2** (`override`). Markdown de 1 MB: estudiado, se propone mantenerlo.
+> **Abierto:** en WebKit, Dividido con 1 MB + KaTeX no se puede usar (P50 ~400 ms por tecla).
+>
+> **Diferencias con el alcance escrito abajo:** el corpus grande se genera en los propios
+> benchmarks (`crearPdfGrande(1000)`, los generadores de Markdown), sin `scripts/` nuevos; no
+> hay `rendimiento.spec.ts` aparte (las cifras son de máquina: van en los benchmarks, que no son
+> tests); el `.md` de 5 MB no se midió (1 MB ya decide); la revisión con un lector de pantalla
+> queda para el usuario (TAREAS).
 
 **Objetivo.** Medir con documentos reales y grandes y corregir lo que falle; auditoría de
 accesibilidad de pantallas completas.

@@ -20,9 +20,11 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   los objetivos de latencia (medido; [`docs/FASES.md`](docs/FASES.md), Fase 9). La 10
   (preferencias, posición solo para PDF) se cerró el *2026-10-03* (ARCHITECTURE §4 nonies).
   La 11 (UI/UX final) se cerró el mismo día (D10: sin tema claro; D12: adaptación básica;
-  título de ventana siempre «BPDF»). La 12 (seguridad) está **implementada y pendiente de
-  revisión** (*2026-10-03*; [`docs/auditoria.md`](docs/auditoria.md), Auditoría 1): no se
-  cierra hasta revisarla con el usuario. La app es una SPA estática de Vite + React (D1)
+  título de ventana siempre «BPDF»). La 12 (seguridad) se cerró el mismo día, verificada en
+  producción ([`docs/auditoria.md`](docs/auditoria.md), Auditoría 1; T-4, Trusted Types: no
+  adoptado en v1, riesgo aceptado). La 13 (accesibilidad, rendimiento y compatibilidad) está
+  **implementada y pendiente de revisión** (*2026-10-04*; ARCHITECTURE §4 undecies): no se
+  cierra hasta revisarla con el usuario. Firefox y WebKit tienen ya su suite E2E. La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
   oscuro selectivo en un worker, búsqueda avanzada, pantalla completa, atajos de una tecla
@@ -60,7 +62,9 @@ npm run test:run          # Vitest: unitarios, componentes y accesibilidad
 npm run test:e2e          # Playwright contra la build de producción (vite preview)
 npm run build             # build estática en dist/
 npm run build:tamano      # peso del arranque (tras build; límite 150 KB gzip)
-npm run bench:pdf         # benchmark del visor PDF (mide; no es un test ni corre en CI)
+npm run test:e2e:compat   # la misma suite E2E en Firefox y WebKit
+npm run bench:pdf         # benchmark del visor PDF (mide; no es un test ni corre en CI; BPDF_CPU=4 frena la CPU)
+npm run bench:memoria     # memoria real con CDP al abrir y cerrar documentos
 npm run preview           # sirve dist/ con la CSP y las cabeceras de seguridad
 npm run docs:validar      # public_docs + identidad del proyecto
 npm run docs:enlaces      # enlaces de docs internos

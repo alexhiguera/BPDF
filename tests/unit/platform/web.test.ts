@@ -62,6 +62,33 @@ describe("plataforma web: selector de archivos", () => {
     await expect(promesa).resolves.toBeNull();
   });
 
+  // Fase 13 (regresión, medida con CDP): el escuchador de «cancel» se quedaba colgado
+  // del <input> tras elegir, uno más por apertura.
+  it.each(["elegir", "cancelar"])(
+    "al %s se quitan los dos escuchadores del <input>",
+    async (accion) => {
+      const inputs = selectorEspiado();
+      const senales: AbortSignal[] = [];
+      const original = HTMLInputElement.prototype.addEventListener;
+      vi.spyOn(HTMLInputElement.prototype, "addEventListener").mockImplementation(function (
+        this: HTMLInputElement,
+        tipo: string,
+        oyente: EventListenerOrEventListenerObject,
+        opciones?: boolean | AddEventListenerOptions,
+      ) {
+        if (typeof opciones === "object" && opciones.signal) senales.push(opciones.signal);
+        return original.call(this, tipo, oyente, opciones);
+      });
+      const promesa = createWebPlatform().pickDocument();
+      expect(senales).toHaveLength(2);
+      expect(senales.some((s) => s.aborted)).toBe(false);
+      if (accion === "elegir") elegir(inputs[0]!, [fichero("a.md", "# a")]);
+      else inputs[0]!.dispatchEvent(new Event("cancel"));
+      await promesa;
+      expect(senales.every((s) => s.aborted)).toBe(true);
+    },
+  );
+
   it("rechaza con DocumentError si el fichero elegido no vale", async () => {
     const inputs = selectorEspiado();
     const promesa = createWebPlatform().pickDocument();

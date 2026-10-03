@@ -11,7 +11,7 @@ const t = messages.chooseMarkdown;
  * principal, lo pregunta. No es un explorador de carpetas: una lista de
  * botones con las rutas relativas a la carpeta (ya saneadas, pintadas como
  * texto) y «Cancelar». El foco va al título al aparecer, como el resto de
- * vistas; cancelar deja el documento abierto como estaba.
+ * vistas; cancelar (el botón o Esc) deja el documento abierto como estaba.
  */
 export function ElegirMarkdown({
   choice,
@@ -29,6 +29,13 @@ export function ElegirMarkdown({
     <section
       aria-labelledby="elegir-markdown-titulo"
       className="mx-auto mt-6 flex w-full max-w-xl flex-col gap-3 rounded-md border border-border bg-app p-4"
+      // Fase 13: Esc cancela, como en los diálogos (el foco está dentro: empieza en el título).
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          onCancel();
+        }
+      }}
     >
       <h2 id="elegir-markdown-titulo" ref={titulo} tabIndex={-1} className="text-lg font-semibold">
         {t.title}

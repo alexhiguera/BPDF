@@ -186,6 +186,11 @@ function extensiones(alCambiar: MutableRefObject<() => void>): Extension[] {
     new LanguageSupport(markdownLanguage),
     syntaxHighlighting(resaltado),
     EditorView.lineWrapping,
+    // Fase 13: el área editable ya es enfocable (es `contenteditable`), pero sin un
+    // `tabindex` explícito algunas herramientas (axe: «scrollable-region-focusable») no
+    // lo reconocen y dan el área desplazable del editor por inalcanzable con el teclado.
+    // `0` no cambia el orden de Tab: es el que ya tenía.
+    EditorView.contentAttributes.of({ tabindex: "0" }),
     tema,
     EditorView.updateListener.of((u) => {
       if (u.docChanged) alCambiar.current();

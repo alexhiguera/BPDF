@@ -4,6 +4,13 @@ import { messages } from "@/i18n/messages";
 
 const t = messages.discard;
 
+/** El elemento con el foco, también dentro de un Shadow DOM (el del editor). */
+function elementoActivo(): HTMLElement | null {
+  let e: Element | null = document.activeElement;
+  while (e?.shadowRoot?.activeElement) e = e.shadowRoot.activeElement;
+  return e instanceof HTMLElement && e !== document.body ? e : null;
+}
+
 /**
  * «Hay cambios sin guardar» (Fase 9): antes de sustituir o cerrar un documento
  * con cambios. `<dialog>` modal; el foco empieza en «Seguir editando» (lo que
@@ -23,11 +30,16 @@ export function ConfirmarDescarte({
   const idTexto = useId();
 
   useEffect(() => {
+    // Fase 13: al responder, el foco vuelve a donde estaba (casi siempre, el editor). El
+    // editor vive en un Shadow DOM: el elemento con el foco se busca dentro de él, no en
+    // su anfitrión. Si ya no existe (se descartó y hay otro documento), no se toca.
+    const previo = elementoActivo();
     const d = dialogo.current;
     if (d && !d.open) d.showModal();
     seguir.current?.focus();
     return () => {
       if (d?.open) d.close();
+      if (previo?.isConnected) previo.focus();
     };
   }, []);
 

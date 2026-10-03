@@ -14,7 +14,9 @@ export const acotar = (p: number) => Math.min(MAXIMO, Math.max(MINIMO, Math.roun
  * Dos paneles con un separador redimensionable (Fase 9): el editor y la vista
  * previa. El separador sigue el patrón «window splitter» de WAI-ARIA: es
  * enfocable, dice su valor (`aria-valuenow`, en % del panel izquierdo) y se
- * mueve con ← / → (5 %), Inicio / Fin (mínimo y máximo) o arrastrándolo.
+ * mueve con ← / → (5 %), Inicio / Fin (mínimo y máximo) o arrastrándolo (ratón,
+ * lápiz o dedo: eventos de puntero). Se ve como una línea de 6 px, pero se puede
+ * pulsar en 24 px (Fase 13, WCAG 2.5.8).
  *
  * En pantallas estrechas (< 48rem) los paneles se apilan, cada uno con su
  * mitad, y el separador no se muestra: arrastrar en vertical en un móvil
@@ -86,7 +88,10 @@ export function SplitView({
         aria-valuetext={t.value(proporcion)}
         tabIndex={0}
         hidden={!ambos}
-        className="hidden w-1.5 shrink-0 cursor-col-resize bg-border hover:bg-accent focus-visible:bg-accent focus-visible:outline-none md:block"
+        // Fase 13 (WCAG 2.5.8): el área de pulsación mide 24 px de ancho; lo que se ve
+        // sigue siendo una línea de 6 px en el centro (`before:`). Sin `touch-action`,
+        // arrastrarlo con el dedo desplazaría la página en vez de moverlo.
+        className="relative hidden w-6 shrink-0 cursor-col-resize touch-none before:absolute before:inset-y-0 before:left-1/2 before:w-1.5 before:-translate-x-1/2 before:bg-border before:content-[''] hover:before:bg-accent focus-visible:outline-none focus-visible:before:bg-accent md:block"
         onKeyDown={(e) => {
           const nuevo =
             e.key === "ArrowLeft"

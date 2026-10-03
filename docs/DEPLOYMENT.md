@@ -33,15 +33,23 @@ versión de escritorio.
   app sin política, aunque `frame-ancestors` solo funciona como cabecera).
 - **Antes de `vercel.json`** (comprobado el *2026-09-30*): Vercel no mandaba ninguna
   cabecera de seguridad (solo su HSTS por defecto) y la CSP llegaba solo por `<meta>`.
-- **En producción, *2026-10-03*** (Fase 12; versión desplegada anterior a la Fase 11):
+- **En producción, cierre de la Fase 12** (*2026-10-03*, `96fcafb`): `cabeceras:verificar`
+  en verde; `Permissions-Policy` con `camera`, `microphone`, `geolocation`, `payment`,
+  `usb`, `display-capture`, `clipboard-read`, `serial`, `hid` y `midi` en `/` y
+  `/mermaid.html`. Recorrido con un navegador (Markdown, «Copiar código», Mermaid,
+  `mermaid-hostil.md`, KaTeX, PDF con cmaps, PDF con formulario, editor y pegar con Ctrl+V):
+  cero errores, cero violaciones, ninguna petición externa, el marco de Mermaid solo pide sus
+  módulos a `/assets/`, la app no puede leer el portapapeles y copiar y pegar funcionan.
+  Almacenamiento: solo `bpdf:prefs` y `bpdf:positions` (esta, al cambiar de página en un
+  PDF); sin cookies, `sessionStorage`, IndexedDB, cachés ni service workers.
+- **Antes, el mismo día** (Fase 12; versión desplegada anterior a la Fase 11):
   las cabeceras llegan y coinciden con la fuente (`cabeceras:verificar` en verde para `/`,
   `/mermaid.html` y un módulo del marco); `/mermaid.html` responde 200 con su CSP; un
   recorrido con un navegador (Mermaid, Mermaid hostil, KaTeX y un PDF con cmaps) da cero
   errores, cero violaciones de CSP y ninguna petición externa. Vercel añade de suyo
   `Access-Control-Allow-Origin: *` en todas las rutas (aceptado: [auditoria.md](auditoria.md)
-  A1-6). La `Permissions-Policy` ampliada de la Fase 12 **aún no está desplegada**: tras
-  el push hay que repetir `cabeceras:verificar`, `curl -I` de `/` y `/mermaid.html`, y el
-  recorrido.
+  A1-6). La `Permissions-Policy` ampliada aún no estaba desplegada (se comprobó después,
+  arriba).
 - **Comprobar un despliegue** (CLAUDE.md §10): `npm run cabeceras:verificar --
   https://bpdf.r3zon.com` pide `/`, `/mermaid.html` y un módulo del marco y compara cada
   cabecera con la fuente. Sale con error si falta o difiere alguna. Tras cada despliegue que

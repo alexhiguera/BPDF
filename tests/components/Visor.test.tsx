@@ -721,3 +721,108 @@ describe("Visor: atajos anunciados en la barra (Fase 11)", () => {
     expect(boton(t.zoomIn)).toHaveAttribute("aria-keyshortcuts", "Control+Plus Meta+Plus");
   });
 });
+
+// Fase 13: el patrón «toolbar» de WAI-ARIA (`src/app/pdf/barra-teclado.ts`).
+describe("Visor: la barra con el teclado (Fase 13)", () => {
+  const barra = () => screen.getByRole("toolbar", { name: t.toolbar });
+  const paradas = () =>
+    // Un botón desactivado no recibe el foco: no cuenta como parada aunque su
+    // `tabIndex` valga 0.
+    [...within(barra()).getAllByRole("button"), within(barra()).getByRole("textbox")].filter(
+      (e) => e.tabIndex === 0 && !(e as HTMLButtonElement).disabled,
+    );
+
+  it("una sola parada de Tab: al principio, el primer control", () => {
+    montar(20);
+    expect(paradas()).toEqual([boton(t.showThumbnails)]);
+    // Los demás siguen siendo alcanzables con las flechas, no con Tab.
+    expect(boton(t.zoomIn).tabIndex).toBe(-1);
+    expect(campo().tabIndex).toBe(-1);
+  });
+
+  it("→ y ← recorren la barra, saltan lo desactivado y dan la vuelta", () => {
+    montar(20);
+    boton(t.showThumbnails).focus();
+    // «Página anterior» está desactivado en la página 1: se salta.
+    fireEvent.keyDown(document.activeElement as Element, { key: "ArrowRight" });
+    expect(campo()).toHaveFocus();
+    fireEvent.keyDown(campo(), { key: "ArrowLeft" });
+    // En el campo, ← solo sale desde el principio del texto.
+    (campo() as HTMLInputElement).setSelectionRange(1, 1);
+    fireEvent.keyDown(campo(), { key: "ArrowLeft" });
+    expect(campo()).toHaveFocus();
+    (campo() as HTMLInputElement).setSelectionRange(0, 0);
+    fireEvent.keyDown(campo(), { key: "ArrowLeft" });
+    expect(boton(t.showThumbnails)).toHaveFocus();
+    // Desde el primero, ← va al último.
+    fireEvent.keyDown(boton(t.showThumbnails), { key: "ArrowLeft" });
+    expect(boton(t.shortcuts)).toHaveFocus();
+    fireEvent.keyDown(boton(t.shortcuts), { key: "ArrowRight" });
+    expect(boton(t.showThumbnails)).toHaveFocus();
+  });
+
+  it("la parada de Tab sigue al último control enfocado", () => {
+    montar(20);
+    boton(t.zoomIn).focus();
+    expect(paradas()).toEqual([boton(t.zoomIn)]);
+  });
+
+  it("si el control con la parada se desactiva, la parada pasa al más cercano", () => {
+    montar(20);
+    boton(t.next).focus();
+    fireEvent.click(boton(t.next));
+    fireEvent.keyDown(window, { key: "End" });
+    expect(estadoPagina()).toHaveTextContent(t.status.page(20, 20));
+    expect(boton(t.next)).toBeDisabled();
+    expect(paradas()).toHaveLength(1);
+  });
+
+  it("← / → en la barra no cambian de página (en «página a página» son atajos del visor)", () => {
+    montar(20);
+    fireEvent.click(boton(t.viewSingle));
+    boton(t.zoomIn).focus();
+    fireEvent.keyDown(boton(t.zoomIn), { key: "ArrowRight" });
+    fireEvent.keyDown(document.activeElement as Element, { key: "ArrowRight" });
+    expect(estadoPagina()).toHaveTextContent(t.status.page(1, 20));
+    // Fuera de la barra, → sigue pasando de página.
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(estadoPagina()).toHaveTextContent(t.status.page(2, 20));
+  });
+
+  it("Inicio y Fin siguen siendo los atajos del visor (primera y última página)", () => {
+    montar(20);
+    boton(t.zoomIn).focus();
+    fireEvent.keyDown(boton(t.zoomIn), { key: "End" });
+    expect(estadoPagina()).toHaveTextContent(t.status.page(20, 20));
+    expect(boton(t.zoomIn)).toHaveFocus();
+  });
+});
+
+// Fase 13 (regresión, destapada en WebKit): si la página actual cambia mientras se
+// escribe en el campo (un desplazamiento por inercia o un evento que llega tarde), lo
+// escrito no se pierde e Intro va a la página escrita.
+describe("Visor: el campo de página mientras se escribe (Fase 13)", () => {
+  it("lo escrito no se pisa si la página cambia antes de confirmar", () => {
+    montar(20);
+    campo().focus();
+    fireEvent.change(campo(), { target: { value: "15" } });
+    fireEvent.keyDown(window, { key: "PageDown" }); // la vista se mueve sola
+    expect(estadoPagina()).toHaveTextContent(t.status.page(2, 20));
+    expect(campo()).toHaveValue("15");
+    fireEvent.keyDown(campo(), { key: "Enter" });
+    expect(estadoPagina()).toHaveTextContent(t.status.page(15, 20));
+    expect(campo()).toHaveValue("15");
+  });
+
+  it("sin nada escrito, el campo sigue a la página actual; y Esc descarta lo escrito", () => {
+    montar(20);
+    fireEvent.keyDown(window, { key: "PageDown" });
+    expect(campo()).toHaveValue("2");
+    campo().focus();
+    fireEvent.change(campo(), { target: { value: "9" } });
+    fireEvent.keyDown(campo(), { key: "Escape" });
+    expect(campo()).toHaveValue("2");
+    fireEvent.keyDown(window, { key: "PageDown" });
+    expect(campo()).toHaveValue("3");
+  });
+});

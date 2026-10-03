@@ -1,7 +1,8 @@
 import path from "node:path";
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { messages } from "../../src/i18n/messages";
-import { leerPortapapeles } from "../portapapeles";
+import { soloChromium } from "../navegadores";
+import { leerPortapapeles, permitirEscribir } from "../portapapeles";
 import { abrir, type Vigilancia } from "../vigilancia";
 
 /**
@@ -106,8 +107,9 @@ test("GFM: tabla alineada, tabla ancha con desplazamiento propio, tareas y notas
 test("código: resaltado con los colores del tema y botón de copiar que copia de verdad", async ({
   page,
   context,
+  browserName,
 }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await permitirEscribir(context, browserName);
   const v = await cargar(page, "codigo.md");
   const a = articulo(page);
   const bloques = a.locator(".md-codigo");
@@ -372,7 +374,13 @@ test("un Markdown grande (~1 MB): primero la barra y el aviso, después el conte
 
 test("bloques con fórmulas fuera de la vista: el navegador se los salta, y el foco no sale recortado", async ({
   page,
+  browserName,
 }) => {
+  // Lo que se mide (que el navegador SALTE el bloque lejano) solo se puede observar en
+  // Chromium: `checkVisibility({ contentVisibilityAuto: true })` no lo distingue en los
+  // demás. Saltarlo es una optimización: en Firefox y WebKit el documento se ve igual
+  // (lo comprueban el resto de E2E de Markdown).
+  soloChromium(browserName, "content-visibility: solo Chromium deja observar los bloques saltados");
   const v = await abrir(page);
   let texto = "# Bloques\n\n[primero](https://example.com/a) empieza el párrafo, con $x$.\n\n";
   for (let i = 0; i < 300; i++) texto += `## Sección ${i}\n\nPárrafo **${i}** con $x^{${i}}$.\n\n`;

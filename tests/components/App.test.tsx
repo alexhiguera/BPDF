@@ -277,6 +277,12 @@ describe("App: PDF con contraseña (Fase 6, D13)", () => {
     expect(dialogo).toHaveAttribute("open");
     expect(campo).toHaveAttribute("type", "password");
     expect(campo).toHaveAttribute("autocomplete", "off");
+    // Fase 13: nada que un navegador pueda enviar o asociar a un sitio: el campo no tiene
+    // `name` y el formulario ni `action` ni `method` (y nunca se envía: `preventDefault`).
+    expect(campo).not.toHaveAttribute("name");
+    const formulario = campo.closest("form");
+    expect(formulario).not.toHaveAttribute("action");
+    expect(formulario).not.toHaveAttribute("method");
     expect(campo).toHaveFocus();
     expect(within(dialogo).getByRole("button", { name: p.open })).toBeDisabled();
     expect(screen.queryByRole("alert")).toBeNull();

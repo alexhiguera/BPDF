@@ -153,6 +153,9 @@ test("zoom: botones, porcentaje, 100 %, Ctrl+rueda y límites; el lienzo cambia 
   page,
 }) => {
   const v = await cargar(page);
+  // El DPR del dispositivo (1 en el perfil de Chrome y Firefox, 2 en el de Safari): Ctrl
+  // + rueda no debe cambiarlo (sería el zoom del navegador, no el del visor).
+  const dpr = await page.evaluate(() => window.devicePixelRatio);
   await boton(page, t.viewSingle).click();
   await page.keyboard.press("Control+0");
   await expect(page.getByText(t.zoomPercent(100), { exact: true })).toBeVisible();
@@ -183,7 +186,7 @@ test("zoom: botones, porcentaje, 100 %, Ctrl+rueda y límites; el lienzo cambia 
     .evaluate((c) => [(c as HTMLCanvasElement).width, (c as HTMLCanvasElement).height]);
   expect((lienzo[0] ?? 0) * (lienzo[1] ?? 0)).toBeLessThanOrEqual(4096 * 4096);
   expect(lienzo[0]).toBeGreaterThan(ancho100);
-  expect(await page.evaluate(() => window.devicePixelRatio)).toBe(1); // sin zoom del navegador
+  expect(await page.evaluate(() => window.devicePixelRatio)).toBe(dpr); // sin zoom del navegador
   limpia(v);
 });
 
@@ -350,7 +353,7 @@ test("miniaturas: se pintan aparte, marcan la actual, navegan y se liberan al ce
 // ── 14. Selección y copia ──────────────────────────────────────────────────────
 
 test("el texto se selecciona y se copia, también a otro zoom", async ({ page, context }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  // Ctrl/⌘+C sobre la selección: es la copia del navegador, sin permisos.
   const v = await cargar(page, VISOR_PDF);
   await page.keyboard.press("Control+0");
   await irA(page, 2);
@@ -360,7 +363,7 @@ test("el texto se selecciona y se copia, también a otro zoom", async ({ page, c
   const pagina = await marco(page, 2).boundingBox();
   expect(Math.abs((a100?.x ?? 0) - (pagina?.x ?? 0) - 72 * PT_A_CSS)).toBeLessThanOrEqual(3);
   await span.click({ clickCount: 3 });
-  await page.keyboard.press("Control+c");
+  await page.keyboard.press("ControlOrMeta+c");
   // El portapapeles del sistema, leído fuera de la app (que niega `clipboard-read`).
   expect(await leerPortapapeles(context)).toContain("La canción del búho");
   // A 200 %, la misma frase mide el doble.

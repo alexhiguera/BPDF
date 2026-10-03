@@ -45,6 +45,15 @@ export function DialogoContrasena({
     };
   }, []);
 
+  // Fase 13: cancelar cierra el diálogo ANTES de avisar a la app, que cierra el documento
+  // y pone el foco en <main>. Con el modal aún abierto, <main> está inerte y ese foco no
+  // se aplicaba: Chromium lo devolvía él solo al cerrar el diálogo; Firefox lo dejaba en
+  // <body> (E2E de compatibilidad).
+  const cancelar = () => {
+    if (dialogo.current?.open) dialogo.current.close();
+    onCancelar();
+  };
+
   // Al abrir y tras cada intento fallido: el foco, al campo (ya vacío).
   // biome-ignore lint/correctness/useExhaustiveDependencies: `intento` es el disparador
   useEffect(() => {
@@ -59,7 +68,7 @@ export function DialogoContrasena({
       // Esc: el diálogo no se cierra solo; se cierra el documento.
       onCancel={(e) => {
         e.preventDefault();
-        onCancelar();
+        cancelar();
       }}
       className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-md border border-border bg-elevated p-0 text-fg backdrop:bg-app/80"
     >
@@ -104,7 +113,7 @@ export function DialogoContrasena({
           </p>
         )}
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onCancelar}>
+          <Button type="button" variant="secondary" onClick={cancelar}>
             {t.cancel}
           </Button>
           <Button type="submit" loading={comprobando} disabled={valor === ""}>

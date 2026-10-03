@@ -21,15 +21,20 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:e2e:compat": "playwright test --config playwright.compat.config.ts",
     "bench:pdf": "playwright test --config playwright.bench.config.ts --project=chromium visor-pdf",
     "bench:markdown": "playwright test --config playwright.bench.config.ts --project=chromium markdown",
     "bench:editor": "playwright test --config playwright.bench.config.ts --project=chromium editor",
+    "bench:memoria": "playwright test --config playwright.bench.config.ts --project=chromium memoria",
     "bench:editor:compat": "playwright test --config playwright.bench.config.ts --project=firefox --project=webkit editor -g latencia",
     "docs:validar": "node scripts/validar-public-docs.mjs",
     "docs:enlaces": "node scripts/verificar-enlaces-docs.mjs",
     "deps:overrides": "node scripts/verificar-overrides.mjs",
     "cabeceras:vercel": "node scripts/generar-vercel.mjs",
     "cabeceras:verificar": "node scripts/verificar-cabeceras.mjs"
+  },
+  "overrides": {
+    "micromark": "4.0.2"
   },
   "engines": {
     "node": ">=24.0.0 <25"
@@ -57,6 +62,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@biomejs/biome": "^2.5.14",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",

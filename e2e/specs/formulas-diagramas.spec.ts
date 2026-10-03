@@ -162,6 +162,7 @@ test("un Markdown sin fórmulas ni diagramas no descarga KaTeX, Mermaid ni el ma
 test("mermaid.html: su propia CSP y, abierto directamente, no hace nada", async ({
   page,
   request,
+  browserName,
 }) => {
   const respuesta = await request.get("/mermaid.html");
   expect(respuesta.headers()["content-security-policy"]).toBe(cspMarcoCabecera());
@@ -194,5 +195,13 @@ test("mermaid.html: su propia CSP y, abierto directamente, no hace nada", async 
   );
   expect(delMarco).toEqual([]);
   expect(await page.locator("svg").count()).toBe(0);
+  // Firefox pide `/favicon.ico` de toda página que se abre en una pestaña, y la CSP del
+  // marco (`img-src 'none'`) lo bloquea: es la política funcionando en una página que no
+  // es para visitar. Solo eso, y solo ahí.
+  if (browserName === "firefox") {
+    const favicon = (e: string) => /img-src.*\/favicon\.ico|\/favicon\.ico.*img-src/.test(e);
+    v.errores = v.errores.filter((e) => !favicon(e));
+    v.violaciones = v.violaciones.filter((e) => !/favicon\.ico/.test(e));
+  }
   limpia(v);
 });

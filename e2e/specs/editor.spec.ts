@@ -2,6 +2,8 @@ import path from "node:path";
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { cspCabecera } from "../../src/config/security-headers";
 import { messages } from "../../src/i18n/messages";
+import { exceptoEn, soloChromium } from "../navegadores";
+import { escribirPortapapeles } from "../portapapeles";
 import { abrir, type Vigilancia } from "../vigilancia";
 
 /**
@@ -106,7 +108,6 @@ test("escribir y pegar encima de una selección: texto correcto, se deshace y si
 }) => {
   // Sin el manejador propio, Chrome sustituye la selección con su edición nativa,
   // crea <span style="…"> y la CSP los bloquea (dos violaciones por pulsación).
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const v = await cargar(page, texto("sel.md", "# Título\n\nUno dos tres.\n\n- lista\n- otra"));
   await modo(page, "edicion").click();
   await editor(page).click();
@@ -123,11 +124,49 @@ test("escribir y pegar encima de una selección: texto correcto, se deshace y si
   await page.keyboard.press("Control+z");
   await expect(editor(page)).toContainText("Uno dos tres.");
   // Todo y pegar (el portapapeles de verdad).
-  await page.evaluate(() => navigator.clipboard.writeText("Pegado\n\nen dos párrafos"));
+  await escribirPortapapeles(context, "Pegado\n\nen dos párrafos");
+  await page.bringToFront();
+  await editor(page).focus();
   await page.keyboard.press("Control+a");
   await page.keyboard.press("Control+v");
   await expect(editor(page)).toHaveText("Pegadoen dos párrafos");
   await expect(editor(page).locator(".cm-line")).toHaveCount(3);
+  limpia(v);
+});
+
+// Fase 13: escribir con un IME (composición, como el japonés o el chino) ENCIMA de una
+// selección. El manejador propio de `beforeinput` cubre `insertText`; la composición va
+// por otra ruta (`insertCompositionText`), y si la edición nativa del navegador crease ahí
+// `<span style>`, la CSP lo bloquearía. Se simula con el protocolo de depuración: las
+// mismas órdenes que manda un IME real (componer y confirmar). Solo Chromium.
+test("IME: componer encima de una selección deja el texto correcto, sin violaciones de CSP", async ({
+  page,
+  browserName,
+}) => {
+  soloChromium(
+    browserName,
+    "la composición de un IME solo se simula con CDP (Input.imeSetComposition)",
+  );
+  const v = await cargar(page, texto("ime.md", "# Título\n\nUno dos tres."));
+  await modo(page, "edicion").click();
+  await editor(page).click();
+  const cdp = await page.context().newCDPSession(page);
+  // Dentro de una línea: «Uno dos tres.» seleccionada entera.
+  await page.keyboard.press("Control+End");
+  await page.keyboard.press("Shift+Home");
+  await cdp.send("Input.imeSetComposition", { text: "に", selectionStart: 1, selectionEnd: 1 });
+  await cdp.send("Input.imeSetComposition", { text: "にほん", selectionStart: 3, selectionEnd: 3 });
+  await cdp.send("Input.insertText", { text: "日本" });
+  await expect(editor(page).locator(".cm-line").last()).toHaveText("日本");
+  // Varias líneas seleccionadas.
+  await page.keyboard.press("Control+a");
+  await cdp.send("Input.imeSetComposition", { text: "ちゅう", selectionStart: 3, selectionEnd: 3 });
+  await cdp.send("Input.insertText", { text: "中" });
+  await expect(editor(page)).toHaveText("中");
+  // Deshacer vuelve atrás y el resto de la edición sigue funcionando.
+  await page.keyboard.press("Control+z");
+  await expect(editor(page)).toContainText("日本");
+  await expect(editor(page).locator("span[style]")).toHaveCount(0);
   limpia(v);
 });
 
@@ -376,7 +415,10 @@ test("beforeunload: con cambios avisa al cerrar la pestaña; sin cambios, no", a
   limpia(v);
 });
 
-test("beforeunload: sin cambios, cerrar no pregunta", async ({ page }) => {
+test("beforeunload: sin cambios, cerrar no pregunta", async ({ page, browserName }) => {
+  // Playwright no cierra en WebKit una página con `runBeforeUnload` (ni una vacía:
+  // medido en la Fase 13). En Safari, a mano (TAREAS).
+  exceptoEn(browserName, "webkit", "Playwright no cierra páginas con runBeforeUnload en WebKit");
   await cargar(page, texto("limpio.md", "# Limpio"));
   const dialogos: string[] = [];
   page.on("dialog", (d) => {

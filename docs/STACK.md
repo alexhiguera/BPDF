@@ -1,6 +1,6 @@
 # Stack tecnológico
 
-Estado tras la Fase 10 (*2026-10-03*; la Fase 10 reinstaló `zod` para las preferencias guardadas; la Fase 9 añadió el editor, CodeMirror 6: `@codemirror/*` y `@lezer/highlight`; la Fase 8, `remark-math`, `katex` y `mermaid`): la Fase 4 añadió `pdfjs-dist` (el motor de PDF) y la
+Estado tras la Fase 13 (*2026-10-04*; la Fase 13 fijó `micromark` en 4.0.2 con un `override` y añadió `@axe-core/playwright` en desarrollo; la Fase 10 reinstaló `zod` para las preferencias guardadas; la Fase 9 añadió el editor, CodeMirror 6: `@codemirror/*` y `@lezer/highlight`; la Fase 8, `remark-math`, `katex` y `mermaid`): la Fase 4 añadió `pdfjs-dist` (el motor de PDF) y la
 Fase 7 el pipeline de Markdown (`react-markdown`, `remark-gfm`) y el resaltado de código
 (`lowlight`, `highlight.js`). El stack **objetivo** y el motivo de cada pieza están en
 [PLAN.md](PLAN.md); cada fase añade aquí lo que instala. BPDF es solo web (D19,
@@ -15,7 +15,7 @@ Fase 7 el pipeline de Markdown (`react-markdown`, `remark-gfm`) y el resaltado d
 | Lenguaje | **TypeScript 7** estricto, con `noUncheckedIndexedAccess` | |
 | Lint y formato | **Biome 2** | Un binario, sin ESLint ni Prettier |
 | Tests | **Vitest 5** + Testing Library + **jest-axe** + jsdom | Unitarios, componentes y accesibilidad |
-| E2E | **Playwright** (Chromium) | Contra el build de producción. Imprescindible para lo que depende del navegador real (canvas de PDF, CSP, portapapeles) |
+| E2E | **Playwright** (Chromium; Firefox y WebKit con `npm run test:e2e:compat` desde la Fase 13) | Contra el build de producción. Imprescindible para lo que depende del navegador real (canvas de PDF, CSP, portapapeles). Accesibilidad con `@axe-core/playwright` |
 | CI | **GitHub Actions** | `ci.yml`, `e2e.yml`, `security.yml` |
 
 Plataforma fijada con `engines` (`node >=24 <25`) y `.nvmrc` (`24`). Navegadores mínimos
@@ -136,18 +136,17 @@ explica, para que el documento no se quede atrás.
 
 - **CSP.** Ninguna directiva nueva: no usa `eval`, WASM, estilos en línea (la alineación
   de celdas va por CSSOM) ni recursos remotos. Los E2E dan cero violaciones.
-- **Rendimiento (medido en la Fase 7, [ARCHITECTURE.md](ARCHITECTURE.md) §4 quinquies).**
-  El parser es lineal salvo en un caso: **muchas listas cortas son cuadráticas** en
-  `mdast-util-from-markdown` 2.0.3 (la última publicada): `prepareList` inserta cada
-  elemento con `Array#splice` en el array de eventos del documento entero. 200 KB de listas
-  cortas tardan ~2,5 s y el tiempo se multiplica por ~3 al duplicar el tamaño. Pendiente en
-  TAREAS; no se parchea la dependencia.
+- **Rendimiento ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quinquies y §4 undecies).** El
+  parser es lineal. En la Fase 7 se midió que **muchas listas cortas eran cuadráticas** y se
+  atribuyó a `mdast-util-from-markdown`; la Fase 13 lo perfiló: era una **regresión de
+  micromark 4.0.3** (abajo, `overrides`).
 - **Versiones exactas** en las cuatro directas; las transitivas las fija el lockfile y las
   vigila `npm audit`.
 
 Todo lo demás es de desarrollo: `vite` y `@tailwindcss/vite` (build), `tailwindcss`,
-Biome, TypeScript, Vitest y Testing Library, jest-axe, jsdom, Playwright, y `yaml` (lo usa
-el validador de `public_docs/`).
+Biome, TypeScript, Vitest y Testing Library, jest-axe, jsdom, Playwright, `@axe-core/playwright`
+(Fase 13: axe en las pantallas completas, contra la build real; trae `axe-core`, sin scripts
+de instalación) y `yaml` (lo usa el validador de `public_docs/`).
 
 **Retiradas en la Fase 1:** `@supabase/ssr`, `@supabase/supabase-js`, `@sentry/nextjs`,
 `@vercel/speed-insights` y `zod` (runtime); `prisma`, `supabase`, `pg`, `@types/pg`
@@ -224,9 +223,28 @@ librería pesada se carga de forma diferida.
 
 ### `overrides`
 
-Ninguno. Los dos que traía la plantilla (`mysql2`, `deepmerge-ts`) eran transitivas de
-Prisma con avisos HIGH; al retirar Prisma, `npm run deps:overrides` confirmó que ya no
-evitaban ningún aviso y dejaron de estar en el árbol.
+**Uno: `"micromark": "4.0.2"`** (Fase 13, *2026-10-04*). micromark 4.0.3 (publicada el
+*2026-09-26*, entró en el lockfile con la Fase 7) añadió `micromark-util-edit-map`, cuyo
+`EditMap.consume` reconstruye la lista entera de eventos en cada uso: una vez por elemento de
+lista, cita o encabezado setext. Resultado: tiempo **cuadrático** con muchos de ellos (perfil:
+el 63 % del tiempo ahí). Es el issue upstream **micromark#246** (abierto). Con 4.0.2, lineal:
+
+| Caso (Node, cadena de BPDF) | micromark 4.0.3 | 4.0.2 |
+|---|---|---|
+| 400 KB de listas cortas | 25 s | 2,6 s |
+| 181 KB del caso mínimo (`- n` + párrafo) | 52 s | 2,5 s |
+| En el navegador, 200 KB de listas | (F7: 2,3–2,8 s, ×3 al duplicar) | 1,45 s, lineal |
+
+4.0.3 no traía arreglos de seguridad: un arreglo menor de énfasis («attention flanking») y
+esta optimización. Probado también: las últimas publicadas (`mdast-util-from-markdown` 2.1.0)
+siguen siendo cuadráticas, y fijar `micromark-core-commonmark` 2.0.3 no cambia nada.
+`micromark` queda anidado bajo `mdast-util-from-markdown` (su único consumidor). **Se quita**
+cuando micromark publique el arreglo (TAREAS); `npm run deps:overrides` solo comprueba avisos
+de seguridad, así que esto se revisa a mano.
+
+Los dos que traía la plantilla (`mysql2`, `deepmerge-ts`) eran transitivas de Prisma con
+avisos HIGH; al retirar Prisma, `npm run deps:overrides` confirmó que ya no evitaban ningún
+aviso y dejaron de estar en el árbol.
 
 Si hiciera falta uno: motivo escrito aquí, y `npm run deps:overrides` comprueba si sigue
 haciendo falta (quitándolos en un temporal y repitiendo `npm audit`). CI lo ejecuta en

@@ -65,6 +65,15 @@ function Shell({ platform }: { platform: Platform }) {
     // El botón pulsado desaparece con el documento: el foco pasa a <main>.
     if (await close()) main.current?.focus();
   };
+  // Fase 13: cancelar la elección de Markdown (botón o Esc) quita la vista que tenía el
+  // foco. Va al título del documento que sigue abierto o, sin documento, a <main>; si no,
+  // se quedaba en <body>.
+  const cancelarEleccion = () => {
+    cancelChoice();
+    requestAnimationFrame(() =>
+      (window.document.getElementById("titulo-documento") ?? main.current)?.focus(),
+    );
+  };
 
   return (
     <DropZone onFiles={openDropped}>
@@ -117,7 +126,7 @@ function Shell({ platform }: { platform: Platform }) {
         className="flex min-h-0 flex-1 flex-col overflow-auto bg-reading"
       >
         {error && <DocumentErrorAlert error={error} onDismiss={dismissError} />}
-        {choice && <ElegirMarkdown choice={choice} onChoose={choose} onCancel={cancelChoice} />}
+        {choice && <ElegirMarkdown choice={choice} onChoose={choose} onCancel={cancelarEleccion} />}
         {document?.kind === "pdf" ? (
           <Suspense fallback={<Cargando texto={messages.pdf.loading} />}>
             <VisorPdf

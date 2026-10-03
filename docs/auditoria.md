@@ -28,10 +28,8 @@ estado (**abierto** / **cerrado** en la iteración N / **aceptado** con su motiv
 
 ## Auditoría 1 — *2026-10-03* — Fase 12: superficie web antes de publicar
 
-**Estado: implementada, pendiente de revisión con el usuario** (cabeceras, CSP,
-Permissions-Policy, producción, dependencias y riesgos aceptados). Los hallazgos
-«cerrados» lo están en el árbol de trabajo; los que dependen de la web publicada se
-repiten tras desplegar.
+**Estado: CERRADA / APROBADA** el *2026-10-03* (revisada con el usuario y verificada en
+producción con `96fcafb`).
 
 **Alcance.** Toda la superficie web de BPDF: CSP de la app y del marco de Mermaid,
 cabeceras de cada ruta (`vite preview` y `vercel.json`), `Permissions-Policy`, workers,
@@ -84,14 +82,14 @@ cerradas: no apareció ningún fallo de seguridad real que lo pidiera.
 | A1-2 | 🟡 | Los E2E solo comprobaban 5 de las 8 cabeceras, y solo en `/`: `Permissions-Policy`, CORP y HSTS no se miraban en ninguna ruta servida; `/mermaid.html` solo la CSP | **Cerrado** (iteración 27): `seguridad.spec.ts` compara TODAS las cabeceras de la fuente en `/`, `/mermaid.html`, un módulo de `/assets/`, el worker de pdf.js, el favicon, `robots.txt` y un 404, y que `Access-Control-Allow-Origin` solo va en `/assets/`. Y un unitario congela la lista exacta de cabeceras por ruta y la CSP entera de la app y del marco |
 | A1-3 | 🟡 | Ningún test comprobaba cookies, IndexedDB, Cache API ni service workers tras un recorrido completo (solo `localStorage`/`sessionStorage` en recorridos sueltos) | **Cerrado** (iteración 27): E2E con PDF (posición y preferencia guardadas), Markdown con KaTeX y Mermaid, y el editor: solo `bpdf:prefs` y `bpdf:positions`; ni cookies, ni `sessionStorage`, ni IndexedDB, ni cachés, ni service workers |
 | A1-4 | 🟡 | D14 (formularios visibles, no rellenables) sin test automático: ningún PDF de prueba tenía campos AcroForm | **Cerrado** (iteración 27): `crearPdfFormulario()` (campo de texto y casilla con apariencia, JavaScript al abrir y en el campo). Unitario: pdf.js ve los dos campos y su JavaScript. E2E: sus apariencias se pintan, no hay capa de anotaciones ni controles en la página, pulsar y teclear no escribe nada y ningún diálogo se abre |
-| A1-5 | 🟢 | **T-4: Trusted Types no se adopta en v1.** Medido: con `require-trusted-types-for 'script'`, 49 de 116 E2E fallan (220 bloqueos `TrustedScriptURL`: el worker de pdf.js y el del modo oscuro). Además el decodificador de entidades de micromark usa `innerHTML` (los E2E no tienen ninguna entidad con nombre, así que no lo destaparon). Adoptarlo exige una política `default` propia que deje pasar los dos workers y ese `innerHTML`, cargada antes que nada | **Aceptado**, pendiente de confirmar por el usuario. Motivo: los sumideros que protegería están inventariados (arriba) y ninguno recibe HTML del documento; la política `default` sería un punto de paso que hay que mantener, y Safari 26 (y quizá Firefox) aplicaría Trusted Types en rutas de código que solo se han probado en Chromium (la compatibilidad es de la F13), con el riesgo de romper funciones sin aviso. Se reevalúa tras la F13 o si una dependencia nueva introduce sumideros |
+| A1-5 | 🟢 | **T-4: Trusted Types no se adopta en v1.** Medido: con `require-trusted-types-for 'script'`, 49 de 116 E2E fallan (220 bloqueos `TrustedScriptURL`: el worker de pdf.js y el del modo oscuro). Además el decodificador de entidades de micromark usa `innerHTML` (los E2E no tienen ninguna entidad con nombre, así que no lo destaparon). Adoptarlo exige una política `default` propia que deje pasar los dos workers y ese `innerHTML`, cargada antes que nada | **Aceptado: no adoptado en v1** (decisión del usuario, *2026-10-03*; se revisa tras la F13). Motivo: los sumideros que protegería están inventariados (arriba) y ninguno recibe HTML del documento; la política `default` sería un punto de paso que hay que mantener, y Safari 26 (y quizá Firefox) aplicaría Trusted Types en rutas de código que solo se han probado en Chromium (la compatibilidad es de la F13), con el riesgo de romper funciones sin aviso. Se reevalúa tras la F13 o si una dependencia nueva introduce sumideros |
 | A1-6 | 🟢 | Vercel manda `Access-Control-Allow-Origin: *` en **todas** las rutas (`/`, `/mermaid.html`…), no solo en `/assets/` como la fuente. `cabeceras:verificar` no lo ve: solo comprueba las cabeceras que la fuente define | **Aceptado**: son ficheros estáticos y públicos, sin cookies, credenciales ni datos de usuario; permite a otra web leer el HTML público, nada más. No se puede quitar desde `vercel.json` sin sobrescribirla con otro valor |
 | A1-7 | 🟢 | `X-Frame-Options` es redundante con `frame-ancestors` en todos los navegadores mínimos | **Aceptado**: se conserva (no cuesta nada y cubre a quien no aplique CSP 2); documentado en `security-headers.ts` |
 | A1-8 | 🟢 | `postMessage(…, "*")` en el marco de Mermaid (respuesta) y en la app (petición) | **Aceptado, correcto**: el marco tiene origen opaco y no hay otro destino posible; solo BPDF puede enmarcarlo (`frame-ancestors 'self'`); el marco solo atiende a `window.parent` y la app solo a ese iframe (`source`), con origen `"null"` y mensajes bien formados; el SVG se verifica en la app antes de mostrarlo como `<img>` |
 | A1-9 | 🟢 | Actions de GitHub fijadas por etiqueta (`@v4`), no por SHA; `actions/checkout` deja el token en `.git/config` (`persist-credentials` por defecto) mientras corren `npm ci`, la build y los tests | **Aceptado** como mejora ([mejoras.md](mejoras.md)): los tres workflows tienen `permissions: contents: read` y ningún secreto salvo el webhook opcional de Discord en un job aparte |
 | A1-10 | 🟢 | Hay versiones nuevas de los motores: pdf.js 6.4.299 (fijada 6.3.289), KaTeX 0.19.0 (0.18.9), highlight.js 11.12.0 (11.11.1, que pide `lowlight`), Mermaid 12.1.0 (11.17.2) | **Aceptado**: ningún aviso publicado afecta a las versiones fijadas. pdf.js CVE-2026-16633 (GHSA-hq66-cqwq-w95j, JavaScript arbitrario) se corrigió en 6.2.108 y además exigía `enableScripting` y una CSP sin `script-src`. KaTeX GHSA-238p-pmpm-9mq7, en 0.18.2. Los de Mermaid de 2026, en 11.16.1. `npm audit`: 0. Mermaid 12 queda fuera de v1 (decisión del usuario) |
 | A1-11 | 🟢 | `fsevents@2.3.3` aparecía como paquete con scripts sin aprobar (npm 11.17) | **Cerrado** (iteración 27): con npm 11.19, `npm ci` no avisa. npm ignora las opcionales que no aplican a la plataforma (npm/cli#9562) y en macOS solo cuenta `preinstall`/`install`/`postinstall` o un `binding.gyp`, y el paquete publicado no trae ninguno (solo su binario compilado). No hace falta denegarlo en `allowScripts` |
-| A1-12 | 🟢 | Un Markdown hecho a propósito (muchas listas cortas) bloquea la pestaña (cuadrático en `mdast-util-from-markdown`) | **Aceptado, ya conocido** (Fase 7, TAREAS 🟠): solo afecta a esa pestaña y nada sale del equipo |
+| A1-12 | 🟢 | Un Markdown hecho a propósito (muchas listas cortas) bloquea la pestaña (cuadrático en `mdast-util-from-markdown`) | **Cerrado** (iteración 29, Fase 13): era una regresión de micromark 4.0.3 (micromark#246); BPDF fija la 4.0.2 con un `override` y vuelve a ser lineal (200 KB de listas: 1,45 s en el navegador) |
 
 **Verificado y correcto.**
 
@@ -113,8 +111,16 @@ cerradas: no apareció ningún fallo de seguridad real que lo pidiera.
   verde para `/`, `/mermaid.html` y un módulo del marco; el recorrido con Mermaid (4
   diagramas, marco `sandbox="allow-scripts"`), Mermaid hostil (nada ejecutado), KaTeX (8
   fórmulas) y un PDF con cmaps: **cero errores, cero violaciones, ninguna petición
-  externa** y ningún almacenamiento creado. Lo nuevo de esta auditoría (la
-  `Permissions-Policy` ampliada) **no está desplegado**: se repite tras el push.
+  externa** y ningún almacenamiento creado.
+- **Producción con la Fase 12 desplegada** (`96fcafb`, *2026-10-03*): `cabeceras:verificar` en
+  verde, con la `Permissions-Policy` nueva en `/` y `/mermaid.html`. Un recorrido con Markdown,
+  «Copiar código», Mermaid, `mermaid-hostil.md`, KaTeX, PDF con cmaps, PDF con formulario,
+  editor y pegar con Ctrl+V da **cero errores, cero violaciones y ninguna petición externa**:
+  - el marco de Mermaid solo pidió sus 30 módulos a `/assets/`;
+  - la app no puede leer el portapapeles, y copiar y pegar funcionan;
+  - los campos del formulario se ven y no se rellenan;
+  - almacenamiento: solo `bpdf:prefs` y `bpdf:positions` (al cambiar de página), sin nombres
+    de fichero; ni cookies, `sessionStorage`, IndexedDB, cachés ni service workers.
 - **Cadena de suministro**: 531 entradas en el lockfile, todas de
   `registry.npmjs.org` y con `integrity`; motores con versión exacta (los rangos `^`
   son `react`, `react-dom`, `lucide-react`, `clsx` y `tailwind-merge`, que no procesan

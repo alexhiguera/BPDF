@@ -1,5 +1,6 @@
 import { type CDPSession, expect, type Page, test } from "@playwright/test";
 import { messages } from "../../src/i18n/messages";
+import { soloChromium } from "../navegadores";
 import { abrir, type Vigilancia } from "../vigilancia";
 
 /**
@@ -49,7 +50,9 @@ async function vivas(cdp: CDPSession, prototipo: string) {
 
 test("cambiar de documento desde dividido libera el anterior: ninguna tabla suya sigue viva", async ({
   page,
+  browserName,
 }) => {
+  soloChromium(browserName, "cuenta objetos del montón con el protocolo de depuración (CDP)");
   // CodeMirror guarda su último Range de medida en una variable de módulo; cuando el
   // ShadowRoot del editor colgaba del árbol de React, ese Range retenía toda la
   // vista previa desmontada (EditorMarkdown.tsx).

@@ -14,9 +14,24 @@ import { crearPdfGrande } from "../../tests/fixtures/pdf/modo-oscuro/generar.mjs
  *    transformación bloquea la interfaz.
  * 2. Documento de 300 páginas: apertura, recorrido rápido, lienzos vivos y
  *    memoria.
+ * 3. (Fase 13) Documento de 1000 páginas: primera página y tareas largas al navegar.
+ *
+ * **CPU limitada (Fase 13):** `BPDF_CPU=4 npm run bench:pdf` frena la CPU del
+ * renderizador ×4 con el protocolo de depuración (`Emulation.setCPUThrottlingRate`):
+ * una APROXIMACIÓN a un equipo modesto, no un equipo de verdad (no limita la GPU, la
+ * memoria ni el disco, y los workers no se frenan igual). Sin la variable, nada cambia.
  */
 const t = messages.pdf;
 const FIXTURE = "tests/fixtures/pdf/modo-oscuro/modo-oscuro.pdf";
+const CPU = Number(process.env.BPDF_CPU ?? 1);
+
+/** Limita la CPU de la página (solo si `BPDF_CPU` > 1). */
+async function limitarCpu(page: Page) {
+  if (!(CPU > 1)) return;
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU });
+}
+if (CPU > 1) console.log(`\nCPU limitada ×${CPU} (aproximación a un equipo modesto)`);
 
 async function abrirPdf(page: Page, nombre: string, buffer: Buffer): Promise<number> {
   await page.goto("/");
@@ -75,6 +90,7 @@ test("modo oscuro: worker frente a hilo principal", async ({ browser }) => {
     for (const sinWorker of [false, true]) {
       const ctx = await contexto(browser, dpr, sinWorker);
       const page = await ctx.newPage();
+      await limitarCpu(page);
       await abrirPdf(page, "modo-oscuro.pdf", readFileSync(FIXTURE));
       await page.getByRole("button", { name: t.viewSingle, exact: true }).click();
       for (const zoom of ["ancho", "200", "400"]) {
@@ -112,6 +128,7 @@ test("modo oscuro: worker frente a hilo principal", async ({ browser }) => {
 });
 
 test("documento de 300 páginas: apertura, recorrido y memoria", async ({ page }) => {
+  await limitarCpu(page);
   const ms = await abrirPdf(page, "grande.pdf", crearPdfGrande(300));
   const lector = page.getByTestId("lector-pdf");
   const visor = page.getByTestId("visor-pdf");
@@ -149,5 +166,42 @@ test("documento de 300 páginas: apertura, recorrido y memoria", async ({ page }
       `máx. ${Math.max(...muestras.map((m) => m.lienzos))} lienzos · máx. ` +
       `${Math.max(...muestras.map((m) => m.mib)).toFixed(1)} MiB de lienzos · heap JS ` +
       `${heap ? (heap / 2 ** 20).toFixed(1) : "?"} MiB`,
+  );
+});
+
+// Fase 13 (PLAN §11: primera página de un PDF de 1000 páginas < 1,5 s; ninguna tarea
+// larga > 200 ms al navegar). Las tareas largas se cuentan con `PerformanceObserver`.
+test("documento de 1000 páginas: primera página y tareas largas al navegar", async ({ page }) => {
+  await limitarCpu(page);
+  await page.addInitScript(() => {
+    const largas: number[] = [];
+    (window as unknown as { __largas: number[] }).__largas = largas;
+    new PerformanceObserver((l) => {
+      for (const e of l.getEntries()) largas.push(e.duration);
+    }).observe({ type: "longtask", buffered: true });
+  });
+  const ms = await abrirPdf(page, "mil.pdf", crearPdfGrande(1000));
+  const largasApertura = await page.evaluate(() =>
+    (window as unknown as { __largas: number[] }).__largas.splice(0),
+  );
+  const lector = page.getByTestId("lector-pdf");
+  await lector.click({ position: { x: 5, y: 5 } });
+  // Navegar: saltos con el teclado y con el campo de página, y zoom.
+  for (let i = 0; i < 20; i++) await page.keyboard.press("PageDown");
+  await listo(page, 21);
+  await page.getByLabel(t.pageInput).fill("500");
+  await page.getByLabel(t.pageInput).press("Enter");
+  await listo(page, 500);
+  // El foco sigue en el campo de página (ahí Fin mueve el cursor): vuelve al lector.
+  await lector.click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("End");
+  await listo(page, 1000);
+  for (let i = 0; i < 3; i++)
+    await page.getByRole("button", { name: t.zoomIn, exact: true }).click();
+  await page.waitForTimeout(800);
+  const largas = await page.evaluate(() => (window as unknown as { __largas: number[] }).__largas);
+  const max = (xs: number[]) => (xs.length ? Math.round(Math.max(...xs)) : 0);
+  console.log(
+    `\n1000 páginas: apertura y primera página ${ms} ms · tareas largas al abrir: ${largasApertura.length} (máx. ${max(largasApertura)} ms) · al navegar: ${largas.length} (máx. ${max(largas)} ms, > 200 ms: ${largas.filter((d) => d > 200).length})`,
   );
 });

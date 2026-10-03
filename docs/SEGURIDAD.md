@@ -4,7 +4,7 @@
 > Fases 2 (CSP, cabeceras, DOM), 3 (apertura de ficheros, §2.6), 4 (motor de PDF), 5
 > (visor PDF, §4), 7 (Markdown, §3), 7 bis (recursos locales de Markdown, §2.6 y §3) y 8
 > (fórmulas y diagramas, §2.1 y §3; *2026-09-30*); la Fase 12 los recorrió todos (*2026-10-03*,
-> [auditoria.md](auditoria.md), Auditoría 1: **implementada, pendiente de revisión**). Cada control indica la
+> [auditoria.md](auditoria.md), Auditoría 1; **cerrada** y verificada en producción). Cada control indica la
 > fase que lo implementa ([FASES.md](FASES.md)). Cuando un control exista, esa fase lo marca aquí como
 > implementado y enlaza su test. Las auditorías realizadas van a
 > [auditoria.md](auditoria.md).
@@ -256,8 +256,8 @@ característica desconocida).
 - Ningún fichero de `src/` lleva marcas bidireccionales invisibles («Trojan Source»: el
   código se lee distinto de como se ejecuta); donde hacen falta se escriben como escapes
   `\uXXXX`. Mismo test ✅ (Fase 3).
-- **Trusted Types (T-4): no se adopta en v1** (Fase 12, *2026-10-03*; pendiente de que el
-  usuario lo confirme). Medido con la build y todos los E2E: con
+- **Trusted Types (T-4): no adoptado en v1, riesgo aceptado** (Fase 12, *2026-10-03*;
+  decisión del usuario). Medido con la build y todos los E2E: con
   `require-trusted-types-for 'script'` fallan 49 de 116 (220 bloqueos `TrustedScriptURL`:
   el worker de pdf.js y el del modo oscuro), y el decodificador de entidades de micromark
   escribe `&nombre;` con `innerHTML`. Adoptarlo exige una política `default` propia que
@@ -265,6 +265,8 @@ característica desconocida).
   inventariados recibe HTML del documento ([auditoria.md](auditoria.md), A1-5), y Safari 26
   aplicaría la política en rutas de código que solo se han probado en Chromium. Se
   reevalúa tras la F13 (compatibilidad) o si una dependencia trae sumideros nuevos.
+  **Revisado tras la F13:** nada cambia el análisis (la compatibilidad no añadió sumideros;
+  WebKit, que aplica Trusted Types, es el motor con menos horas de prueba).
 - ids generados desde contenido (encabezados de Markdown) con prefijo `md-`: evita que un
   `id="location"` o `id="__proto__"` pise propiedades globales (DOM clobbering).
 
@@ -352,7 +354,7 @@ La CSP no cambia en esta fase: leer ficheros locales no necesita ninguna directi
 | Portapapeles | Solo escritura (`writeText`) tras un clic, del texto del documento; sin pedir permisos ni leer. En el editor (F9), pegar lo resuelve CodeMirror con el evento `paste` del usuario: BPDF no lee el portapapeles por su cuenta | ✅ 7 · ✅ 9 |
 | Texto escrito en el editor (F9) | El editor trabaja sobre texto: no lo interpreta ni lo convierte a HTML. La vista previa es el MISMO lector (`Contenido`, mismo pipeline, lista blanca, `url-policy`, recursos, KaTeX y Mermaid): lo escrito pasa por todos los controles de esta tabla. Editar no cambia los recursos (los entregados al abrir): `../fuera.png` sigue fuera y una imagen nueva no se carga | ✅ 9 (`edicion.test.tsx`, E2E con HTML, `javascript:`, SVG, KaTeX y Mermaid hostiles escritos en el editor) |
 | Guardar (F9) | `Platform.saveText`: el usuario elige siempre el destino (`showSaveFilePicker`) o recibe una descarga (`<a download>` con una URL `blob:` propia, revocada a los 30 s). El `FileSystemFileHandle` vive en memoria, solo el del documento actual; nunca se guarda. BPDF no escribe en el fichero abierto (en web no tiene acceso a él), no usa otras APIs de ficheros ni ve rutas | ✅ 9 (`guardar-web.test.ts`, E2E de descarga y de selector) |
-| Denegación de servicio (anidamiento extremo, tablas enormes, fórmulas recursivas) | Límite de tamaño de fichero (20 MiB); recorridos propios iterativos (sin recursión que dependa del contenido); `maxExpand` de KaTeX y `maxTextSize` de Mermaid (F8). **Conocido (Fase 7): muchas listas cortas son cuadráticas** en `mdast-util-from-markdown`: un documento hecho a propósito bajo el límite puede bloquear la pestaña mucho tiempo (solo esa pestaña; nada sale del equipo). Medido en [ARCHITECTURE.md](ARCHITECTURE.md) §4 quinquies; pendiente en TAREAS | 7 (medido), 8, 13 |
+| Denegación de servicio (anidamiento extremo, tablas enormes, fórmulas recursivas) | Límite de tamaño de fichero (20 MiB); recorridos propios iterativos (sin recursión que dependa del contenido); `maxExpand` de KaTeX y `maxTextSize` de Mermaid (F8). **Muchas listas cortas eran cuadráticas** (Fase 7): un documento hecho a propósito de 200 KB bloqueaba la pestaña más de un minuto. La Fase 13 encontró la causa, una regresión de micromark 4.0.3 (micromark#246), y fija la 4.0.2 (`overrides`, STACK.md): ahora es lineal (~3 ms/KB en el caso peor). Queda el coste normal de un documento enorme (1 MB, 3 s), con aviso visible | 7 (medido), 8, ✅ 13 |
 
 ### 3.2 Enlaces ✅ (Fase 7)
 
@@ -508,4 +510,5 @@ enlace bloqueado no hace nada. Casos:
 La tabla de controles de cada sección indica la fase. La Fase 12 recorrió este documento
 entero (*2026-10-03*), verificó cada control con su test y registró el resultado en
 [auditoria.md](auditoria.md) (Auditoría 1: 12 hallazgos; 5 cerrados con su test, 7
-aceptados con su motivo; ninguno 🔴 ni 🟠). **Pendiente de revisión con el usuario.**
+aceptados con su motivo; ninguno 🔴 ni 🟠). **Cerrada** el *2026-10-03*, verificada en
+producción.

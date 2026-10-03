@@ -563,8 +563,8 @@ que se puede medir tiene test; el resultado de la pasada está en la bitácora.
 Objetivo **WCAG 2.2 AA**.
 
 - Todo operable con teclado; orden de foco lógico; foco visible con `--rgb-accent`.
-- Barra con `role="toolbar"` (la **navegación con flechas** entre sus botones **no existe**:
-  cada botón es una parada de Tab; se evalúa en la Fase 13, decisión de la Fase 11); campo de
+- Barra con `role="toolbar"`: **una sola parada de Tab** y ← / → entre sus controles (Fase
+  13, patrón WAI-ARIA; Inicio y Fin siguen siendo los atajos del visor); campo de
   página con etiqueta; región
   `aria-live="polite"` para «Página 3 de 120» y «4 de 17 coincidencias».
 - La capa de texto de pdf.js deja el texto del PDF en el DOM: seleccionable y legible por
@@ -572,10 +572,12 @@ Objetivo **WCAG 2.2 AA**.
   documenta).
 - Markdown: HTML semántico (encabezados, listas, tablas con cabecera), `alt` de imágenes,
   KaTeX con su salida MathML, Mermaid con `aria-label` = código fuente resumido.
-- `prefers-reduced-motion` (ya en la plantilla); objetivos táctiles ≥ 24 px; nada depende
-  solo del color.
-- jest-axe en cada componente nuevo; axe en Playwright (`@axe-core/playwright`, dev) para
-  las pantallas completas en la Fase 13.
+- `prefers-reduced-motion` (ya en la plantilla); objetivos táctiles ≥ 24 px (el separador de
+  Dividido, desde la Fase 13: 24 px de área, línea de 6 px); nada depende solo del color.
+- jest-axe en cada componente nuevo; axe en Playwright (`@axe-core/playwright`, dev) en cada
+  pantalla y estado desde la Fase 13, **sin violaciones** (WCAG 2.0–2.2 A y AA). axe no es la
+  revisión entera: teclado y foco se prueban aparte (`e2e/specs/a11y.spec.ts`) y la prueba
+  con un lector de pantalla es manual ([ARCHITECTURE.md](ARCHITECTURE.md) §4 undecies).
 
 ## 11. Rendimiento
 
@@ -594,15 +596,31 @@ reales):
 - Mermaid y KaTeX: solo si el documento contiene bloques de ese tipo; Mermaid se
   renderiza al entrar en pantalla.
 
-**Esperan a tener evidencia** (se miden en la Fase 13 con el corpus de documentos
-grandes):
+**Umbrales y cifras (Fase 13, *2026-10-04*, Ryzen 7 5800X; detalle en
+[ARCHITECTURE.md](ARCHITECTURE.md) §4 undecies):**
 
-- Mover el pipeline de Markdown a un Web Worker (si un `.md` de ~5 MB bloquea > 200 ms).
-- Resaltado de código por bloque al entrar en pantalla.
-- Post-proceso del modo oscuro en WebGL o en un worker con `OffscreenCanvas`.
-- Virtualizar el render de Markdown muy largo.
-- Precalcular el texto de todas las páginas para la búsqueda (hoy pdf.js lo hace bajo
-  demanda con progreso).
+| Umbral | Medido |
+|---|---|
+| Primera página de un PDF de 1000 páginas < 1,5 s | ✅ 0,95 s (con la CPU frenada ×4: 1,3 s) |
+| Ninguna tarea larga > 200 ms al navegar un PDF | ✅ ninguna (×4: máx. 179 ms) |
+| Ninguna tarea larga > 200 ms al teclear | ✅ salvo la excepción de la Fase 9 (Dividido con 1 MB + KaTeX: máx. 224 ms en Chromium) y **WebKit en ese mismo caso (P50 ~400 ms: abierto)** |
+| Memoria estable al abrir y cerrar | ✅ el montón vuelve a 6–9 MiB, workers y URL `blob:` a 0 (`bench:memoria`, CDP) |
+| Arranque ≤ 150 KB gzip | ✅ 95,1 KB |
+
+**Las que esperaban a evidencia, decididas en la Fase 13:**
+
+- Mover el pipeline de Markdown a un Web Worker: **no en v1**. 1 MB tarda 3,0 s y el
+  análisis es la mitad; el worker no quita la otra mitad (React y la maquetación) y cambia la
+  arquitectura del lector. Lo que sí se hizo: quitar la regresión de micromark que hacía
+  cuadráticos los documentos con muchas listas.
+- Resaltado de código por bloque al entrar en pantalla: **no hace falta** (2000 bloques en
+  0,9 s).
+- Post-proceso del modo oscuro en WebGL o con `OffscreenCanvas`: **no hace falta** (con
+  worker, 8–60 ms de hilo principal por página; ×4, hasta 226 ms solo a 400 % y DPR 2).
+- Virtualizar el render de Markdown muy largo: **no en v1** (el índice, las anclas, `Ctrl+F`
+  y la sincronía del editor necesitan el documento entero).
+- Precalcular el texto de todas las páginas para la búsqueda: **no hace falta** (la búsqueda
+  bajo demanda, con progreso, no bloquea).
 
 ## 12. Testing
 
@@ -677,7 +695,7 @@ terceros sin licencia clara.
 | **T-1** | Estrategia de modo oscuro del PDF y, con ella, `PDFViewer` frente a visor propio. **Resuelta en la Fase 4:** recoloreado selectivo con las regiones de `recordImages`; exige visor propio sobre la API núcleo (D17, confirmada; [PDF_DARK_MODE_SPIKE.md](PDF_DARK_MODE_SPIKE.md) §11–12) | Fase 4 ✅ |
 | **T-2** | `@vitejs/plugin-react` sí o no. **Resuelta en la Fase 2: no** (Vite transforma el JSX solo; se renuncia a Fast Refresh; [STACK.md](STACK.md)) | Fase 2 ✅ |
 | **T-3** | `style-src` sin `'unsafe-inline'`. **Desde la Fase 2 la CSP ya no lo lleva.** pdf.js y KaTeX no lo necesitan (KaTeX, quitando el `style` que pone por atributo). **Mermaid sí**: resuelto en la Fase 8 sin tocar la CSP de la app, con un marco aislado que tiene su propia política (confirmado al empezar la fase; [SEGURIDAD.md](SEGURIDAD.md) §2.1). **Cerrada en la Fase 12** (*2026-10-03*): CSP definitiva sin él | Fases 4–8 ✅ · 12 ✅ |
-| **T-4** | Trusted Types (`require-trusted-types-for 'script'`) viable con pdf.js y Mermaid. **Medida en la Fase 12: no se adopta en v1** (pendiente de confirmar por el usuario). Rompe 49 de 116 E2E: los dos workers y el decodificador de entidades de micromark necesitarían una política `default` propia; ningún sumidero inventariado recibe HTML del documento ([SEGURIDAD.md](SEGURIDAD.md) §2.3, [auditoria.md](auditoria.md) A1-5) | Fase 12 (medida) · reevaluar tras la 13 |
+| **T-4** | Trusted Types (`require-trusted-types-for 'script'`) viable con pdf.js y Mermaid. **Medida en la Fase 12: no se adopta en v1, riesgo aceptado** (decisión del usuario, *2026-10-03*). Rompe 49 de 116 E2E: los dos workers y el decodificador de entidades de micromark necesitarían una política `default` propia; ningún sumidero inventariado recibe HTML del documento ([SEGURIDAD.md](SEGURIDAD.md) §2.3, [auditoria.md](auditoria.md) A1-5) | Fase 12 ✅ (no adoptada) · revisar tras la 13 |
 | ~~**T-5**~~ | ~~Electron Forge frente a electron-builder~~. **Ya no aplica** (D19: sin escritorio) | — |
 
 ## 15. Riesgos

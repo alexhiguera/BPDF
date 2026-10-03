@@ -26,6 +26,7 @@ import { messages } from "@/i18n/messages";
 import { cn } from "@/lib/utils";
 import { leerPagina, ZOOM_MAXIMO, ZOOM_MINIMO } from "@/pdf/visor/disposicion";
 import { ATAJOS_BOTON, anuncioDeAtajo, ID_CAMPO_PAGINA } from "./atajos";
+import { useBarraHerramientas } from "./barra-teclado";
 import type { Accion, EstadoVisor } from "./estado";
 
 const t = messages.pdf;
@@ -99,6 +100,9 @@ export function BarraHerramientas({
     }
   }, []);
   const continua = estado.vista === "continua";
+  // Una sola parada de Tab y ← / → entre controles (Fase 13, `barra-teclado.ts`).
+  const barra = useRef<HTMLDivElement>(null);
+  const teclado = useBarraHerramientas(barra);
   return (
     <div className="flex flex-col border-b border-border bg-app">
       <div className="flex items-center gap-2 px-3 pt-2">
@@ -115,9 +119,12 @@ export function BarraHerramientas({
         </Boton>
       </div>
       <div
+        ref={barra}
         role="toolbar"
         aria-label={t.toolbar}
         className="flex flex-wrap items-center gap-1 px-2 py-1"
+        onFocus={teclado.onFocus}
+        onKeyDown={teclado.onKeyDown}
       >
         <Boton
           etiqueta={estado.miniaturas ? t.hideThumbnails : t.showThumbnails}
@@ -276,8 +283,16 @@ function CampoPagina({ estado, despachar }: { estado: EstadoVisor; despachar: Di
   const [invalido, setInvalido] = useState(false);
   const idAviso = useId();
   const idTotal = useId();
+  /**
+   * ¿Hay algo escrito sin confirmar? Entonces el campo NO sigue a la página actual:
+   * si la vista aún se mueve mientras se escribe (desplazamiento por inercia, o un
+   * evento de desplazamiento que llega tarde), lo escrito se perdía y Intro iba a la
+   * página que hubiera en ese momento (Fase 13; lo destapó WebKit en los E2E).
+   */
+  const editado = useRef(false);
 
   useEffect(() => {
+    if (editado.current) return;
     setTexto(String(estado.pagina));
     setInvalido(false);
   }, [estado.pagina]);
@@ -288,9 +303,16 @@ function CampoPagina({ estado, despachar }: { estado: EstadoVisor; despachar: Di
       setInvalido(texto.trim() !== String(estado.pagina));
       return false;
     }
+    editado.current = false;
     setInvalido(false);
     if (pagina !== estado.pagina) despachar({ tipo: "ir", pagina });
     return true;
+  };
+  /** Vuelve a mostrar la página actual y deja de considerar lo escrito. */
+  const restaurar = () => {
+    editado.current = false;
+    setTexto(String(estado.pagina));
+    setInvalido(false);
   };
 
   return (
@@ -305,16 +327,16 @@ function CampoPagina({ estado, despachar }: { estado: EstadoVisor; despachar: Di
         aria-describedby={invalido ? `${idTotal} ${idAviso}` : idTotal}
         aria-invalid={invalido || undefined}
         value={texto}
-        onChange={(e) => setTexto(e.target.value)}
+        onChange={(e) => {
+          editado.current = true;
+          setTexto(e.target.value);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") confirmar();
-          if (e.key === "Escape") {
-            setTexto(String(estado.pagina));
-            setInvalido(false);
-          }
+          if (e.key === "Escape") restaurar();
         }}
         onBlur={() => {
-          if (!confirmar()) setTexto(String(estado.pagina));
+          if (!confirmar()) restaurar();
         }}
         className={cn(
           "h-8 w-14 rounded-md border bg-elevated px-2 text-center tabular-nums text-fg",

@@ -28,6 +28,20 @@ permisos mínimos. Hallazgo A1-9 de [auditoria.md](auditoria.md).
 
 **Desbloqueo:** la primera ejecución real de los workflows en GitHub.
 
+### Fuera de v1 (decisiones del usuario, *2026-10-03*)
+
+Ideas que se conservan pero que v1 no hará. **Desbloqueo:** que el usuario las pida.
+
+- **Mermaid 12** (la v1 se queda en 11.17.2): evaluarla con `mermaid-hostil.md` y
+  `formulas-diagramas.spec.ts` antes de aceptarla.
+- **Buscar dentro del editor** (`@codemirror/search`): `Ctrl+F` del navegador no encuentra el
+  texto que CodeMirror no tiene pintado.
+- **Fondo claro opcional para imágenes transparentes** en la hoja oscura de Markdown.
+- **«Oscurecer también las imágenes»** del PDF (diagramas raster con fondo blanco).
+- **Markdown enorme más rápido**: analizar en un worker o pintar por partes (estudiado en la
+  Fase 13: ninguna es proporcionada para v1; ARCHITECTURE §4 undecies).
+- **Tema claro** (D10: no en v1).
+
 ### Abrir `engines` a Node 26
 
 `engines` admite solo Node 24. Abrirlo cuando Node 26 sea LTS, junto con `.nvmrc` y CI.

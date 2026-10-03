@@ -308,8 +308,8 @@ lienzo es `aria-hidden` y el texto accesible es el de la capa de texto.
 - Con la contraseña, el gestor de contraseñas del navegador podría ofrecer guardarla (el
   campo es `type="password"`, con `autocomplete="off"` y sin envío de formulario, pero la
   decisión final es del navegador). BPDF no la guarda en ningún sitio.
-- Pantalla completa, atajos y contraseña probados en Chromium (Playwright); Firefox y Safari
-  sin probar.
+- Pantalla completa, atajos y contraseña probados en Chromium, Firefox y WebKit (Playwright,
+  Fase 13: §4 undecies); otras distribuciones de teclado y Safari en macOS e iOS, a mano.
 - En la vista continua, el ajuste al ancho o a la página usa el tamaño **típico** del
   documento (la mediana), no el de la página actual: una página apaisada no cambia el zoom
   de todas.
@@ -402,10 +402,10 @@ propio recorrido de Playwright); varía entre ejecuciones:
 |---|---|---|
 | 1 KB (`basico.md`) | 0,33 s | 57 |
 | 100 KB de texto mixto | 0,5–0,9 s | 7 300 |
-| 1 MB de texto mixto (pocas listas) | 3,3–7,3 s | 72 000 |
+| 1 MB de texto mixto (pocas listas) | 3,3–7,3 s (Fase 13: 3,0 s) | 72 000 |
 | 5000 encabezados | 0,6–1,0 s | 5 000 |
 | 2000 bloques de código resaltados | 0,8–1,1 s | 26 700 |
-| Listas cortas: 50 / 100 / 200 KB | 0,5 / 1,0–1,3 / 2,3–2,8 s | hasta 19 800 |
+| Listas cortas: 50 / 100 / 200 KB | 0,5 / 1,0–1,3 / 2,3–2,8 s (Fase 13, con micromark 4.0.2: 0,43 / 0,98 / 1,45 s) | hasta 19 800 |
 
 En Node, el pipeline completo es lineal (~2 s/MB) salvo las listas. Un perfil de 1 MB
 no muestra un punto caliente propio: el tiempo se reparte entre el tokenizador de
@@ -416,10 +416,11 @@ eso:
   y el contenido un fotograma después (`requestAnimationFrame` + `setTimeout`): la pantalla
   no se queda congelada sin señal. Por debajo, el aviso solo sería un parpadeo.
 - **No se virtualiza** ni se parsea en un worker: bajar de 1 s con 1 MB, como pedía la
-  Fase 7, exige uno de los dos, y es un cambio de arquitectura (TAREAS, Fase 13).
-- **Listas cortas y muchas: cuadrático** en `mdast-util-from-markdown` (STACK.md). Con el
-  límite de apertura de 20 MiB, un documento hecho a propósito puede bloquear la pestaña
-  mucho tiempo (TAREAS).
+  Fase 7, exige uno de los dos, y es un cambio de arquitectura. La Fase 13 lo estudió con
+  cifras y propone mantenerlo (§4 undecies).
+- **Listas cortas y muchas: ya no es cuadrático** (Fase 13). Era una regresión de micromark
+  4.0.3 (no de `mdast-util-from-markdown`, como se creyó en la Fase 7); BPDF fija micromark
+  en 4.0.2 (§4 undecies, STACK.md).
 
 **Búsqueda (futura).** El contenido es texto normal dentro de un `<article>` propio: una
 búsqueda podrá recorrer sus nodos de texto y resaltar sin tocar el pipeline.
@@ -429,7 +430,7 @@ búsqueda podrá recorrer sus nodos de texto y resaltar sin tocar el pipeline.
 - Imágenes: solo las locales entregadas con el documento (§4 sexies).
 - Un enlace a otro fichero del documento no se abre.
 - Fórmulas y diagramas: §4 septies.
-- Rendimiento con documentos grandes y con muchas listas (arriba).
+- Rendimiento con documentos grandes (arriba).
 
 ### 4 sexies. Recursos locales de un Markdown (Fase 7 bis)
 
@@ -881,8 +882,11 @@ en Dividido (iteraciones 16–18).
   `@codemirror/search` no se incluyó).
 - Guardar en web siempre pide destino la primera vez de cada documento (el navegador no da
   acceso al fichero abierto). Firefox y Safari no tienen `showSaveFilePicker`: descargan.
-- Probado en Chromium. El Shadow DOM con hojas construibles funciona en Firefox y Safari
-  16.4+, pero no se ha comprobado.
+- Probado en Chromium, Firefox y WebKit (Fase 13, §4 undecies): Shadow DOM con hojas
+  construibles, escribir y pegar sobre una selección, deshacer, Ctrl/⌘+S y la descarga. **En
+  WebKit, Dividido con 1 MB + KaTeX no se puede usar** (P50 ~400 ms por tecla; medido en
+  Linux, falta Safari): pendiente de decisión.
+- IME: componer sobre una selección, comprobado en Chromium (CDP); en Firefox y Safari, a mano.
 
 ### 4 nonies. Preferencias y posición de lectura (Fase 10)
 
@@ -986,6 +990,145 @@ visor PDF, el lector de Markdown o el diálogo. El arranque solo suma el botón 
   pestaña no es una petición de la app).
 - **Arranque:** +1,5 KB gzip en la fase (94,8 KB): `App` importa `atajos.ts` para anunciar
   Ctrl/⌘+O, y los componentes `Cargando` y `Creditos`.
+
+### 4 undecies. Accesibilidad, rendimiento y compatibilidad (Fase 13)
+
+> **Implementada, pendiente de revisión** (*2026-10-04*, iteración 29). Especificación:
+> [FASES.md](FASES.md), Fase 13. Cifras en PLAN §10 y §11; bitácora, iteración 29.
+
+**Teclado y foco.**
+
+- **La barra del visor PDF es una sola parada de Tab** (patrón «toolbar» de WAI-ARIA,
+  `src/app/pdf/barra-teclado.ts`): ← / → pasan de un control a otro y dan la vuelta; en el
+  campo de página mueven el cursor y solo salen de él desde un borde del texto. Los botones
+  desactivados se saltan, y la parada sigue al último control usado (o al más cercano si se
+  desactiva). **Inicio y Fin no son de la barra**: siguen siendo los atajos del visor
+  (primera y última página), como antes; ← / → dentro de la barra no cambian de página.
+- **El campo de página no pierde lo escrito** si la página cambia mientras se escribe
+  (desplazamiento por inercia, o un evento que llega tarde): solo sigue a la página actual
+  mientras no hay nada escrito sin confirmar. Lo destapó WebKit en los E2E (2 de 8
+  ejecuciones iban a la página que no era).
+- **Separador de Dividido:** se ve como una línea de 6 px, pero el área de pulsación mide
+  24 px (WCAG 2.5.8), con `touch-action: none` para que arrastrarlo con el dedo no desplace
+  la página. El diseño cambia en 18 px de ancho; nada más.
+- **Diálogos** (`<dialog>` modales): foco inicial dentro, el resto de la página inerte, Esc
+  cierra y el foco vuelve a donde estaba. «Cambios sin guardar» ahora lo devuelve también (al
+  editor, que vive en un Shadow DOM: se busca el elemento dentro de él). **Elegir Markdown**
+  (una vista, no un diálogo) se cancela también con Esc y deja el foco en el título del
+  documento o en `<main>`, no en `<body>`.
+- **Editor:** el área editable lleva `tabindex="0"` explícito (ya era enfocable; sin él, axe
+  daba el área desplazable por inalcanzable con el teclado).
+- **Lectores de pantalla, revisión semántica** (sin ARIA de más): estado vacío con encabezado
+  y botones con nombre; visor con `role="toolbar"` con nombre, campo de página etiquetado y
+  estado en `aria-live`; búsqueda como `searchbox` con su recuento en una región de estado;
+  editor `role="textbox"` multilínea con etiqueta que dice cómo salir; separador con valor y
+  límites; Markdown con HTML semántico, índice en un `<nav>` con nombre, fórmulas con MathML
+  y diagramas como `<img alt>`; Preferencias con `fieldset`/`legend` y etiquetas; carga con
+  `aria-busy` y «Preparando el documento…»; errores con `role="alert"`. La prueba con NVDA o
+  VoiceOver es manual (TAREAS).
+- **axe** (`@axe-core/playwright`, WCAG 2.0–2.2 A y AA) sin violaciones en cada pantalla y
+  estado: vacía (también a 375 px), error de apertura, visor PDF con búsqueda y miniaturas,
+  ayuda de atajos, contraseña, Preferencias, Markdown con índice, código y diagramas, editor
+  en Edición y en Dividido, cambios sin guardar y elegir Markdown (`e2e/specs/a11y.spec.ts`).
+  axe no es «accesible»: el teclado y el foco se prueban aparte en el mismo fichero.
+- **Movimiento reducido y contraste:** `prefers-reduced-motion` anula animaciones y
+  transiciones (`globals.css`); BPDF no tiene desplazamientos suaves. Contraste de los tokens,
+  medido en `tests/unit/tokens.test.ts`.
+
+**Compatibilidad.** La misma suite E2E, contra la misma build, corre en Firefox y WebKit
+(`npm run test:e2e:compat`, `playwright.compat.config.ts`). Lo que solo existe en Chromium se
+salta allí **con su motivo** (`e2e/navegadores.ts`), y los avisos de consola de Firefox que no
+son fallos de BPDF están listados con el suyo (`AVISOS_CONOCIDOS`, `e2e/vigilancia.ts`).
+
+| Recorrido | Chromium | Firefox | WebKit |
+|---|---|---|---|
+| Abrir (selector, arrastre, Ctrl/⌘+O), errores | ✅ | ✅ | ✅ |
+| Visor PDF: oscuro, búsqueda, selección y copia, miniaturas, contraseña, pantalla completa, atajos, enlaces, cerrar a mitad de pintar | ✅ | ✅ | ✅ |
+| Formularios PDF visibles y no rellenables (D14) | ✅ | ✅ | ✅ |
+| Markdown: lectura, código y copiar, índice, enlaces, contenido hostil | ✅ | ✅ | ✅ |
+| Recursos locales: varios ficheros, carpeta, subcarpetas, traversal | ✅ | ✅ | ✅ |
+| KaTeX y Mermaid (marco aislado: módulos en CORS, origen opaco, CSP, hostil, sin red) | ✅ | ✅ | ✅ |
+| Editor: CodeMirror en Shadow DOM, escribir y pegar sobre una selección, deshacer, Ctrl/⌘+S y descarga, Dividido, KaTeX y Mermaid | ✅ | ✅ | ✅ |
+| IME (composición) sobre una selección | ✅ (CDP) | manual | manual |
+| `Permissions-Policy` (`clipboard-read`) | ✅ | — (no la aplica) | — (no al portapapeles) |
+| Bloques saltados con `content-visibility` (observables) | ✅ | — | — |
+| `beforeunload` sin cambios | ✅ | ✅ | manual (Playwright no cierra con `runBeforeUnload`) |
+| Memoria (CDP) | ✅ | — | — |
+
+Diferencias de los navegadores que no son fallos de BPDF (medidas):
+
+- Firefox avisa de que aplica `frame-ancestors` en vez de `X-Frame-Options`, del MathML de
+  `\mathbb` (obsoleto) y del desplazamiento sincronizado de Dividido, y anota en consola el
+  SVG que el marco de Mermaid rechaza por no ser XML válido (Chromium lo rechaza en silencio).
+  Abrir `/mermaid.html` como página hace que pida `/favicon.ico`, que su CSP bloquea.
+- Firefox sirve desde su caché de imágenes una imagen ya pintada con una URL `blob:` aunque
+  esa URL esté revocada (medido con una imagen cualquiera, sin BPDF). BPDF las revoca todas
+  igual (comprobado en los tres).
+- Safari sin pantalla completa (iPhone): el botón no aparece (`pantallaCompleta === null`).
+
+**Rendimiento, medido** (Ryzen 7 5800X, Chromium salvo que se diga; PLAN §11):
+
+| Medida | Cifra |
+|---|---|
+| PDF de 1000 páginas: primera página | **0,95 s** (objetivo < 1,5 s); tareas largas al navegar: ninguna > 200 ms |
+| PDF de 300 páginas: primera página · recorrido rápido | 0,9 s · 2,6 s, máx. 2 lienzos |
+| Modo oscuro por página (worker), hilo principal bloqueado | 8–60 ms (DPR 1 y 2, hasta 400 %) |
+| Con la CPU frenada ×4 (aproximación a un equipo modesto) | 1000 páginas: 1,3 s; oscuro, hilo principal 28–226 ms (el máximo a 400 % y DPR 2); 300 páginas: 1,1 s |
+| Markdown 1 MB de texto (hasta ver el primer encabezado) | **3,0 s** (F7: 3,3–7,3 s) |
+| Markdown, listas cortas 50 / 100 / 200 KB | 0,43 / 0,98 / **1,45 s**, lineal (F7: 200 KB en 2,3–2,8 s, y creciendo ×3 al duplicar) |
+| Editor: teclear, Dividido 1 MB + KaTeX (la excepción de la F9) | P95 112, máx. 224 ms (F9: P95 88–96, máx. 176–272): sin cambios |
+| Editor en Firefox: Dividido 1 MB + KaTeX | P95 32, máx. 40 ms |
+| Editor en WebKit: 1 MB en Edición y Dividido | máx. 32–48 ms |
+| **Editor en WebKit: Dividido 1 MB + KaTeX** | **P50 392 ms, P95 1,2 s, máx. 8,1 s por tecla** (abajo) |
+
+**Memoria, medida con CDP** (`npm run bench:memoria`; recolección forzada antes de cada
+medida, nunca `performance.memory`): al cerrar, el montón vuelve de 44–63 MiB (Markdown de
+1 MB, con KaTeX o Mermaid, leído y en Dividido) a 6–9 MiB; los workers de pdf.js y del modo
+oscuro (2 con un PDF abierto) pasan a 0; las URL `blob:` vivas, a 0; los documentos del marco
+de Mermaid, de 4 a 1; los escuchadores, al mismo número en cada ciclo. Lo único que crece
+entre aperturas son ~10 nodos y ~0,2 MiB por apertura: el `<input type="file">` de cada
+selector, retenido por la interceptación del selector de Playwright y el protocolo de
+depuración (BPDF ya no guarda nada de él; ver abajo). **Corregido en la fase:** el escuchador
+de «cancel» del selector se quedaba colgado del `<input>` tras elegir (uno por apertura).
+
+**Listas cuadráticas: era una regresión de micromark 4.0.3, no de BPDF ni de
+`mdast-util-from-markdown`.** Perfil del caso mínimo (`- n` + párrafo, repetido): el 63 % del
+tiempo en `EditMap.consume` de `micromark-util-edit-map` (nuevo en 4.0.3, publicada el
+*2026-09-26*), que reconstruye la lista de eventos entera en cada uso: una vez por elemento de
+lista, cita o encabezado setext. Es el issue upstream **micromark#246** (abierto, sin
+respuesta). Con micromark 4.0.2 el tokenizado vuelve a ser lineal (Node, 400 KB de listas:
+25 s → 2,6 s; 181 KB del caso mínimo: 52 s → 2,5 s). BPDF fija `micromark` en **4.0.2** con un
+`override` (STACK.md); 4.0.3 solo traía un arreglo menor de énfasis y esta optimización. Se
+quita cuando micromark publique el arreglo (TAREAS).
+
+**Markdown de 1 MB: se queda como está (decisión propuesta, pendiente de revisión).** 3,0 s
+hasta ver el documento, con «Preparando el documento…» por encima de 100 KB; en Node, el
+análisis (micromark + árbol + hast) es ~1,5 s de esos 3 y el resto es React creando ~72 000
+elementos y la primera maquetación. Opciones, medidas o razonadas:
+
+| Opción | Gana | Cuesta |
+|---|---|---|
+| 1. Mantener y documentar | Nada | Nada; 1 MB sigue en ~3 s (5 MB, ~15 s si escala igual: no se ha medido) con un aviso visible |
+| 2. Analizar en un worker | ~1,5 s de bloqueo de los 3 | Arquitectura nueva: el árbol vuelve por `postMessage` (copia de ~72 000 nodos), cancelación propia, el lector deja de ser un componente síncrono; la CSP ya lo permite (`worker-src 'self'`). KaTeX, Mermaid y recursos no cambian (van después, en el hilo principal), pero el editor tendría vista previa asíncrona en todos los tamaños |
+| 3. Pintar por partes | La primera pantalla antes | El índice, las anclas, `Ctrl+F` y la sincronía del editor necesitan el documento entero; mucho código para un caso raro |
+| 4. Bajar el límite (20 MiB) | Acota el peor caso | No mejora 1 MB; cambia lo que el usuario puede abrir (decisión de producto) |
+
+Ninguna es una mejora clara y proporcionada para v1: la 2 no quita la mitad del tiempo y la 3
+toca medio lector. Se propone mantenerlo, con la regresión de micromark ya corregida.
+
+**Lo que queda abierto (para revisar):**
+
+- **WebKit, Dividido con 1 MB + KaTeX: inutilizable** (P50 392 ms por tecla; en Chromium,
+  la excepción aceptada en la F9 es P95 112 ms). Medido con el WebKit de Playwright en Linux,
+  no con Safari en macOS: hay que confirmarlo a mano. Firefox no lo sufre. No se toca en esta
+  fase: es la misma excepción de la F9, mucho peor en un motor; la salida probable es pausar
+  la vista previa (o el modo Dividido) con KaTeX en WebKit, y eso es una decisión.
+- El `<input type="file">` retenido entre aperturas solo se ha medido con las herramientas de
+  depuración abiertas (las que permiten medirlo): fuera de ellas no se puede observar.
+
+**Trusted Types (T-4), revisado tras la compatibilidad:** nada cambia el análisis de la
+Fase 12 (sigue sin adoptarse en v1). La compatibilidad no añadió sumideros nuevos, y WebKit
+—que aplica Trusted Types desde Safari 26— es justo el motor con menos horas de prueba.
 
 ### 5. La menor complejidad que cumpla los requisitos
 
