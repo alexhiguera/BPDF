@@ -1,0 +1,79 @@
+name: Informar de un fallo
+description: Algo de BPDF no funciona como debería.
+title: "[Fallo] "
+labels: ["fallo"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por avisar. **No adjuntes documentos con datos personales o confidenciales**: este issue es público. Si el fallo solo se ve con un documento concreto, crea uno de ejemplo mínimo que lo reproduzca, o descríbelo.
+
+        ¿Es una vulnerabilidad de seguridad? **No la publiques aquí**: sigue [SECURITY.md](https://github.com/alexhiguera/BPDF/blob/main/SECURITY.md).
+  - type: textarea
+    id: que-pasa
+    attributes:
+      label: Qué pasa
+      description: Qué ves, y qué esperabas ver en su lugar.
+      placeholder: Al buscar «camión» en un PDF, no aparece ninguna coincidencia, pero la palabra está en la página 3.
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducirlo
+      placeholder: |
+        1. Abre un PDF con…
+        2. Pulsa…
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Comportamiento esperado
+    validations:
+      required: true
+  - type: dropdown
+    id: tipo-documento
+    attributes:
+      label: Tipo de documento
+      options:
+        - PDF
+        - Markdown
+        - Markdown con imágenes o carpeta
+        - Ninguno (la interfaz, Preferencias…)
+    validations:
+      required: true
+  - type: input
+    id: navegador
+    attributes:
+      label: Navegador y versión
+      placeholder: Firefox 131, Chrome 129, Safari 18…
+    validations:
+      required: true
+  - type: input
+    id: sistema
+    attributes:
+      label: Sistema operativo
+      placeholder: Windows 11, macOS 15, Ubuntu 24.04, iOS 18…
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión de BPDF
+      description: Está en Preferencias → «Acerca de BPDF».
+      placeholder: "1.0.0"
+  - type: textarea
+    id: consola
+    attributes:
+      label: Errores de la consola (si los hay)
+      description: En las herramientas de desarrollo del navegador (F12) → Consola. Revisa que no incluyan contenido de tus documentos antes de pegarlos.
+      render: text
+  - type: checkboxes
+    id: privacidad
+    attributes:
+      label: Comprobación
+      options:
+        - label: No he adjuntado ni pegado documentos o datos personales o confidenciales.
+          required: true

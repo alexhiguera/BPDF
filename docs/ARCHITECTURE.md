@@ -979,7 +979,8 @@ visor PDF, el lector de Markdown o el diálogo. El arranque solo suma el botón 
   usan los lectores de pantalla y los tests. Un atajo de una tecla desactivado no se anuncia.
 - **«Acerca de» dentro de Preferencias**, no como botón propio: no añade nada a la cabecera
   estrecha ni al arranque (el diálogo se carga a demanda). La versión y la licencia salen de
-  `package.json` por `define` al compilar.
+  `package.json` por `define` al compilar. Desde la Fase 16 enlaza al repositorio
+  (`project.repositoryUrl`), con el mismo mecanismo que la mención a R3ZON.
 - **Favicon SVG con los colores de los tokens escritos** (un SVG de favicon no lee las
   propiedades CSS de la página); `tests/unit/favicon.test.ts` comprueba que coinciden.
 - **D12, medido:** a 375 px ninguna pantalla desplaza en horizontal y ningún control de la

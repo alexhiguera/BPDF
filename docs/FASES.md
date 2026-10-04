@@ -55,7 +55,7 @@ web); conserva su número, sin trabajo pendiente.
 | 13 | Accesibilidad y rendimiento | Los tests viven en cada fase; esta fase **mide** con el corpus grande y corrige. ✅ **Cerrada** (*2026-10-04*) |
 | 14 | ~~Electron: aplicación~~ | **Cancelada** el *2026-10-03*: BPDF es solo una aplicación web (D19) |
 | 15 | Distribución web | Incluye la publicación web (antes no tenía fase). **Reescrita** el *2026-10-03* sin la parte de escritorio (D19). ✅ **Cerrada** (*2026-10-04*), verificada en producción |
-| 16 | Open source y documentación final | Igual; la licencia ya existe desde F1. **Siguiente y última de v1** (1.0.0 al cerrarla) |
+| 16 | Open source y documentación final | Igual; la licencia ya existe desde F1. Última de v1. 🚧 **Implementada**, pendiente de publicación final (*2026-10-04*) |
 
 Paralelizables (si hay dos sesiones a la vez): **F7–F9** con **F5–F6**. Todas tocan
 `src/app/App.tsx` en un punto (montar el visor en lugar de `DocumentSummary`, ya hecho en F5 y F7): conflicto
@@ -1391,6 +1391,18 @@ con el alcance de la F16).
 ---
 
 ## Fase 16 — Open source y documentación final
+
+> **IMPLEMENTADA / PENDIENTE DE PUBLICACIÓN FINAL** (*2026-10-04*, iteración 34). Hecho:
+> README, `NOTICE`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md` (Contributor
+> Covenant 2.1), plantillas de issue y PR; enlace al repositorio en «Acerca de»;
+> `public_docs/` completo (34 páginas, `_meta/` con `identidad-visual.md`) con el validador
+> ampliado al contrato del hub; GitHub Wiki generada desde `public_docs/`
+> (`npm run wiki:generar`); versión **1.0.0**. Precisado frente al alcance de abajo, por
+> decisión del usuario: el enlace al repositorio va **solo en «Acerca de»** (no en la mención
+> al pie); el README no lleva capturas; la Wiki y `docs.r3zon.com` quedan **preparados, no
+> publicados**. Falta, y lo hace el usuario: commit y push, hacer público el repositorio,
+> publicar la Wiki y la documentación, la etiqueta `v1.0.0` y la GitHub Release
+> ([DEPLOYMENT.md](DEPLOYMENT.md), «Publicación final»).
 
 **Objetivo.** Dejar el repositorio listo para contribuciones externas.
 

@@ -57,7 +57,14 @@ export function comprobarIdentidad({ raizRepo, proyecto }) {
     const app = `https://${proyecto.domain}`;
     if (entidad.sitioProducto !== app) err(f, "sitioProducto", entidad.sitioProducto, app);
     for (const [k, id] of Object.entries(entidad.ids ?? {})) {
-      if (typeof id !== "string" || !id.startsWith(`${app}/#`)) {
+      // La organización es la entidad de SU web (p. ej. `https://www.r3zon.com/#organization`):
+      // todos sus productos la referencian con el mismo `@id` (Fase 16). El sitio y la
+      // aplicación sí son del dominio del producto.
+      if (k === "organization") {
+        if (typeof id !== "string" || !/^https:\/\/[^/]+\/#organization$/.test(id)) {
+          err(f, "ids.organization", id, "https://<web de la organización>/#organization");
+        }
+      } else if (typeof id !== "string" || !id.startsWith(`${app}/#`)) {
         err(f, `ids.${k}`, id, `${app}/#${k === "softwareApplication" ? "software" : k}`);
       }
     }

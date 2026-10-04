@@ -21,6 +21,9 @@ blob-report/
 graphify-out/
 .claude/settings.local.json
 
+# GitHub Wiki generada desde public_docs/ (npm run wiki:generar): se publica en su propio repo
+wiki/
+
 # Sistema / editores
 .DS_Store
 Thumbs.db

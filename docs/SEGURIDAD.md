@@ -473,6 +473,7 @@ enlace bloqueado no hace nada. Casos:
   | Abrir un enlace de un Markdown o de un PDF | Su URL (`http:`, `https:`, `mailto:`), en pestaña nueva sin `opener` ni `Referer` | El usuario hace clic en él (`Platform.openExternal` revalida la URL) |
   | «Abrir fuera» una imagen remota bloqueada de un Markdown | Su URL, igual que un enlace | El usuario hace clic en el enlace del marcador; la imagen nunca se pide sola |
   | Crédito «R3ZON» (pantalla vacía) | `https://r3zon.com/`, igual que un enlace | El usuario hace clic en él |
+  | «Código fuente en GitHub» («Acerca de», Fase 16) | La URL del repositorio, igual que un enlace | El usuario hace clic en él |
   | Guardar un Markdown | Un fichero local que elige el usuario (o una descarga) | El usuario pulsa «Guardar» |
 
   Nada más: ni `fetch` propio, ni telemetría, ni fuentes o imágenes remotas, ni el

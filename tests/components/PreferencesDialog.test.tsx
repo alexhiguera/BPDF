@@ -15,9 +15,10 @@ const prefs = () => JSON.parse(localStorage.getItem("bpdf:prefs") ?? "null");
 
 function montar() {
   const onCerrar = vi.fn();
-  const utils = render(<PreferencesDialog onCerrar={onCerrar} />);
+  const onOpenExternal = vi.fn();
+  const utils = render(<PreferencesDialog onCerrar={onCerrar} onOpenExternal={onOpenExternal} />);
   const dialogo = screen.getByRole("dialog", { name: t.title });
-  return { ...utils, onCerrar, dialogo };
+  return { ...utils, onCerrar, onOpenExternal, dialogo };
 }
 
 describe("PreferencesDialog (Fase 10)", () => {
@@ -130,7 +131,27 @@ describe("PreferencesDialog (Fase 10)", () => {
 });
 
 describe("PreferencesDialog: «Acerca de» (Fase 11)", () => {
-  it("muestra la versión y la licencia de package.json y la frase de privacidad, sin enlaces", async () => {
+  it("«Acerca de» enlaza solo al repositorio, y el clic va al mecanismo externo de la plataforma", () => {
+    const { dialogo, onOpenExternal } = montar();
+    const acerca = within(dialogo).getByRole("region", { name: t.about.title(project.name) });
+    // Un solo enlace, al repositorio de project.ts (Fase 16).
+    expect(within(acerca).getAllByRole("link")).toHaveLength(1);
+    const enlace = within(acerca).getByRole("link", { name: t.about.repository });
+    expect(project.repositoryUrl).toBe("https://github.com/alexhiguera/BPDF");
+    expect(enlace).toHaveAttribute("href", project.repositoryUrl);
+    expect(enlace).toHaveAttribute("target", "_blank");
+    expect(enlace).toHaveAttribute("rel", "noopener noreferrer");
+    // El clic no navega (se cancela) y lo abre la plataforma, que revalida la URL.
+    expect(fireEvent.click(enlace)).toBe(false);
+    expect(onOpenExternal).toHaveBeenCalledExactlyOnceWith(project.repositoryUrl);
+    // El clic central se anula: abriría la URL fuera de ese mecanismo.
+    expect(
+      fireEvent(enlace, new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 })),
+    ).toBe(false);
+    expect(onOpenExternal).toHaveBeenCalledTimes(1);
+  });
+
+  it("muestra la versión y la licencia de package.json y la frase de privacidad", async () => {
     const paquete = JSON.parse(readFileSync("package.json", "utf8")) as {
       version: string;
       license: string;
@@ -141,7 +162,6 @@ describe("PreferencesDialog: «Acerca de» (Fase 11)", () => {
     expect(acerca).toHaveTextContent(t.about.version(paquete.version));
     expect(acerca).toHaveTextContent(t.about.license(paquete.license));
     expect(acerca).toHaveTextContent(messages.emptyState.privacy);
-    expect(within(acerca).queryAllByRole("link")).toHaveLength(0);
     expect(within(acerca).getByRole("heading", { level: 3 })).toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();
   });

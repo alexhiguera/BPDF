@@ -13,7 +13,9 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 | CSP y cabeceras de seguridad | ✅ F2 (base; se amplía por fase) · ✅ F12 (CSP definitiva, `Permissions-Policy` ampliada; verificadas en producción) | `src/config/security-headers.ts` |
 | Tests: unitarios, componentes, a11y, guardarraíles, E2E | ✅ | `tests/`, `e2e/` |
 | CI: calidad, tamaño del arranque, E2E, seguridad de dependencias | ✅ | `.github/workflows/` |
-| `public_docs/` con contrato y validador | ✅ (portada «próximamente»; registro de cambios para usuarios, `novedades.md`, desde la F15) | `public_docs/`, `scripts/validar-public-docs.mjs` |
+| `public_docs/` con contrato y validador | ✅ F16: documentación pública completa (34 páginas) validada contra el contrato del hub; registro de cambios para usuarios, `novedades.md` (F15) | `public_docs/`, `scripts/validar-public-docs.mjs`, `scripts/lib/public-docs.mjs` |
+| GitHub Wiki generada desde `public_docs/` | ✅ F16 (preparada; la publica el usuario) | `scripts/generar-wiki.mjs`, `scripts/lib/wiki.mjs` |
+| Repositorio open source: README, `NOTICE`, CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, plantillas de issue y PR | ✅ F16 (pendiente de hacerlo público) | raíz, `.github/` |
 | Documentación interna y plan | ✅ | `docs/` |
 | Apertura de archivos (selector, `Ctrl/Cmd+O`, arrastre, validación) | ✅ F3 | `src/documents/`, `src/app/DropZone.tsx`, `src/app/DocumentErrorAlert.tsx` |
 | Capa de plataforma (web) | ✅ F3 (la única: sin escritorio, D19) | `src/platform/` |
@@ -23,7 +25,7 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 | Fórmulas (KaTeX) y diagramas (Mermaid, en un marco aislado) | ✅ F8 | `src/markdown/matematicas.ts`, `mermaid*.ts`, `marco-mermaid.ts`, `svg-seguro.ts`, `mermaid.html` |
 | Recursos locales de Markdown (varios ficheros, carpeta, imágenes) | ✅ F7 bis | `src/documents/recursos.ts`, `src/documents/seleccion.ts`, `src/markdown/imagenes.ts`, `src/platform/web.ts` |
 | Editor de Markdown (CodeMirror 6, vista previa, dividido, guardar) | ✅ F9 (aprobada con una excepción de rendimiento: Dividido con 1 MB + KaTeX o 1 MB de encabezados; FASES, Fase 9) | `src/editor/`, `src/markdown/MarkdownView.tsx`, `src/platform/guardar-web.ts` |
-| Interfaz final: atajos anunciados, «Acerca de», mención a R3ZON, favicon, pantalla estrecha (D12) | ✅ F11 | `src/app/`, `src/preferences/PreferencesDialog.tsx`, `src/config/version.ts`, `public/favicon.svg` |
+| Interfaz final: atajos anunciados, «Acerca de», mención a R3ZON, favicon, pantalla estrecha (D12) | ✅ F11 (enlace al repositorio en «Acerca de»: F16) | `src/app/`, `src/preferences/PreferencesDialog.tsx`, `src/config/version.ts`, `public/favicon.svg` |
 | Accesibilidad, rendimiento y compatibilidad (barra con flechas, separador de 24 px, axe, Firefox y WebKit, memoria con CDP) | ✅ F13 (Firefox y WebKit también en CI) | `src/app/pdf/barra-teclado.ts`, `e2e/specs/a11y.spec.ts`, `playwright.compat.config.ts`, `e2e/bench/memoria.bench.ts` |
 | Escritorio (Electron) | ❌ F14 cancelada (D19: BPDF es solo web) | |
 

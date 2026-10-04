@@ -76,7 +76,8 @@ protegido, sin texto y CJK).
 | `bench:editor:compat` | La latencia de los escenarios críticos (1 MB en los dos modos, 1 MB + KaTeX en Dividido) en Firefox y WebKit. WebKit necesita antes `sudo npx playwright install-deps webkit` (hecho en el equipo de desarrollo: corre desde la Fase 13) |
 | `bench:markdown` | Benchmark del visor Markdown: tiempo hasta ver documentos generados (1 KB, 100 KB, 1 MB, muchos encabezados, muchos bloques de código, muchas listas) un Markdown con 50 imágenes de 6 Mpx (URL creadas, decodificación, heap) y fórmulas y diagramas (pocos, muchos, documento grande, hostiles: tiempos hasta texto, fórmulas y diagramas, descargas y heap). Imprime tablas; no es un test y no corre en CI |
 | `docs:validar` | Valida `public_docs/` contra el contrato y la identidad contra `project.ts` |
-| `docs:enlaces` | Enlaces rotos en `docs/`, `README.md` y `CLAUDE.md` |
+| `docs:enlaces` | Enlaces rotos en `docs/`, `README.md`, `CLAUDE.md` y los ficheros de comunidad (`CONTRIBUTING`, `SECURITY`, `CODE_OF_CONDUCT`, plantilla de PR) |
+| `wiki:generar` | Genera la GitHub Wiki desde `public_docs/` en una carpeta (por defecto `wiki/`, ignorada; para publicar, el clon de `BPDF.wiki.git`). No publica nada ([DEPLOYMENT.md](DEPLOYMENT.md)) |
 | `deps:overrides` | ¿Siguen haciendo falta los `overrides`? (hoy no hay ninguno) |
 | `cabeceras:vercel` | Regenera `vercel.json` (cabeceras de la web publicada) desde `src/config/security-headers.ts`. Tras cambiar la CSP o una cabecera; `tests/unit/vercel.test.ts` falla si no se hace |
 | `cabeceras:verificar -- <url>` | Pide `/`, `/mermaid.html` y un módulo del marco a un despliegue (o a `vite preview`) y compara cada cabecera con la fuente. Sale con error si falta o difiere alguna |

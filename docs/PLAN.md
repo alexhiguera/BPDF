@@ -480,7 +480,7 @@ con un bloque `[data-theme="light"]`.
 - **Cabecera** (✅ F3, F10, F11): el nombre del producto; con un documento abierto, «Abrir
   carpeta» y «Abrir archivo»; siempre, «Preferencias» (solo el icono en pantalla estrecha).
   Su diálogo termina con **«Acerca de»** (✅ F11): versión, licencia y la frase de
-  privacidad, sin enlace al repositorio hasta la Fase 16.
+  privacidad y, desde la Fase 16, el enlace al repositorio («Código fuente en GitHub»).
 - **Título de la ventana** (✅ F11): siempre «BPDF», **nunca el nombre del documento**: el
   navegador guarda el título de cada visita en su historial (y lo sincroniza si se usa una
   cuenta), y eso sería guardar un nombre de fichero (CLAUDE.md §4).
@@ -644,7 +644,7 @@ terceros sin licencia clara.
   fuente (`src/config/security-headers.ts`) y se generan para el hosting (`vercel.json`,
   `npm run cabeceras:vercel`, desde la iteración 11).
 - **Sin escritorio** (D19): ni empaquetado, ni instaladores, ni firma de binarios.
-- **Open source** (Fase 16): `LICENSE` (D3), `README.md` del producto, `CONTRIBUTING.md`,
+- **Open source** (✅ Fase 16, pendiente de publicar): `LICENSE` (D3), `README.md` del producto, `CONTRIBUTING.md`,
   `SECURITY.md` (reporte privado por GitHub Security Advisories), `CODE_OF_CONDUCT.md`
   (Contributor Covenant), plantillas de issue/PR, `docs/` como documentación de
   arquitectura, `CHANGELOG` de versiones para usuarios (distinto de la bitácora interna,

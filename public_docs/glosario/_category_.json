@@ -1,0 +1,5 @@
+{
+  "label": "Glosario",
+  "position": 7,
+  "link": { "type": "generated-index", "description": "Los términos de BPDF que necesitan explicación." }
+}

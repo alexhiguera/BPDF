@@ -27,7 +27,14 @@ function zoomDe(valor: string): Zoom {
  * momento; no hay «Aceptar». Se carga a demanda: ni `zod` ni el almacén entran
  * en el arranque de la app.
  */
-export default function PreferencesDialog({ onCerrar }: { onCerrar: () => void }) {
+export default function PreferencesDialog({
+  onCerrar,
+  onOpenExternal,
+}: {
+  onCerrar: () => void;
+  /** El enlace al repositorio de «Acerca de» (Fase 16): `Platform.openExternal`. */
+  onOpenExternal: (url: string) => void;
+}) {
   const dialogo = useRef<HTMLDialogElement>(null);
   const prefs = usePreferences();
   const [aviso, setAviso] = useState("");
@@ -188,7 +195,10 @@ export default function PreferencesDialog({ onCerrar }: { onCerrar: () => void }
           </p>
         </div>
 
-        {/* «Acerca de» (Fase 11): sin enlace al repositorio hasta la Fase 16. */}
+        {/* «Acerca de» (Fase 11). El enlace al repositorio (Fase 16) se abre como el crédito
+            del pie (`Creditos.tsx`): el clic va a `Platform.openExternal`, que revalida la URL
+            y abre una pestaña sin `opener` ni `Referer`; el clic central se anula para no
+            salir de ese mecanismo, y `target` y `rel` quedan como red. */}
         <section
           aria-labelledby={`${id}-acerca`}
           className="flex flex-col gap-1 border-t border-border pt-3 text-fg-muted"
@@ -200,6 +210,22 @@ export default function PreferencesDialog({ onCerrar }: { onCerrar: () => void }
           <p>{t.about.version(version)}</p>
           <p>{t.about.license(licencia)}</p>
           <p>{messages.emptyState.privacy}</p>
+          <p>
+            <a
+              href={project.repositoryUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={t.about.repositoryTitle(project.repositoryUrl)}
+              onClick={(e) => {
+                e.preventDefault();
+                onOpenExternal(project.repositoryUrl);
+              }}
+              onAuxClick={(e) => e.preventDefault()}
+              className="inline-flex min-h-6 items-center rounded text-fg underline underline-offset-2 hover:text-fg-muted"
+            >
+              {t.about.repository}
+            </a>
+          </p>
         </section>
       </div>
     </dialog>

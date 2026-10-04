@@ -1,0 +1,5 @@
+{
+  "label": "Primeros pasos",
+  "position": 2,
+  "link": { "type": "generated-index", "description": "Abrir un PDF o un Markdown en BPDF, también con sus imágenes." }
+}

@@ -26,7 +26,80 @@ export const FICHEROS_OBLIGATORIOS = [
   "_meta/entidad.json",
   "_meta/rutas-app.json",
   "_meta/redirects.json",
+  "_meta/identidad-visual.md",
 ];
+
+/** Máximo de palabras de la «Respuesta corta» (CONVENCIONES §2: un motor cita las primeras 40-60). */
+export const MAX_PALABRAS_RESPUESTA = 60;
+
+/**
+ * Los `##` de una guía, en su orden (CONVENCIONES §3): se pueden omitir, no reordenar ni
+ * renombrar, porque el Docusaurus deriva el JSON-LD de esta estructura.
+ */
+export const SECCIONES_GUIA = [
+  { nombre: "Qué necesitas antes de empezar", patron: /^Qué necesitas antes de empezar$/ },
+  { nombre: "Cómo …, paso a paso", patron: /^Cómo .+, paso a paso$/ },
+  { nombre: "Qué tener en cuenta", patron: /^Qué tener en cuenta$/ },
+  { nombre: "Lo que no es evidente", patron: /^Lo que no es evidente$/ },
+  { nombre: "Preguntas frecuentes sobre …", patron: /^Preguntas frecuentes sobre .+$/ },
+  { nombre: "Qué leer después", patron: /^Qué leer después$/ },
+];
+
+/** Con qué `r3zon.tipo` tiene sentido cada `r3zon.jsonld` (§6); los que no están, con cualquiera. */
+const TIPOS_DE_JSONLD = {
+  HowTo: new Set(["guia", "caso-uso"]),
+  DefinedTermSet: new Set(["glosario"]),
+};
+
+/** Palabras de la «Respuesta corta»: el primer párrafo, sin la etiqueta. */
+export function palabrasRespuestaCorta(cuerpo) {
+  const parrafo = cuerpo.trimStart().split(/\n\s*\n/)[0] ?? "";
+  return parrafo
+    .replace("**Respuesta corta.**", "")
+    .split(/\s+/)
+    .filter((p) => /[\p{L}\p{N}]/u.test(p)).length;
+}
+
+/**
+ * Las dos líneas con que acaba cada página (CONVENCIONES §6): de quién es la documentación,
+ * su fecha (la de `last_update.date`) y su URL publicada (`sitioDocumentacion` + `slug`).
+ */
+export function pieEsperado({ producto, organizacion, fecha, sitioDocumentacion, slug }) {
+  return [
+    `> Fuente: documentación oficial de ${producto} (${organizacion}). Actualizado el ${fecha}.`,
+    `> ${sitioDocumentacion.replace(/\/$/, "")}${slug}`,
+  ].join("\n");
+}
+
+/** Problemas de estructura de una guía (CONVENCIONES §3). */
+export function problemasDeGuia(cuerpo) {
+  const problemas = [];
+  const lineas = cuerpo.split("\n");
+  let ultimo = -1;
+  const vistas = new Set();
+  for (let i = 0; i < lineas.length; i++) {
+    const m = /^##\s+(.+?)\s*$/.exec(lineas[i]);
+    if (!m) continue;
+    const indice = SECCIONES_GUIA.findIndex((s) => s.patron.test(m[1]));
+    if (indice < 0) {
+      problemas.push(`«## ${m[1]}» no es una sección de guía (CONVENCIONES §3)`);
+      continue;
+    }
+    if (indice <= ultimo) problemas.push(`«## ${m[1]}» fuera de orden (CONVENCIONES §3)`);
+    ultimo = Math.max(ultimo, indice);
+    vistas.add(indice);
+    if (indice === 3) {
+      let contenido = false;
+      for (let j = i + 1; j < lineas.length && !/^##\s/.test(lineas[j]); j++) {
+        if (lineas[j].trim() && !lineas[j].startsWith(">")) contenido = true;
+      }
+      if (!contenido) problemas.push("«## Lo que no es evidente» está vacía");
+    }
+  }
+  if (!vistas.has(1)) problemas.push("falta «## Cómo …, paso a paso» (CONVENCIONES §3)");
+  if (!vistas.has(3)) problemas.push("falta «## Lo que no es evidente» (CONVENCIONES §3)");
+  return problemas;
+}
 
 /** Valores válidos del contrato universal (§5). */
 export const TIPOS = new Set([
@@ -130,6 +203,17 @@ export function enlacesDe(texto) {
     i = j;
   }
   return salida;
+}
+
+/**
+ * El cuerpo sin código: bloques con valla y código en línea. Un ejemplo como
+ * `` `![Plano](images/plano.png)` `` no es un enlace de la página, y Docusaurus tampoco
+ * lo trata como tal.
+ */
+export function sinCodigo(texto) {
+  return texto
+    .replace(/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1[^\n]*$/gm, "")
+    .replace(/`+[^`\n]*`+/g, "");
 }
 
 /** ¿Tiene la página un `## Cómo …` con lista ORDENADA debajo? (lo exige el HowTo, §6.1) */
@@ -250,7 +334,23 @@ export function validarPublicDocs({ raizRepo, hoy }) {
   // ── Páginas ────────────────────────────────────────────────────────────────
   const ficheros = existsSync(raiz) ? listarMarkdown(raiz) : [];
   const slugs = new Map();
+  const ids = new Map();
   let paginas = 0;
+
+  // Cada carpeta con páginas lleva su `_category_.json` con `label` (§4): sin él, el
+  // Docusaurus titula la sección con el nombre de la carpeta.
+  const carpetas = new Set(
+    ficheros.filter((f) => f.includes("/")).map((f) => f.slice(0, f.lastIndexOf("/"))),
+  );
+  for (const carpeta of carpetas) {
+    const rel = `${carpeta}/_category_.json`;
+    if (!existsSync(path.join(raiz, rel))) {
+      err(rel, "falta: cada sección lleva su `_category_.json` con `label` (§4)");
+      continue;
+    }
+    const categoria = leerJson(rel);
+    if (categoria && typeof categoria.label !== "string") err(rel, "falta `label`");
+  }
 
   for (const rel of ficheros) {
     if (rel.endsWith(".mdx")) {
@@ -301,6 +401,15 @@ export function validarPublicDocs({ raizRepo, hoy }) {
     } else {
       slugs.set(datos.slug, rel);
     }
+    if (datos.id !== undefined) {
+      if (typeof datos.id !== "string" || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(datos.id)) {
+        err(rel, `\`id\` debe ir en minúsculas con guiones: ${datos.id}`);
+      } else if (ids.has(datos.id)) {
+        err(rel, `\`id\` ${datos.id} repetido (ya lo usa ${ids.get(datos.id)})`);
+      } else {
+        ids.set(datos.id, rel);
+      }
+    }
 
     // Fecha (§8): literal, válida y no futura.
     const fecha = comoFecha(datos.last_update?.date);
@@ -327,6 +436,16 @@ export function validarPublicDocs({ raizRepo, hoy }) {
     ) {
       err(rel, "`jsonld: HowTo` exige un `## Cómo …` con lista ordenada debajo (CONVENCIONES §3)");
     }
+    const tiposValidos = TIPOS_DE_JSONLD[r3zon.jsonld];
+    if (tiposValidos && !tiposValidos.has(r3zon.tipo)) {
+      err(rel, `\`jsonld: ${r3zon.jsonld}\` no corresponde a \`tipo: ${r3zon.tipo}\` (§6)`);
+    }
+    if (r3zon.jsonld === "FAQPage" && !/^###\s+.+\?\s*$/m.test(cuerpo)) {
+      err(rel, "`jsonld: FAQPage` exige preguntas como `### …?` (§6)");
+    }
+    if (r3zon.tipo === "guia") {
+      for (const p of problemasDeGuia(cuerpo)) err(rel, p);
+    }
     if (r3zon.app_url !== undefined && !rutasDeclaradas.has(r3zon.app_url)) {
       err(rel, `\`r3zon.app_url: ${r3zon.app_url}\` no aparece en _meta/rutas-app.json`);
     }
@@ -338,6 +457,25 @@ export function validarPublicDocs({ raizRepo, hoy }) {
     const primerParrafo = cuerpo.trimStart();
     if (!primerParrafo.startsWith("**Respuesta corta.**")) {
       err(rel, "el cuerpo debe empezar por `**Respuesta corta.**` (CONVENCIONES §2)");
+    } else if (palabrasRespuestaCorta(cuerpo) > MAX_PALABRAS_RESPUESTA) {
+      err(
+        rel,
+        `la «Respuesta corta» tiene ${palabrasRespuestaCorta(cuerpo)} palabras (máximo ${MAX_PALABRAS_RESPUESTA}, CONVENCIONES §2)`,
+      );
+    }
+
+    // Pie con la fuente y la URL publicada (CONVENCIONES §6).
+    if (entidad && fecha && typeof datos.slug === "string") {
+      const pie = pieEsperado({
+        producto: entidad.softwareApplication?.name,
+        organizacion: entidad.organization?.name,
+        fecha,
+        sitioDocumentacion: String(entidad.sitioDocumentacion ?? ""),
+        slug: datos.slug,
+      });
+      if (!cuerpo.trimEnd().endsWith(pie)) {
+        err(rel, `debe terminar con el pie (CONVENCIONES §6):\n${pie}`);
+      }
     }
     const prohibido = cuerpo.match(ENCABEZADOS_PROHIBIDOS);
     if (prohibido)
@@ -349,7 +487,7 @@ export function validarPublicDocs({ raizRepo, hoy }) {
     }
 
     // Enlaces (§7): relativos a fichero y que resuelven.
-    for (const { destino } of enlacesDe(cuerpo)) {
+    for (const { destino } of enlacesDe(sinCodigo(cuerpo))) {
       if (/^(https?:|mailto:|#)/.test(destino)) continue;
       if (destino.startsWith("/")) {
         err(

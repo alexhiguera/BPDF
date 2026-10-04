@@ -269,13 +269,15 @@ export const messages = {
     forgotten: "Posiciones guardadas olvidadas.",
     reset: "Restablecer preferencias",
     resetDone: "Preferencias restablecidas.",
-    /** «Acerca de», al final del diálogo (Fase 11). Sin enlace al repositorio hasta la Fase 16. */
+    /** «Acerca de», al final del diálogo (Fase 11; enlace al repositorio desde la Fase 16). */
     about: {
       title: (nombre: string) => `Acerca de ${nombre}`,
       version: (version: string) => `Versión ${version}`,
       license: (licencia: string) => `Software libre con licencia ${licencia}`,
       creator: (nombre: string, organizacion: string) =>
         `${nombre} es una herramienta gratuita y open source creada por ${organizacion} con ❤️.`,
+      repository: "Código fuente en GitHub",
+      repositoryTitle: (url: string) => `${url}, en una pestaña nueva`,
     },
   },
   /** Cambios sin guardar al sustituir o cerrar un documento (Fase 9). */

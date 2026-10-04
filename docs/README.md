@@ -1,7 +1,20 @@
 # Documentación interna
 
-Documentación para quien desarrolla y mantiene BPDF. La documentación para quien lo usa
-está en [`public_docs/`](../public_docs/README.md).
+Documentación para quien desarrolla y mantiene BPDF, en español. La documentación para
+quien lo usa está en [`public_docs/`](../public_docs/README.md) (publicada en
+`https://docs.r3zon.com/bpdf`).
+
+## Si llegas de fuera
+
+- Para contribuir, empieza por [`CONTRIBUTING.md`](../CONTRIBUTING.md) y
+  [DEVELOPMENT.md](DEVELOPMENT.md); para entender el diseño, por
+  [ARCHITECTURE.md](ARCHITECTURE.md) y [SEGURIDAD.md](SEGURIDAD.md).
+- **La bitácora** ([CHANGELOG.md](CHANGELOG.md)) cuenta cada iteración de desarrollo con su
+  porqué, lo descartado y los errores del camino. No es el registro de cambios para usuarios,
+  que está en [`public_docs/novedades.md`](../public_docs/novedades.md).
+- Las fases (F0–F16), las decisiones (D-n) y las tareas son la historia y el estado del
+  proyecto: [FASES.md](FASES.md), [PLAN.md](PLAN.md) §14 y
+  [TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md).
 
 ## Índice
 
@@ -23,7 +36,8 @@ está en [`public_docs/`](../public_docs/README.md).
 - [STRUCTURE.md](STRUCTURE.md) — árbol del repositorio y qué va en cada sitio.
 - [MODULES.md](MODULES.md) — qué piezas existen y en qué estado.
 - [DEVELOPMENT.md](DEVELOPMENT.md) — entorno local, scripts, tests, ramas.
-- [DEPLOYMENT.md](DEPLOYMENT.md) — despliegue (todavía no hay).
+- [DEPLOYMENT.md](DEPLOYMENT.md) — publicación en Vercel, versión y registro de cambios,
+  GitHub Wiki y comprobación de un despliegue.
 - [TEMPLATE.md](TEMPLATE.md) — de qué plantilla nace BPDF y por qué se separó.
 
 ### Seguimiento

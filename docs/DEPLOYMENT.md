@@ -3,7 +3,8 @@
 **BPDF se publica en Vercel, en `https://bpdf.r3zon.com`** (D5, [PLAN.md](PLAN.md) §14,
 confirmada el *2026-10-03*). Es la única distribución: BPDF es solo web (D19), sin
 instaladores ni versión de escritorio. Este documento se reescribió en la Fase 15,
-cerrada el *2026-10-04* tras verificar la producción ([FASES.md](FASES.md)).
+cerrada el *2026-10-04* tras verificar la producción, y la Fase 16 le añadió la documentación
+pública, la GitHub Wiki y la publicación final de v1.0.0 ([FASES.md](FASES.md)).
 
 ## Cómo se publica
 
@@ -62,19 +63,19 @@ cerrada el *2026-10-04* tras verificar la producción ([FASES.md](FASES.md)).
 
 - **Versión:** `version` de `package.json`, la única fuente. La build la fija con `define`
   (`src/config/compilacion.ts`) y la muestra «Acerca de», al final de Preferencias.
-- **SemVer, mientras sea 0.x:** `0.MINOR.PATCH`. Un cambio que el usuario nota (función
-  nueva, comportamiento distinto) sube MINOR; un arreglo sin cambio visible, PATCH. Lo que
-  no cambia nada para el usuario (docs, tests, CI) no sube la versión.
-- **Hoy, 0.1.0**, la versión con la que la web está publicada. Se mantiene en la Fase 15, que
-  no cambia nada de lo que el usuario usa: subirla solo para «hacer release» rompería la
-  regla de arriba.
-- **1.0.0 se publica al cerrar la Fase 16** (open source y documentación final), con su
-  apartado en el registro de cambios para usuarios.
+- **SemVer:** `MAJOR.MINOR.PATCH`. Un cambio que el usuario nota (función nueva,
+  comportamiento distinto) sube MINOR; un arreglo sin cambio visible, PATCH; uno que rompe lo
+  que el usuario espera (quitar una función, cambiar lo que se guarda sin migrarlo), MAJOR. Lo
+  que no cambia nada para el usuario (docs, tests, CI) no sube la versión.
+- **Historia:** 0.1.0 fue la primera versión publicada y se mantuvo en la Fase 15, que no cambió
+  nada de lo que el usuario usa. **1.0.0** llega con la Fase 16: repositorio público, enlace a él
+  en «Acerca de» y documentación oficial (`npm version 1.0.0 --no-git-tag-version`; la etiqueta
+  `v1.0.0` y la GitHub Release las crea quien publica, tras el push).
 - **Registro de cambios para usuarios:**
   [`public_docs/novedades.md`](../public_docs/novedades.md). Qué versión hay, qué hace BPDF y
   sus límites conocidos; cada versión nueva añade su apartado con lo que el usuario nota. No
-  repite la bitácora técnica ([CHANGELOG.md](CHANGELOG.md)). Se publica con el resto de
-  `public_docs/` en `docs.r3zon.com` cuando la Fase 16 dé de alta BPDF en el Docusaurus.
+  repite la bitácora técnica ([CHANGELOG.md](CHANGELOG.md)). Su apartado de cada versión es
+  también el texto de la GitHub Release.
 
 ## Comprobar un despliegue
 
@@ -124,9 +125,73 @@ Tras cada despliegue que toque cabeceras, CSP, rutas, el dominio o la build (CLA
 
 ## Documentación pública
 
-La publica el Docusaurus de R3ZON a partir de `public_docs/` (D4). El alta del producto
-(`id: 'bpdf'`) en `R3ZON-Docusaurus/config/products.ts` es de la Fase 16; la entrada de
-ejemplo está en [`public_docs/README.md`](../public_docs/README.md) §3.
+**Una sola fuente: [`public_docs/`](../public_docs/README.md).** Se publica en dos sitios, y
+ninguno se edita a mano:
+
+- **`https://docs.r3zon.com/bpdf`**: el Docusaurus de R3ZON (D4) clona `public_docs/` en su
+  build. Este repositorio no empuja nada ni guarda credenciales del otro. Los datos del alta
+  del producto (en el `config/products.ts` del repositorio del Docusaurus):
+
+  | Campo | Valor |
+  |---|---|
+  | `id` | `bpdf` (= `project.slug`; ruta `/bpdf`) |
+  | `name` | `BPDF` |
+  | `tagline` | `Visor de PDF y Markdown para leer en modo oscuro. Los documentos no salen del dispositivo.` |
+  | `kind` | `tool` |
+  | `appUrl` | `https://bpdf.r3zon.com` |
+  | `status` | `stable` |
+  | `source` | `repo: 'alexhiguera/BPDF'`, `branch: 'main'`, `path: 'public_docs'` (repo público: sin `tokenEnv`) |
+  | Módulos, planes, permisos | Ninguno: sin `r3zon.modulo`, `plan_minimo` ni `r3zon.permiso` |
+  | Icono | [`public/favicon.svg`](../public/favicon.svg); identidad en `public_docs/_meta/identidad-visual.md` |
+
+- **GitHub Wiki** del repositorio: una copia **generada** con `npm run wiki:generar`
+  ([`scripts/lib/wiki.mjs`](../scripts/lib/wiki.mjs)). Cada página pasa a `<id>.md` (la
+  portada, a `Home.md`), sin frontmatter y con los enlaces internos reescritos al nombre de su
+  página; además, `_Sidebar.md` (las secciones de `_category_.json`) y `_Footer.md` (la fuente).
+  El pie de cada página sigue apuntando a `docs.r3zon.com`, la URL canónica. Cada página
+  generada empieza con un comentario que avisa de que no se edita en la Wiki.
+
+  Publicarla (a mano, con tus credenciales; la Wiki es un repositorio git aparte):
+
+  1. En GitHub, activa **Wiki** (Settings → Features) y crea cualquier página desde la web:
+     así existe el repositorio `BPDF.wiki.git`.
+  2. `git clone git@github.com:alexhiguera/BPDF.wiki.git ../BPDF.wiki`
+  3. `npm run wiki:generar -- ../BPDF.wiki` (borra los `.md` de esa carpeta, no su `.git`, y
+     escribe los nuevos).
+  4. En `../BPDF.wiki`: `git add -A`, `git commit -m "docs: sync from public_docs"` y
+     `git push`.
+
+  Se repite tras cada cambio de `public_docs/`. Si se quiere automatizar, un workflow en
+  `push` a `main` podría hacer los pasos 2–4 con el `GITHUB_TOKEN`; no existe todavía, a
+  propósito: la primera publicación la revisa una persona.
+
+## Publicación final de v1.0.0 (Fase 16)
+
+Lo hace quien mantiene el proyecto, en este orden, después del commit y el push de la Fase 16:
+
+1. **CI en verde** en `main` (CI, E2E con sus tres navegadores, Security).
+2. **Producción:** `npm run test:humo`, `npm run cabeceras:verificar -- https://bpdf.r3zon.com`
+   y «Acerca de» muestra **Versión 1.0.0** y el enlace al repositorio.
+3. **Repositorio público:** Settings → General → Danger Zone → **Change visibility** → Public.
+4. **Ajustes del repositorio:** descripción, web y temas (abajo); Features: **Issues** sí,
+   **Wiki** sí (paso de la Wiki, arriba), **Discussions** no por ahora, Projects no.
+5. **Seguridad:** Settings → Code security → **Private vulnerability reporting**: Enable
+   (`SECURITY.md` lo usa). Dependabot alerts: Enable.
+6. **Etiquetas** de las plantillas de issues: crea `fallo` y `mejora` (Issues → Labels).
+7. **Wiki:** los pasos 1–4 de «GitHub Wiki».
+8. **docs.r3zon.com:** el alta de `bpdf` en el Docusaurus con los datos de arriba.
+9. **Etiqueta y release:** `git tag -a v1.0.0 -m "BPDF 1.0.0"`, `git push origin v1.0.0` y
+   una GitHub Release desde esa etiqueta, con el apartado «Qué trae la versión 1.0.0» de
+   `public_docs/novedades.md`.
+10. **Community Standards** (Insights → Community Standards): todo en verde.
+
+Datos del repositorio:
+
+- **Descripción:** `Visor gratuito y open source de PDF y Markdown en modo oscuro. Tus documentos no salen del dispositivo. Creado por R3ZON.`
+- **Website:** `https://bpdf.r3zon.com`
+- **Topics:** `pdf-viewer`, `markdown`, `markdown-editor`, `dark-mode`, `pdfjs`, `katex`,
+  `mermaid`, `privacy`, `local-first`, `react`, `vite`, `typescript`, `spanish`
+- **Rama principal:** `main` (Vercel despliega desde ella).
 
 ## Qué se retiró en la Fase 1
 

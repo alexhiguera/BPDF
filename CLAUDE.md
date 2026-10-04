@@ -27,8 +27,11 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   también en CI; limitaciones de v1 aceptadas: Markdown de ~1 MB en ~3 s y, en WebKit,
   Dividido con 1 MB + KaTeX muy lento. La 15 (distribución web; la 14 se canceló) se
   cerró el *2026-10-04*, verificada en producción: dominio oficial, versión 0.1.0 y registro
-  de cambios para usuarios ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). Siguiente y última
-  de v1: **Fase 16** (open source y documentación final; 1.0.0 al cerrarla). La app es una SPA estática de Vite + React (D1)
+  de cambios para usuarios ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). La 16 (open
+  source, documentación final y v1.0.0) está **implementada y pendiente de publicación
+  final** (*2026-10-04*): el repositorio, listo para hacerse público; la documentación
+  pública, completa en `public_docs/` (y como GitHub Wiki generada); versión 1.0.0. Lo que
+  falta lo hace el usuario ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), «Publicación final»). La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
   oscuro selectivo en un worker, búsqueda avanzada, pantalla completa, atajos de una tecla
@@ -77,6 +80,7 @@ npm run deps:overrides    # ¿siguen haciendo falta los overrides de package.jso
 npm run cabeceras:vercel  # regenera vercel.json desde security-headers.ts
 npm run cabeceras:verificar -- https://bpdf.r3zon.com  # cabeceras reales vs. la fuente
 npm run test:humo         # smoke contra la web publicada (a mano, tras desplegar; no en CI)
+npm run wiki:generar -- ../BPDF.wiki  # GitHub Wiki desde public_docs/ (genera; no publica)
 ```
 
 ## 1. Pregunta antes de decidir algo importante

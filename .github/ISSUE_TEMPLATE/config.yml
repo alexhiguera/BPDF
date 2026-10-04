@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Informar de una vulnerabilidad (en privado)
+    url: https://github.com/alexhiguera/BPDF/security/advisories/new
+    about: Nunca en un issue público. Usa el aviso privado de GitHub (SECURITY.md).
+  - name: Documentación de BPDF
+    url: https://docs.r3zon.com/bpdf
+    about: Guías, preguntas frecuentes y soluciones a problemas habituales.

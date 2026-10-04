@@ -13,8 +13,8 @@ estado.
 
 ## Estado hoy — *2026-10-04*
 
-Medido con Node 24.21.0 y npm 11.19.0 en **WSL2 (Ubuntu) sobre Windows**, tras **cerrar la Fase 15**
-(iteraciones 31 y 32). E2E con Chromium, Firefox y WebKit
+Medido con Node 24.21.0 y npm 11.19.0 en **WSL2 (Ubuntu) sobre Windows**, con la **Fase 16 implementada y
+pendiente de publicación final** (iteración 34). E2E con Chromium, Firefox y WebKit
 de Playwright. Cerradas las Fases 0–13 y la 15 (la 6 se hizo después de las 7, 7 bis y 8, por orden
 del usuario, y conserva su número). **La 9 se aprobó con una excepción de rendimiento**
 (*2026-10-03*): teclear en Dividido con 1 MB + KaTeX o con 1 MB de encabezados supera los
@@ -22,8 +22,9 @@ objetivos de latencia ([FASES.md](FASES.md), Fase 9). **BPDF es solo una aplicac
 (D19): la Fase 14 (Electron) se canceló y la 15 se reescribió sin escritorio. La 12
 (seguridad) se cerró verificada en producción ([auditoria.md](auditoria.md), Auditoría 1).
 La 13 (accesibilidad, rendimiento y compatibilidad) se cerró el *2026-10-04*. La 15
-(distribución web) se cerró el *2026-10-04*, verificada en producción. Siguiente y última de
-v1: **Fase 16**.
+(distribución web) se cerró el *2026-10-04*, verificada en producción. La 16 (open source,
+documentación final y v1.0.0), la última de v1, está **implementada y pendiente de
+publicación final**: lo que queda lo hace el usuario.
 
 | Comprobación | Resultado |
 |---|---|
@@ -53,10 +54,18 @@ Ninguna (*2026-10-04*).
 
 ## Fases
 
-- [ ] 🔴 **F16** (siguiente y última de v1; 1.0.0 al cerrarla) Open source y documentación final. Hereda de la F11: el enlace al repositorio
-  público en la interfaz, la documentación pública final (`public_docs/` en el Docusaurus de
-  `docs.r3zon.com`, con la guía del visor PDF y el aviso del diálogo de carpeta de Chrome) y
-  una GitHub Wiki
+- [~] 🔴 **F16** Open source, documentación final y v1.0.0: **implementada, pendiente de
+  publicación final** (iteración 34; FASES, Fase 16). Falta, del usuario y en este orden
+  ([DEPLOYMENT.md](DEPLOYMENT.md), «Publicación final»): commit y push; CI en verde;
+  `test:humo` y `cabeceras:verificar` contra producción (Versión 1.0.0 en «Acerca de»);
+  repositorio público y sus ajustes; aviso privado de vulnerabilidades; etiquetas `fallo` y
+  `mejora`; Wiki; alta en `docs.r3zon.com`; etiqueta `v1.0.0` y GitHub Release. Después, cerrar
+  la fase
+- [ ] 🟠 **Decisiones del usuario antes de publicar** (F16): el titular del copyright
+  (`NOTICE` y README dicen «R3ZON»), el canal privado para el código de conducta (hoy, «a
+  través de R3ZON, `https://r3zon.com`») y si los nombres de repositorios internos de R3ZON que
+  citan `public_docs/README.md`, `DEPLOYMENT.md`, `TEMPLATE.md` y la bitácora pueden ser
+  públicos
 
 ## Limitaciones aceptadas de v1
 

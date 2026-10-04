@@ -1,0 +1,11 @@
+BPDF
+Copyright 2026 R3ZON
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+https://bpdf.r3zon.com
+
+The production build bundles third-party software and assets under their own
+licenses, including pdf.js (Apache-2.0) and its standard fonts (Foxit and
+Liberation licenses, shipped next to them in dist/pdfjs/), KaTeX and its fonts
+(MIT), Mermaid (MIT), CodeMirror (MIT), React (MIT) and DOMPurify (used under
+Apache-2.0). Their license texts travel with each package.

@@ -155,16 +155,36 @@ test("título de la ventana: siempre el del producto, nunca el nombre del docume
   limpia(v);
 });
 
-test("«Acerca de» en Preferencias: versión real, licencia y privacidad, sin enlaces", async ({
+test("«Acerca de» en Preferencias: versión real, licencia, privacidad y el repositorio por el mecanismo externo", async ({
   page,
 }) => {
+  // Se sustituye `window.open` para ver qué pide abrir la app sin abrir nada (ni salir
+  // del propio origen: la vigilancia lo exige).
+  await page.addInitScript(() => {
+    const w = window as unknown as { __abiertas: unknown[][] };
+    w.__abiertas = [];
+    window.open = (...args: unknown[]) => {
+      w.__abiertas.push(args);
+      return null;
+    };
+  });
   const v = await abrir(page);
   const dialogo = await abrirPreferencias(page);
   const acerca = dialogo.getByRole("region", { name: p.about.title(project.name) });
   await expect(acerca).toContainText(p.about.version(paquete.version));
   await expect(acerca).toContainText(p.about.license(paquete.license));
   await expect(acerca).toContainText(messages.emptyState.privacy);
-  await expect(acerca.getByRole("link")).toHaveCount(0);
+  // Fase 16: un solo enlace, al repositorio, que abre `Platform.openExternal` (sin
+  // `opener` ni `Referer`); el clic central no abre nada por su cuenta.
+  await expect(acerca.getByRole("link")).toHaveCount(1);
+  const enlace = acerca.getByRole("link", { name: p.about.repository });
+  await expect(enlace).toHaveAttribute("href", project.repositoryUrl);
+  await enlace.click();
+  await enlace.click({ button: "middle" });
+  expect(
+    await page.evaluate(() => (window as unknown as { __abiertas: unknown[][] }).__abiertas),
+  ).toEqual([[project.repositoryUrl, "_blank", "noopener,noreferrer"]]);
+  expect(new URL(page.url()).pathname).toBe("/");
   limpia(v);
 });
 

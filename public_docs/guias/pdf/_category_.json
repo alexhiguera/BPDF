@@ -1,0 +1,5 @@
+{
+  "label": "PDF",
+  "position": 1,
+  "link": { "type": "generated-index", "description": "El visor de PDF: modo oscuro, búsqueda, zoom, miniaturas, contraseña y atajos." }
+}

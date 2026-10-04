@@ -16,8 +16,8 @@ que nunca la visitará. Las dos quieren lo mismo: la respuesta antes que el cont
 ## 2. Las reglas que más importan
 
 1. **El primer párrafo responde.** Toda página empieza por `**Respuesta corta.**` y la
-   respuesta entera. Un motor generativo cita las primeras 40-60 palabras: si ahí hay
-   contexto, cita contexto. (Lo comprueba el validador.)
+   respuesta entera, en **60 palabras como mucho**. Un motor generativo cita las primeras
+   40-60 palabras: si ahí hay contexto, cita contexto. (Lo comprueba el validador.)
 2. **Un `##` es una pregunta o una acción literal.** Nunca `## Introducción`,
    `## Consideraciones`, `## Notas` ni `## Resumen`. (También lo comprueba.)
 3. **Cada página se sostiene sola.** Repetir un requisito en tres páginas no es
@@ -65,3 +65,17 @@ En el idioma del producto, natural, sin jerga y sin marketing. Para español:
 
 Si cambias un paso, el nombre de un botón o un límite, actualiza `last_update.date` en
 el mismo commit. Si solo corriges una errata, no. (Contrato §8.)
+
+## 6. Pie de cada página
+
+Toda página termina con dos líneas de cita: de quién es la documentación, la fecha de
+`last_update.date` y la URL publicada (`sitioDocumentacion` de `_meta/entidad.json` más el
+`slug`). Un motor que cite la página se lleva la fuente y la fecha con ella.
+
+```markdown
+> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-04.
+> https://docs.r3zon.com/bpdf/primeros-pasos/abrir-un-pdf
+```
+
+El validador comprueba que el pie existe y que su fecha y su URL son las de la página: al
+cambiar `last_update.date`, cambia también el pie.

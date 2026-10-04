@@ -116,7 +116,10 @@ function Shell({ platform }: { platform: Platform }) {
       </header>
       {preferencias && (
         <Suspense fallback={null}>
-          <PreferencesDialog onCerrar={() => setPreferencias(false)} />
+          <PreferencesDialog
+            onCerrar={() => setPreferencias(false)}
+            onOpenExternal={(url) => platform.openExternal(url)}
+          />
         </Suspense>
       )}
       <main

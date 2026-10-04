@@ -37,6 +37,12 @@ export const project = {
    */
   organizationUrl: "https://r3zon.com",
   /**
+   * Repositorio público del código (Fase 16): el enlace de «Acerca de». Sale del remote de
+   * git (`origin`); `tests/unit/project.test.ts` comprueba que coincide con `repository`
+   * de `package.json`. Se abre con `Platform.openExternal`, como cualquier enlace externo.
+   */
+  repositoryUrl: "https://github.com/alexhiguera/BPDF",
+  /**
    * Idioma del producto (BCP 47). Configura `<html lang>` (index.html) y el
    * `inLanguage` de `entidad.json`.
    *

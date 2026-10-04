@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Comprueba que los enlaces relativos de la documentación INTERNA (docs/,
- * README.md, CLAUDE.md) apunten a ficheros que existen.
+ * README.md, CLAUDE.md y los ficheros de comunidad: CONTRIBUTING, SECURITY,
+ * CODE_OF_CONDUCT y la plantilla de PR) apunten a ficheros que existen.
  *
  * Por qué: un enlace roto en Markdown no rompe ningún build, así que solo lo ve
  * quien lo pulsa. En el proyecto de origen, una auditoría encontró cuatro a
@@ -34,6 +35,11 @@ const OBJETIVOS = [
   ...markdownDe("docs").filter((f) => path.basename(f) !== "CHANGELOG.md"),
   "README.md",
   "CLAUDE.md",
+  // Fase 16: los ficheros de comunidad del repositorio público.
+  "CONTRIBUTING.md",
+  "SECURITY.md",
+  "CODE_OF_CONDUCT.md",
+  ".github/PULL_REQUEST_TEMPLATE.md",
 ].filter((f) => existsSync(path.join(RAIZ, f)));
 
 const rotos = [];

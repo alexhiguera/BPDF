@@ -34,6 +34,16 @@ describe("configuración de este proyecto", () => {
     expect(sitemapXml()).not.toMatch(/<loc>http:/);
   });
 
+  it("el repositorio de project.ts es el de package.json (Fase 16), y la web la de su dominio", () => {
+    const paquete = JSON.parse(readFileSync(path.join(REPO, "package.json"), "utf8")) as {
+      homepage: string;
+      repository: { type: string; url: string };
+    };
+    expect(paquete.repository).toEqual({ type: "git", url: `git+${project.repositoryUrl}.git` });
+    expect(paquete.homepage).toBe(siteUrl());
+    expect(project.repositoryUrl).toMatch(/^https:\/\/github\.com\/[^/]+\/[^/]+$/);
+  });
+
   it("robots.txt y sitemap.xml salen del dominio de project.ts, con fechas literales", () => {
     expect(robotsTxt()).toContain(`Sitemap: ${siteUrl()}/sitemap.xml`);
     for (const { path, lastModified } of PAGINAS_PUBLICAS) {

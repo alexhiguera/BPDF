@@ -1,0 +1,33 @@
+name: Proponer una mejora
+description: Una función nueva o un cambio en una que ya existe.
+title: "[Mejora] "
+labels: ["mejora"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        BPDF es pequeño a propósito: web, local y sin backend. Una propuesta que necesite servidor, cuentas, sincronización, telemetría o peticiones de red provocadas por un documento choca con su principio rector ([CONTRIBUTING.md](https://github.com/alexhiguera/BPDF/blob/main/CONTRIBUTING.md)).
+  - type: textarea
+    id: problema
+    attributes:
+      label: Problema
+      description: Qué necesitas hacer y no puedes, o qué te cuesta hoy.
+    validations:
+      required: true
+  - type: textarea
+    id: propuesta
+    attributes:
+      label: Propuesta
+      description: Cómo lo resolverías.
+    validations:
+      required: true
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas
+      description: Otras formas de resolverlo que hayas considerado, o cómo lo haces ahora.
+  - type: textarea
+    id: impacto
+    attributes:
+      label: Impacto
+      description: A quién ayuda y cuánto. ¿Afecta a la privacidad, la seguridad o el rendimiento?

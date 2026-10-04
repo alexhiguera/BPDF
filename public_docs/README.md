@@ -49,13 +49,16 @@ Para dar de alta un producto nuevo allí basta con una entrada en su
   id: '<slug>',                       // = project.slug → ruta /<slug>
   name: '<Nombre>',
   tagline: '<frase>',
-  kind: 'saas',
+  kind: 'saas',                       // o 'tool' para una herramienta sin cuentas (BPDF)
   appUrl: 'https://<dominio>',
   emoji: '🧩',
   status: 'stable',
   source: { repo: '<owner>/<repo>', branch: 'main', path: 'public_docs', tokenEnv: 'DOCS_SYNC_TOKEN' },
 }
 ```
+
+`tokenEnv` solo hace falta si el repositorio del producto es privado: uno público se clona sin
+credenciales.
 
 Su script `sync-docs` hace un clon superficial de `path` en `branch` y lo copia a
 `docs/<id>/`. Los plugins SEO de R3ZON se activan solos cuando encuentran
@@ -70,14 +73,17 @@ public_docs/
 ├── _meta/               ← datos para el repo de docs (no se publica)
 │   ├── entidad.json     ← identidad schema.org compartida por app y docs
 │   ├── rutas-app.json   ← rutas reales de la app (botón «Abrir en…»)
-│   └── redirects.json   ← mapa de URLs antiguas → nuevas
+│   ├── redirects.json   ← mapa de URLs antiguas → nuevas
+│   └── identidad-visual.md ← colores, tipografía, radios e icono reales del producto
 ├── index.md             ← portada del producto (slug: /)
 └── <seccion>/           ← una carpeta por sección, con su _category_.json
     ├── _category_.json
     └── <pagina>.md
 ```
 
-Obligatorios: `README.md`, `CONVENCIONES.md`, `index.md` y los tres de `_meta/`.
+Obligatorios: `README.md`, `CONVENCIONES.md`, `index.md` y los cuatro de `_meta/`. Cada
+carpeta con páginas lleva su `_category_.json` con `label` (y `position`): sin él, el
+Docusaurus titula la sección con el nombre de la carpeta.
 
 **El árbol no lleva prefijo de producto** (`<slug>/`): lo pone el `routeBasePath` del
 Docusaurus. Duplicarlo produce `/<slug>/<slug>/…`.
@@ -118,6 +124,14 @@ r3zon:
 
 `slug` es obligatorio **siempre**, aunque coincida con el nombre del fichero: la URL no
 puede moverse porque alguien renombre un fichero.
+
+`id` es opcional; si se pone, va en minúsculas con guiones y es único (normalmente, el nombre
+del fichero sin `.md`).
+
+### Correspondencia entre `tipo` y `jsonld`
+
+`HowTo` solo en `guia` o `caso-uso`; `DefinedTermSet` solo en `glosario`; `FAQPage` exige
+preguntas como `### …?`. `TechArticle`, `Article` y `none` valen para cualquier tipo.
 
 ### Valores válidos
 
@@ -180,8 +194,9 @@ puede comprobar es que se haya actualizado: eso es disciplina (CLAUDE.md).
 
 `npm run docs:validar` (y CI) comprueba:
 
-- Estructura obligatoria del §4 y `_meta/` bien formado.
-- Frontmatter: obligatorios, valores válidos, campos permitidos y `slug` único.
+- Estructura obligatoria del §4, `_meta/` bien formado y `_category_.json` en cada sección.
+- Frontmatter: obligatorios, valores válidos, campos permitidos, `slug` e `id` únicos y
+  `jsonld` compatible con `tipo`.
 - `last_update.date` válida y no futura.
 - `HowTo` con procedimiento real; `proximamente` sin `HowTo`.
 - Cada `r3zon.app_url` está en `rutas-app.json`, y cada ruta de `rutas-app.json`
@@ -191,14 +206,23 @@ puede comprobar es que se haya actualizado: eso es disciplina (CLAUDE.md).
   `/<slug>` de la documentación.
 - Cada destino de `redirects.json` es una página real.
 - Enlaces internos relativos, a `.md` que existen y se publican.
-- Nada de MDX. Cuerpo que empieza por `**Respuesta corta.**` (CONVENCIONES).
+- Nada de MDX. Cuerpo que empieza por `**Respuesta corta.**`, de 60 palabras como mucho, y
+  termina con el pie de la fuente (CONVENCIONES §2 y §6).
+- Guías (`tipo: guia`) con las secciones de CONVENCIONES §3 en su orden, con «Cómo …, paso a
+  paso» y un «Lo que no es evidente» con contenido.
+- El código (en línea o en bloque) no cuenta como enlace: los ejemplos de sintaxis no se
+  validan.
 
 ## 10. `_meta/`
 
 - **`entidad.json`** — `@id` de schema.org de la organización, el sitio y la aplicación,
   compartidos por la app y la documentación. Dos dominios que declaran la **misma**
   entidad se refuerzan; si declaran entidades distintas, se diluyen. El Docusaurus usa
-  estos `@id` literalmente.
+  estos `@id` literalmente. El de la organización es el de su propia web
+  (`https://www.r3zon.com/#organization`), el mismo en todos sus productos; el del sitio y el
+  de la aplicación, del dominio del producto.
+- **`identidad-visual.md`** — colores, tipografía, radios, contrastes e icono reales del
+  producto, sacados de su código, para que la documentación se vea como la app.
 - **`rutas-app.json`** — rutas reales de la app, con su etiqueta, en tres grupos que el
   Docusaurus lee siempre: `modulos`, `otras` y `publicas` (pueden estar vacíos, pero
   deben existir). `base` es la URL de la app.

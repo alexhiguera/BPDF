@@ -1,9 +1,14 @@
 {
   "name": "bpdf",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Visor de PDF y Markdown para leer en modo oscuro. Los documentos no salen del dispositivo.",
   "license": "Apache-2.0",
+  "homepage": "https://bpdf.r3zon.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexhiguera/BPDF.git"
+  },
   "type": "module",
   "scripts": {
     "predev": "node scripts/copiar-pdfjs.mjs",
@@ -31,6 +36,7 @@
     "bench:editor:compat": "playwright test --config playwright.bench.config.ts --project=firefox --project=webkit editor -g latencia",
     "docs:validar": "node scripts/validar-public-docs.mjs",
     "docs:enlaces": "node scripts/verificar-enlaces-docs.mjs",
+    "wiki:generar": "node scripts/generar-wiki.mjs",
     "deps:overrides": "node scripts/verificar-overrides.mjs",
     "cabeceras:vercel": "node scripts/generar-vercel.mjs",
     "cabeceras:verificar": "node scripts/verificar-cabeceras.mjs"

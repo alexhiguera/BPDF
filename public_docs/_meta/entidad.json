@@ -1,15 +1,15 @@
 {
   "$comentario": [
-    "Identidad schema.org compartida entre la app y su documentación publica.",
+    "Identidad schema.org compartida entre la app y su documentación pública.",
     "",
     "Dos dominios que declaran la MISMA entidad (mismos @id) se refuerzan ante buscadores y",
     "motores generativos; si declaran entidades distintas, se diluyen. El repo de Docusaurus",
-    "usa estos @id LITERALMENTE: apuntan al dominio de la app porque ahí vive la entidad",
-    "canónica, y la documentación la referencia.",
+    "usa estos @id LITERALMENTE. La organización es la de su propia web (www.r3zon.com),",
+    "la misma para todos los productos de R3ZON; el sitio y la aplicación, del dominio de BPDF.",
     "",
     "`sitioProducto` debe coincidir con `project.domain` de src/config/project.ts y",
     "`sitioDocumentacion` terminar en `/<project.slug>`: el validador lo comprueba.",
-    "Dominio oficial (D5, docs/PLAN.md §14), fijado en la Fase 15."
+    "Sin valoraciones, cifras de uso ni premios: solo lo que es verdad y se puede comprobar."
   ],
   "$version": 1,
   "$origen": "src/config/project.ts",
@@ -18,27 +18,55 @@
   "sitioDocumentacion": "https://docs.r3zon.com/bpdf",
 
   "ids": {
-    "organization": "https://bpdf.r3zon.com/#organization",
+    "organization": "https://www.r3zon.com/#organization",
     "website": "https://bpdf.r3zon.com/#website",
     "softwareApplication": "https://bpdf.r3zon.com/#software"
   },
 
   "organization": {
     "@type": "Organization",
-    "@id": "https://bpdf.r3zon.com/#organization",
+    "@id": "https://www.r3zon.com/#organization",
     "name": "R3ZON",
-    "url": "https://r3zon.com",
-    "sameAs": ["https://r3zon.com", "https://bpdf.r3zon.com", "https://docs.r3zon.com/bpdf"]
+    "url": "https://r3zon.com"
+  },
+
+  "website": {
+    "@type": "WebSite",
+    "@id": "https://bpdf.r3zon.com/#website",
+    "name": "BPDF",
+    "url": "https://bpdf.r3zon.com",
+    "inLanguage": "es-ES",
+    "publisher": { "@id": "https://www.r3zon.com/#organization" }
   },
 
   "softwareApplication": {
-    "@type": "SoftwareApplication",
+    "@type": "WebApplication",
     "@id": "https://bpdf.r3zon.com/#software",
     "name": "BPDF",
+    "url": "https://bpdf.r3zon.com",
+    "description": "Visor de PDF y Markdown para leer en modo oscuro. Los documentos no salen del dispositivo.",
     "applicationCategory": "UtilitiesApplication",
     "operatingSystem": "Web",
-    "description": "Visor de PDF y Markdown para leer en modo oscuro. Los documentos no salen del dispositivo.",
+    "browserRequirements": "Requiere JavaScript. Chrome o Edge 111, Firefox 128 o Safari 16.4, o posteriores.",
     "inLanguage": "es-ES",
-    "publisher": { "@id": "https://bpdf.r3zon.com/#organization" }
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+    "license": "https://www.apache.org/licenses/LICENSE-2.0",
+    "featureList": [
+      "Visor de PDF con modo oscuro que no oscurece las imágenes",
+      "Búsqueda, miniaturas, zoom, giro y pantalla completa en PDF",
+      "Apertura de PDF protegidos con contraseña",
+      "Lector de Markdown (GFM) con índice, fórmulas KaTeX y diagramas Mermaid",
+      "Imágenes locales de un Markdown, eligiendo sus archivos o su carpeta",
+      "Edición de Markdown con vista previa y modo dividido",
+      "Sin cuentas, sin servidor y sin telemetría: los documentos no salen del dispositivo"
+    ],
+    "audience": {
+      "@type": "Audience",
+      "audienceType": "Personas que leen o escriben documentos PDF y Markdown en el navegador y quieren hacerlo en modo oscuro y sin subirlos a ningún servidor"
+    },
+    "creator": { "@id": "https://www.r3zon.com/#organization" },
+    "provider": { "@id": "https://www.r3zon.com/#organization" },
+    "publisher": { "@id": "https://www.r3zon.com/#organization" }
   }
 }

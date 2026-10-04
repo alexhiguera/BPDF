@@ -29,6 +29,10 @@ export const HOY = "2026-09-23";
 const APP = `https://${PROYECTO.domain}`;
 const DOCS = `https://docs.r3zon.com/${PROYECTO.slug}`;
 
+/** El pie de cada página (CONVENCIONES §6), con la fecha del fixture. */
+export const pie = (slug: string) =>
+  `> Fuente: documentación oficial de ${PROYECTO.name} (${PROYECTO.organization}). Actualizado el ${HOY}.\n> ${DOCS}${slug}`;
+
 function pagina(fm: string, cuerpo: string): string {
   return `---\n${fm.trim()}\n---\n\n${cuerpo.trim()}\n`;
 }
@@ -64,6 +68,8 @@ const FICHEROS: Record<string, string> = {
     publicas: { "/": { label: "Portada" }, "/login": { label: "Acceder" } },
   }),
   "public_docs/_meta/redirects.json": JSON.stringify({ redirects: [] }),
+  "public_docs/_meta/identidad-visual.md": "# Identidad visual\n",
+  "public_docs/seccion/_category_.json": JSON.stringify({ label: "Sección", position: 1 }),
   "public_docs/index.md": pagina(
     `
 title: "Documentación de ${PROYECTO.name}"
@@ -76,7 +82,7 @@ r3zon:
   jsonld: TechArticle
   estado: publicado
   app_url: /`,
-    "**Respuesta corta.** Portada.\n\n[Guía](seccion/guia.md)",
+    `**Respuesta corta.** Portada.\n\n[Guía](seccion/guia.md)\n\n${pie("/")}`,
   ),
   "public_docs/seccion/guia.md": pagina(
     `
@@ -102,9 +108,15 @@ r3zon:
 
 Nada.
 
+## Lo que no es evidente
+
+- Un detalle.
+
 ## Qué leer después
 
-- [Portada](../index.md)`,
+- [Portada](../index.md)
+
+${pie("/seccion/guia")}`,
   ),
 };
 
