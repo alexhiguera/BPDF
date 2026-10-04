@@ -519,9 +519,23 @@ test("teclado: AvPág, RePág, Fin, Inicio, Ctrl+/−/0; nada se intercepta al e
 // mitad (franjas en el worker) dejaba un rechazo «worker-destruido» sin capturar en la
 // consola. Se cierra a distintos tiempos tras empezar a pintar, para cruzar la ventana
 // en la que hay franjas en vuelo; la vigilancia exige la consola limpia.
+//
+// WebKit tiene más tiempo (`test.slow()`: 90 s en vez de 30 s) SOLO en este test. Su perfil
+// de Playwright usa DPR 2 (Chromium y Firefox, DPR 1) y, con poca CPU (un runner de CI), el
+// pintado del PDF alarga los fotogramas hasta 240–350 ms; las ~19 pulsaciones del test
+// esperan cada una la comprobación «estable» de Playwright (dos fotogramas seguidos), y
+// entre todas suman ~31 s. El test TERMINA bien (con 1 núcleo y más tiempo pasa 3 de 3,
+// consola limpia) y no hay evidencia de un fallo de BPDF: en GitHub agotó los 30 s en la
+// pulsación que estuviera en curso (iteración 33, TAREAS). Solo se amplía el presupuesto de
+// este test: el timeout global y el resto de la suite no cambian.
 test("cerrar o sustituir el PDF mientras se pintan páginas no deja errores ni rastro", async ({
   page,
+  browserName,
 }) => {
+  test.slow(
+    browserName === "webkit",
+    "WebKit (DPR 2) con poca CPU tarda ~31 s en las pulsaciones del test: se triplica su tiempo",
+  );
   const v = await abrir(page);
   for (const [i, espera] of [0, 20, 40, 60, 90, 120, 160, 220].entries()) {
     await abrirPdf(page, OSCURO);

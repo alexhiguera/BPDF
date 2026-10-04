@@ -6,7 +6,7 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 | Pieza | Estado | Dónde |
 |---|---|---|
 | Identidad del producto | ✅ (dominio oficial de D5 desde la F15) | `src/config/project.ts` |
-| Distribución web: dominio, `robots.txt`, `sitemap.xml`, `dist/` publicable, smoke de producción | 🚧 F15 (implementada; pendiente de verificar en producción) | `src/config/public-site.ts`, `scripts/verificar-dist.mjs`, `playwright.produccion.config.ts`, `e2e/produccion/` |
+| Distribución web: dominio, `robots.txt`, `sitemap.xml`, `dist/` publicable, smoke de producción | ✅ F15 (verificada en producción) | `src/config/public-site.ts`, `scripts/verificar-dist.mjs`, `playwright.produccion.config.ts`, `e2e/produccion/` |
 | SPA estática (Vite + React) y shell accesible | ✅ F2 | `index.html`, `vite.config.ts`, `src/main.tsx`, `src/app/` |
 | Tokens de diseño y primitivos (Button, Field, Input) | ✅ F2 (revisados en F11; lista en PLAN §9.5) | `src/styles/globals.css`, `src/components/ui/` |
 | Textos centralizados | ✅ F2 | `src/i18n/messages.ts` |

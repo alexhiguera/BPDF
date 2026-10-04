@@ -25,10 +25,10 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   adoptado en v1, riesgo aceptado). La 13 (accesibilidad, rendimiento y compatibilidad) se
   cerró el *2026-10-04* (ARCHITECTURE §4 undecies): Firefox y WebKit corren la suite E2E
   también en CI; limitaciones de v1 aceptadas: Markdown de ~1 MB en ~3 s y, en WebKit,
-  Dividido con 1 MB + KaTeX muy lento. La 15 (distribución web; la 14 se canceló) está
-  **implementada y pendiente de despliegue y verificación** (*2026-10-04*): dominio oficial,
-  versión 0.1.0 y registro de cambios para usuarios ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)).
-  Después, la 16 (open source y documentación final). La app es una SPA estática de Vite + React (D1)
+  Dividido con 1 MB + KaTeX muy lento. La 15 (distribución web; la 14 se canceló) se
+  cerró el *2026-10-04*, verificada en producción: dominio oficial, versión 0.1.0 y registro
+  de cambios para usuarios ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). Siguiente y última
+  de v1: **Fase 16** (open source y documentación final; 1.0.0 al cerrarla). La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
   oscuro selectivo en un worker, búsqueda avanzada, pantalla completa, atajos de una tecla

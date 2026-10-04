@@ -2,9 +2,8 @@
 
 **BPDF se publica en Vercel, en `https://bpdf.r3zon.com`** (D5, [PLAN.md](PLAN.md) §14,
 confirmada el *2026-10-03*). Es la única distribución: BPDF es solo web (D19), sin
-instaladores ni versión de escritorio. Este documento se reescribió en la Fase 15
-(*2026-10-04*), que está **implementada y pendiente de despliegue y verificación**
-([FASES.md](FASES.md)).
+instaladores ni versión de escritorio. Este documento se reescribió en la Fase 15,
+cerrada el *2026-10-04* tras verificar la producción ([FASES.md](FASES.md)).
 
 ## Cómo se publica
 
@@ -100,6 +99,12 @@ Tras cada despliegue que toque cabeceras, CSP, rutas, el dominio o la build (CLA
 
 ## Historial de verificaciones en producción
 
+- **Cierre de la Fase 15** (*2026-10-04*, `9fb5f6a`): la build servida es la del commit
+  (`index.html`, `mermaid.html` y el módulo principal idénticos byte a byte a los de
+  `npm run build`). `test:humo` 6 de 6, con cero errores, cero violaciones y ninguna petición
+  externa; `cabeceras:verificar` en verde (las de la Fase 12, sin cambios); `http://`
+  redirige con 308 a `https://`; `robots.txt` y `sitemap.xml` con `https://bpdf.r3zon.com`,
+  sin `app.example.com`.
 - **Cierre de la Fase 12** (*2026-10-03*, `96fcafb`): `cabeceras:verificar` en verde;
   `Permissions-Policy` con `camera`, `microphone`, `geolocation`, `payment`, `usb`,
   `display-capture`, `clipboard-read`, `serial`, `hid` y `midi` en `/` y `/mermaid.html`.
@@ -116,7 +121,6 @@ Tras cada despliegue que toque cabeceras, CSP, rutas, el dominio o la build (CLA
   [auditoria.md](auditoria.md) A1-6).
 - **Antes de `vercel.json`** (comprobado el *2026-09-30*): Vercel no mandaba ninguna cabecera
   de seguridad (solo su HSTS por defecto) y la CSP llegaba solo por `<meta>`.
-- **Fase 15:** pendiente del despliegue (lista de arriba).
 
 ## Documentación pública
 

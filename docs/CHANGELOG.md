@@ -10,6 +10,84 @@ R3ZON SaaS Template.
 
 ---
 
+### Iteración 33 — *2026-10-04* — E2E de WebKit en rojo en GitHub: límite de tiempo, no fallo
+
+**Contexto.** Con `9fb5f6a` el workflow E2E falló en WebKit: «cerrar o sustituir el PDF mientras
+se pintan páginas no deja errores ni rastro» agotaba los 30 s en los dos intentos. El usuario
+mantuvo la F15 **CERRADA / APROBADA** (el fallo es de la cobertura de compatibilidad de la F13) y
+pidió resolverlo antes de la F16, sin cambiar producción.
+
+**Diagnóstico** (trazas del artefacto `playwright-report-webkit` y pruebas locales):
+- No es un cuelgue. El 78 % del tiempo del test (22,5 de 29 s) es la espera «estable» de
+  Playwright en unas 19 pulsaciones (0,7–2 s cada una en el runner); el límite de 30 s cae sobre
+  la que esté en curso («Abrir archivo» en el primer intento, «Cerrar documento» en el reintento).
+- Ninguna pulsación se reintenta por «not stable» ni por «intercepts pointer events», y todas
+  terminan con «click action done». La consola queda limpia: ningún `worker-destruido`.
+- La espera dura ≈ 2 fotogramas, y con 1 núcleo los fotogramas de WebKit llegan a 240–350 ms
+  mientras se pinta el PDF (Chromium: 17 ms).
+- **Causa de que sea solo WebKit:** el perfil «Desktop Safari» de Playwright usa DPR 2 (Chromium y
+  Firefox, 1). La misma secuencia con 1 núcleo: WebKit 31,0 s a DPR 2 y 10,1 s a DPR 1; Chromium
+  4,7 y 4,3 s; Firefox 5,1 y 4,9 s. Con 16 núcleos no hay diferencia.
+- Descartados como causa: el tracing (29,3 s sin traza frente a 30,1 s con ella) y que el servidor
+  comparta núcleo.
+- Reproducción local con `taskset`: 16 núcleos, 7 s; 2 núcleos, 17–19 s; **1 núcleo, falla 4 de 4
+  a los 30,2 s** con el mismo error. Con más tiempo pasa en 30,1 s.
+
+**Conclusión: fallo del E2E bajo carga, no de BPDF.** Es un test largo con un límite fijo de 30 s
+en un perfil con DPR 2 y un runner lento. El job de WebKit tardó 10 min de tests frente a ~2,3 en
+local (~4,5×), del orden del factor del caso de 1 núcleo.
+
+**Corrección.** En ese test, `test.slow(browserName === "webkit", motivo)`: 90 s en vez de 30 s,
+solo en WebKit, con un comentario con el porqué. Sin cambios en DPR, iteraciones, clics reales,
+vigilancia de consola, lógica del test, timeout global ni código de producción. Descartado: bajar
+el DPR de WebKit (pierde la cobertura Retina), reducir las iteraciones (pierde ventanas de tiempo),
+`force: true` o `dispatchEvent` (esconden la espera) y abrir con Ctrl+O (en una sonda terminó 1 de
+3 veces).
+
+**Observación aparte** (TAREAS): WebKit de Playwright en Linux + DPR 2 + CPU limitada pinta el PDF
+mucho más lento. No se afirma que Safari real lo tenga; falta confirmarlo.
+
+**Intermitencias existentes, sin tocar:** el mismo factor del runner puede explicar también el test
+de Markdown de ~1 MB (36,9 s sobre 30 s) y quizá los de 200 ms y de salto de página. Es una
+hipótesis compatible con las cifras, no demostrada.
+
+**Verificación.** WebKit, solo ese test: con 1 núcleo, **11 de 12** (el fallo, un `page.goto` que
+agotó los 90 s en la primera tanda, no se repitió en una segunda de 8 y queda sin explicar: no es
+el cuerpo del test); en configuración normal, 4 de 4 (~7 s); Firefox y Chromium, ✅ con su límite
+de 30 s. Suite de WebKit en modo CI: **125 pasan, 5 saltados con su motivo, 0 intermitentes**
+(2,1 min). `lint` y `typecheck` ✅. Falta confirmarlo en GitHub tras el push.
+
+### Iteración 32 — *2026-10-04* — Fase 15 cerrada: producción verificada
+
+**Contexto.** El usuario subió la Fase 15 (`9fb5f6a`) y pidió verificar producción y, si
+todo pasaba, cerrarla. **La Fase 15 queda CERRADA / APROBADA.** Siguiente y última fase de
+v1: la 16 (open source y documentación final). La versión sigue en **0.1.0**; 1.0.0 al
+cerrar la F16 (decisión del usuario).
+
+**Qué build está publicada.** `main` y `origin/main` están en `9fb5f6a`. Vercel no publica el
+commit, así que se comparó la build: `npm run build` de ese commit da un `index.html`, un
+`mermaid.html` y un módulo principal **idénticos byte a byte** a los que sirve
+`https://bpdf.r3zon.com`, y sus módulos de arranque responden 200.
+
+**Verificado contra `https://bpdf.r3zon.com`:**
+- `npm run test:humo`: **6 de 6** (portada con título, favicon, Preferencias y crédito de
+  R3ZON; Markdown con fórmula KaTeX; PDF; cabeceras de `/`; robots y sitemap; `http://` →
+  308 a `https://`). Cero errores de consola, cero violaciones de CSP, ninguna petición
+  externa.
+- `npm run cabeceras:verificar`: en verde para `/`, `/mermaid.html` y el módulo del marco.
+  Las cabeceras son las de la Fase 12, sin cambios; con `curl -I` se ve además lo que Vercel
+  añade de suyo (`Access-Control-Allow-Origin: *`, ya aceptado: auditoría A1-6).
+- `robots.txt` enlaza `https://bpdf.r3zon.com/sitemap.xml`; `sitemap.xml` solo tiene
+  `https://bpdf.r3zon.com/`. Ningún `app.example.com` en lo servido.
+- `public_docs/`: `_meta/entidad.json`, `_meta/rutas-app.json`, `index.md` y `novedades.md`
+  coherentes con `project.ts` (`docs:validar`, también en CI). Sin publicar: es de la F16.
+
+**CI en GitHub** con ese commit: CI (incluido el paso nuevo `build:verificar`) y Security en
+verde; E2E: Chromium ✅ (4 min 28 s) y Firefox ✅ (6 min 59 s), pero **WebKit ✗** (11 min 9 s): 124 pasan, 5 saltados con su motivo y 1 falla en los dos intentos, «cerrar o sustituir el PDF mientras se pintan páginas», que agota los 30 s esperando a que un botón esté estable para pulsarlo. Ese test no cambió y en local pasa; el job de WebKit tardó 10 min de tests frente a ~2,3 en local, así que apunta a la lentitud del runner, sin confirmar. No se tocó (el usuario pidió solo verificar y cerrar): queda en TAREAS. No afecta a la verificación de producción, que es el criterio de cierre de esta fase. Son los primeros tiempos reales del job `compat` de la F13.
+
+**Documentos.** CLAUDE, FASES, PLAN, TAREAS (sin la tarea de despliegue de la F15), DEPLOYMENT
+(historial de verificaciones) y MODULES. Sin cambios en el código, la seguridad ni la versión.
+
 ### Iteración 31 — *2026-10-04* — Fase 15 implementada: dominio oficial, versión y smoke de producción
 
 **Contexto.** El usuario abrió la Fase 15 (distribución web) con la F13 cerrada y la F14

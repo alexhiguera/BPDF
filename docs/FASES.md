@@ -54,8 +54,8 @@ web); conserva su número, sin trabajo pendiente.
 | 12 | Seguridad: endurecimiento y auditoría | Ya no «añade» seguridad: cada fase implementa la suya. Aquí se verifica, se endurece (CSP final, Trusted Types: medido y no adoptado en v1) y se audita. ✅ **Cerrada** (*2026-10-03*) |
 | 13 | Accesibilidad y rendimiento | Los tests viven en cada fase; esta fase **mide** con el corpus grande y corrige. ✅ **Cerrada** (*2026-10-04*) |
 | 14 | ~~Electron: aplicación~~ | **Cancelada** el *2026-10-03*: BPDF es solo una aplicación web (D19) |
-| 15 | Distribución web | Incluye la publicación web (antes no tenía fase). **Reescrita** el *2026-10-03* sin la parte de escritorio (D19). 🚧 **Implementada**, pendiente de despliegue y verificación (*2026-10-04*) |
-| 16 | Open source y documentación final | Igual; la licencia ya existe desde F1 |
+| 15 | Distribución web | Incluye la publicación web (antes no tenía fase). **Reescrita** el *2026-10-03* sin la parte de escritorio (D19). ✅ **Cerrada** (*2026-10-04*), verificada en producción |
+| 16 | Open source y documentación final | Igual; la licencia ya existe desde F1. **Siguiente y última de v1** (1.0.0 al cerrarla) |
 
 Paralelizables (si hay dos sesiones a la vez): **F7–F9** con **F5–F6**. Todas tocan
 `src/app/App.tsx` en un punto (montar el visor en lugar de `DocumentSummary`, ya hecho en F5 y F7): conflicto
@@ -1330,15 +1330,15 @@ conserva porque tiene sentido por sí mismo.
 
 ## Fase 15 — Distribución web
 
-> **IMPLEMENTADA / PENDIENTE DE DESPLIEGUE Y VERIFICACIÓN** (*2026-10-04*, iteración 31).
-> Hecho y comprobado en local: el dominio oficial en `project.ts` (y con él `robots.txt`,
+> **CERRADA / APROBADA** el *2026-10-04* (implementada en la iteración 31; cerrada en la 32,
+> verificada en producción con `9fb5f6a`: `test:humo` 6 de 6, `cabeceras:verificar` en verde,
+> `robots.txt` y `sitemap.xml` con el dominio oficial, la build servida idéntica a la del
+> commit). Implementado: el dominio oficial en `project.ts` (y con él `robots.txt`,
 > `sitemap.xml` y `public_docs/_meta/`); `npm run build:verificar` sobre `dist/` (también en
 > CI); la prueba de humo de producción (`npm run test:humo`, ensayada contra `vite
 > preview`); `DEPLOYMENT.md` reescrito; la versión se mantiene en **0.1.0** (SemVer 0.x;
 > 1.0.0 al cerrar la Fase 16); el registro de cambios para usuarios en
-> `public_docs/novedades.md`. **Falta**, tras el despliegue que hace el usuario: el smoke,
-> `cabeceras:verificar` y `curl -I` contra `https://bpdf.r3zon.com`, `robots.txt`,
-> `sitemap.xml` y el dominio. Solo entonces se cierra.
+> `public_docs/novedades.md` (se publica con la F16).
 
 > **Reescrita el *2026-10-03*** (D19: BPDF es solo web). Antes era «Distribución: web y
 > escritorio». Se retiró todo lo que solo tenía sentido con una app de escritorio, sin
