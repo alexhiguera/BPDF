@@ -5,10 +5,114 @@ se descartó y qué salió mal por el camino. Convención en [`CLAUDE.md`](../CL
 Las entradas nuevas van arriba. Los números de iteración solo tienen que ser únicos:
 nunca se renumeran.
 
-La historia de la plantilla de la que nace BPDF está en la bitácora del repositorio de
-R3ZON SaaS Template.
+La historia de la plantilla de la que nace BPDF (una plantilla interna de R3ZON) está en la
+bitácora de esa plantilla.
 
 ---
+
+### Iteración 35 — *2026-10-04* — Fase 16 cerrada: v1 completa; limpieza antes de publicar
+
+**Contexto.** El usuario aprobó la implementación de la Fase 16, resolvió las tres decisiones
+que quedaban y pidió cerrarla al terminar esta limpieza. **La Fase 16 queda CERRADA /
+APROBADA y v1 está completa.** La publicación externa (repositorio público, Wiki,
+`docs.r3zon.com`, etiqueta `v1.0.0` y GitHub Release) la hace el usuario: queda en TAREAS como
+su tarea, no como fase abierta. Sin cambios de funcionalidad, versión, `public_docs/` (salvo su
+contrato), tests, CSP ni dependencias.
+
+**Copyright.** Titular legal: **R3ZON CONSULTING SL** («Copyright 2026 R3ZON CONSULTING SL»)
+en `NOTICE` y en la licencia del README. En el producto, los créditos y la documentación sigue
+la marca **R3ZON**. Licencia, la misma: Apache-2.0.
+
+**Código de conducta.** En el repositorio no había ningún contacto. La web de R3ZON publica uno
+real, `info@r3zon.com` (portada y página de contacto, comprobado el *2026-10-04*), y es el que
+se usa: por correo, indicando que es sobre el código de conducta de BPDF. El texto dice
+expresamente que no se use un issue, una discusión ni un *pull request* públicos, y que las
+vulnerabilidades van por el aviso privado de GitHub (`SECURITY.md`). No se inventó ningún
+canal.
+
+**Nombres internos, generalizados** (no eran secretos: no los hay; son nombres de
+infraestructura que no necesita quien contribuye):
+- el repositorio del Docusaurus → «repositorio de documentación de R3ZON», y su fichero de
+  productos y su script de sincronización → «su configuración de productos» y «su
+  sincronización» (`public_docs/README.md`, `DEPLOYMENT.md`);
+- el nombre de la credencial de sincronización → «credencial de sincronización configurada en
+  el repositorio de documentación»;
+- el nombre de la plantilla de origen → «plantilla interna de R3ZON», y el nombre de su
+  manifiesto → «el manifiesto de la plantilla» (`CLAUDE.md`, `TEMPLATE.md`, `PLAN.md`,
+  `FASES.md` y la bitácora, también en entradas antiguas: se conserva lo que pasó y por qué).
+
+Una búsqueda en todo lo versionado confirma que no queda ninguno.
+
+**Verificación** (solo lo que esta limpieza toca): `lint`, `docs:enlaces`, `docs:validar`, los
+tests de documentación, de `public_docs/` y de la Wiki, y `git diff --check`.
+
+### Iteración 34 — *2026-10-04* — Fase 16 implementada: open source, documentación pública y 1.0.0
+
+**Contexto.** Última fase de v1. El repositorio actual pasa a ser el público, sin repo aparte
+ni reescritura del historial. **La Fase 16 queda IMPLEMENTADA / PENDIENTE DE PUBLICACIÓN
+FINAL**: el commit, el push, la visibilidad pública, la Wiki, el alta en `docs.r3zon.com`, la
+etiqueta `v1.0.0` y la GitHub Release los hace el usuario (DEPLOYMENT, «Publicación final»).
+
+**Contradicciones de la especificación, resueltas así:**
+- FASES ponía el enlace al repositorio en «Acerca de» y en la mención al pie; el usuario pidió
+  solo «Acerca de».
+- El README sin capturas: no estaban en la lista del usuario.
+- La Wiki y `docs.r3zon.com`, preparados y no publicados (necesitan credenciales y acciones
+  externas).
+- El `@id` de la organización en `entidad.json` pasa a `https://www.r3zon.com/#organization`
+  (pedido literal), y el validador de identidad exigía que todos los `@id` colgaran del dominio
+  de la app: ahora la organización puede ser la de su propia web.
+- Tres decisiones quedan para el usuario, en TAREAS: el titular del copyright (se puso
+  «R3ZON»), el canal privado del código de conducta (se puso «a través de R3ZON») y si los
+  nombres de repositorios internos de R3ZON que citan algunos documentos pueden publicarse.
+
+**Comprobación previa a publicar** (superficial, a petición): sin `.env` ni claves versionados,
+sin patrones de tokens, sin rutas locales ni correos; el único secreto de los workflows,
+`DISCORD_WEBHOOK`, va por nombre. Los fixtures los genera el propio repo. Licencias de las
+dependencias de producción: todas permisivas (MIT, ISC, BSD-3, Apache-2.0, Unlicense;
+`dompurify` bajo Apache-2.0; `khroma` sin campo `license` pero con su fichero MIT). Nuevo
+`NOTICE`.
+
+**Código** (lo único funcional): «Acerca de» enlaza al repositorio («Código fuente en
+GitHub»), con `Platform.openExternal` como la mención a R3ZON (sin `opener` ni `Referer`, clic
+central anulado, sin tocar la CSP). La URL sale del remote de git y vive en
+`project.repositoryUrl`; `package.json` gana `repository` y `homepage`, y un test los ata.
+Tests de componente y E2E del enlace (antes exigían «sin enlaces»).
+
+**Ficheros de comunidad:** README reescrito (usuario y desarrollo), `SECURITY.md` (aviso
+privado de GitHub, sin plazos garantizados ni correo inventado), `CONTRIBUTING.md`,
+`CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), formularios de issue (fallo y mejora, con el
+aviso de no adjuntar documentos sensibles), `config.yml` y plantilla de PR. `docs:enlaces`
+revisa ahora también estos ficheros.
+
+**`public_docs/`, completo:** 34 páginas (portada, qué es, novedades, mapa, 3 primeros pasos,
+15 guías de PDF, Markdown y Preferencias, 5 de referencia, preguntas frecuentes, 5 problemas y
+glosario), `_category_.json` por sección y `_meta/identidad-visual.md` sacado de los tokens.
+Cada dato se comprobó contra el código; al hacerlo se corrigieron afirmaciones propias que no
+eran verdad: la búsqueda ignora las tildes siempre (no solo sin mayúsculas), un SVG local se
+muestra como imagen (no se «limpia»), BPDF no abre un `.md` vacío y no funciona sin conexión
+(el visor, el editor, KaTeX y Mermaid se descargan la primera vez). El favicon sirve de icono
+del producto en el hub: no hace falta otro SVG.
+
+**Validador ampliado** (el mismo, no uno nuevo): respuesta corta de 60 palabras como mucho;
+pie de la fuente con la fecha y la URL de la página; secciones de guía en su orden, con «Cómo
+…, paso a paso» y un «Lo que no es evidente» con contenido; `jsonld` compatible con `tipo`;
+`id` único; `_category_.json` e `identidad-visual.md`. Al pasarlo por las páginas salió un
+falso positivo suyo: tomaba por enlaces los ejemplos dentro de código; ahora el código no
+cuenta. Contrato y CONVENCIONES actualizados.
+
+**GitHub Wiki:** `npm run wiki:generar` la genera desde `public_docs/` (la fuente sigue siendo
+una): páginas planas por `id`, `Home`, enlaces reescritos, `_Sidebar` por secciones y
+`_Footer` con la fuente. Sin publicarla: DEPLOYMENT explica cómo, y un workflow que la
+sincronice queda descartado hasta que la primera publicación la revise una persona.
+
+**Versión 1.0.0** (`npm version`, sin etiqueta): «Acerca de» la muestra; `novedades.md` tiene
+su apartado.
+
+**Un error propio por el camino:** lancé `python3` desde Git Bash, que en esta máquina se
+queda esperando; lo detuve sin que llegara a escribir nada y seguí con Node.
+
+**Verificación.** `lint` y `typecheck` ✅; `npm test` **1043** en 55 ficheros; `test:e2e` (Chromium) **130**; compatibilidad en modo CI: Firefox **125** pasan, 4 saltados y 1 intermitente que pasa al reintentar (agotó los 30 s en el primer intento: «nombres de fichero hostiles», un test que no cambió; la misma familia de intermitencias de Firefox que en la F13), WebKit **125** pasan y 5 saltados; smoke contra la build local 5 + 1 saltado; `build`, `build:tamano` (95,2 KB, +0,1 por el enlace), `build:verificar`, `docs:enlaces` (327 en 22 ficheros), `docs:validar` (34 páginas) y `npm audit` (0). Sin benchmarks: nada cambia el rendimiento.
 
 ### Iteración 33 — *2026-10-04* — E2E de WebKit en rojo en GitHub: límite de tiempo, no fallo
 
@@ -2099,7 +2203,7 @@ salió mal.
   `aplicar.ts`). Sus aserciones de píxeles pasaron al E2E del visor; el benchmark mide
   ahora el visor. Nada del laboratorio tenía que pasar al visor salvo la lectura de los
   tokens de color (`src/app/pdf/colores.ts`).
-- **`r3zon-template.json`**: estaba borrado (y commiteado) para no publicar la plantilla,
+- **El manifiesto de la plantilla**: estaba borrado (y commiteado) para no publicar la plantilla,
   pero CLAUDE.md §11 y TEMPLATE.md lo seguían enlazando (`docs:enlaces` en rojo). Se
   reescribieron esas referencias: el origen queda registrado en TEMPLATE.md.
 
@@ -2250,7 +2354,7 @@ Chromium de Playwright.
   salida.
 
 **Pendiente, anotado en TAREAS:** D17 y D18; borrar el laboratorio en la F5; validar con PDF
-reales. Aparte, `docs:enlaces` falla por el `r3zon-template.json` borrado sin commitear
+reales. Aparte, `docs:enlaces` falla por el manifiesto de la plantilla borrado sin commitear
 (anterior a esta fase).
 
 ### Iteración 5 — *2026-09-29* — Fase 3: apertura local de documentos
@@ -2553,7 +2657,7 @@ cabeceras de seguridad y el título de BPDF, y `/login`, `/inicio`, `/auth/callb
   regla es no guardar dependencias para el futuro. La Fase 2 lo reinstala.
 - **`comprobarDerivacion` fuera** (con `supabase/config.toml` en el validador de
   identidad): vigilaba que un SaaS derivado no heredara los puertos ni la auditoría de la
-  plantilla. Con D15 no protege nada. `r3zon-template.json` queda como registro de origen.
+  plantilla. Con D15 no protege nada. El manifiesto queda como registro de origen.
 - **El fixture de los validadores conserva sus rutas `/login` e `/inicio`**: es un
   proyecto ficticio, y esas rutas prueban cómo resuelve el validador los grupos `(x)` de
   Next. Se revisará cuando la Fase 2 adapte el validador a Vite.
@@ -2651,5 +2755,5 @@ consistió en decidir qué se conserva y diseñar lo demás antes de escribir un
 
 ### Iteración 1 — *2026-09-29* — Proyecto creado desde R3ZON Template v1.0.0
 
-Repositorio creado a partir de la plantilla (`r3zon-template.json`: 1.0.0), sin cambios
+Repositorio creado a partir de la plantilla (su manifiesto: 1.0.0), sin cambios
 (commit `e5e063d`).

@@ -55,7 +55,7 @@ web); conserva su número, sin trabajo pendiente.
 | 13 | Accesibilidad y rendimiento | Los tests viven en cada fase; esta fase **mide** con el corpus grande y corrige. ✅ **Cerrada** (*2026-10-04*) |
 | 14 | ~~Electron: aplicación~~ | **Cancelada** el *2026-10-03*: BPDF es solo una aplicación web (D19) |
 | 15 | Distribución web | Incluye la publicación web (antes no tenía fase). **Reescrita** el *2026-10-03* sin la parte de escritorio (D19). ✅ **Cerrada** (*2026-10-04*), verificada en producción |
-| 16 | Open source y documentación final | Igual; la licencia ya existe desde F1. Última de v1. 🚧 **Implementada**, pendiente de publicación final (*2026-10-04*) |
+| 16 | Open source y documentación final | Igual; la licencia ya existe desde F1. Última de v1. ✅ **Cerrada** (*2026-10-04*); la publicación externa la hace el usuario |
 
 Paralelizables (si hay dos sesiones a la vez): **F7–F9** con **F5–F6**. Todas tocan
 `src/app/App.tsx` en un punto (montar el visor en lugar de `DocumentSummary`, ya hecho en F5 y F7): conflicto
@@ -85,7 +85,7 @@ identidad de BPDF; `LICENSE` Apache-2.0; `public_docs/` conservado (D4) con port
   configuración del hosting la crea la fase que la necesite, según D5.
 - **`comprobarDerivacion` y sus tests se retiraron** con `supabase/config.toml`: vigilaban
   los puertos de Supabase y la auditoría de la plantilla, que ya no existen (D15).
-  `r3zon-template.json` quedó como registro de origen, sin `reservadoPorLaPlantilla` (se retiró
+  el manifiesto de la plantilla quedó como registro de origen, sin `reservadoPorLaPlantilla` (se retiró
   del repositorio antes de publicarlo; el origen queda en [TEMPLATE.md](TEMPLATE.md)).
 - **`NEXT_PUBLIC_SITE_URL` desaparece**: `siteUrl()` usa `project.domain`.
 - **`modules/` se borró** sin conservar una copia: `docs/MODULES.md` explica por qué no
@@ -1392,7 +1392,10 @@ con el alcance de la F16).
 
 ## Fase 16 — Open source y documentación final
 
-> **IMPLEMENTADA / PENDIENTE DE PUBLICACIÓN FINAL** (*2026-10-04*, iteración 34). Hecho:
+> **CERRADA / APROBADA** el *2026-10-04* (implementada en la iteración 34; cerrada en la 35,
+> por indicación del usuario, con las decisiones de publicación resueltas: titular
+> «R3ZON CONSULTING SL», contacto del código de conducta `info@r3zon.com` y nombres internos
+> generalizados). Hecho:
 > README, `NOTICE`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md` (Contributor
 > Covenant 2.1), plantillas de issue y PR; enlace al repositorio en «Acerca de»;
 > `public_docs/` completo (34 páginas, `_meta/` con `identidad-visual.md`) con el validador
@@ -1400,9 +1403,9 @@ con el alcance de la F16).
 > (`npm run wiki:generar`); versión **1.0.0**. Precisado frente al alcance de abajo, por
 > decisión del usuario: el enlace al repositorio va **solo en «Acerca de»** (no en la mención
 > al pie); el README no lleva capturas; la Wiki y `docs.r3zon.com` quedan **preparados, no
-> publicados**. Falta, y lo hace el usuario: commit y push, hacer público el repositorio,
-> publicar la Wiki y la documentación, la etiqueta `v1.0.0` y la GitHub Release
-> ([DEPLOYMENT.md](DEPLOYMENT.md), «Publicación final»).
+> publicados**. La publicación externa (commit y push, repositorio público, Wiki,
+> `docs.r3zon.com`, etiqueta `v1.0.0` y GitHub Release) la hace el usuario y no forma parte
+> del cierre ([DEPLOYMENT.md](DEPLOYMENT.md), «Publicación final»).
 
 **Objetivo.** Dejar el repositorio listo para contribuciones externas.
 

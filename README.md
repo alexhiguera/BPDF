@@ -80,6 +80,6 @@ público**: sigue [`SECURITY.md`](SECURITY.md).
 
 ## Licencia
 
-[Apache-2.0](LICENSE). Copyright 2026 R3ZON; ver [`NOTICE`](NOTICE). Las dependencias y los
-recursos que se distribuyen con la build (pdf.js y sus fuentes, KaTeX y sus fuentes, Mermaid…)
-conservan sus propias licencias.
+[Apache-2.0](LICENSE). Copyright 2026 R3ZON CONSULTING SL; ver [`NOTICE`](NOTICE). Las
+dependencias y los recursos que se distribuyen con la build (pdf.js y sus fuentes, KaTeX y sus
+fuentes, Mermaid…) conservan sus propias licencias.

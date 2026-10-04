@@ -39,9 +39,13 @@ público.
 
 ## Cómo informar
 
-Informa de un comportamiento inaceptable a las personas que mantienen el proyecto, en privado,
-a través de R3ZON (`https://r3zon.com`). Toda queja se revisa e investiga con rapidez y
-equidad, y se respeta la privacidad y la seguridad de quien informa.
+Informa de un comportamiento inaceptable por correo a **info@r3zon.com**, el contacto que
+R3ZON publica en su web, indicando que se refiere al código de conducta de BPDF. No uses un
+issue, una discusión ni un *pull request* públicos para denunciarlo. Toda queja se revisa e
+investiga con rapidez y equidad, y se respeta la privacidad y la seguridad de quien informa.
+
+Las vulnerabilidades de seguridad van por otro camino: el aviso privado de GitHub que
+describe [`SECURITY.md`](SECURITY.md).
 
 Según la gravedad, las consecuencias van de una advertencia privada a la expulsión temporal o
 permanente del proyecto, como describe la sección «Pautas de aplicación» del texto oficial.

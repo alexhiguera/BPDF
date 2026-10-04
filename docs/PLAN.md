@@ -36,8 +36,8 @@ superficie de ataque y menos mantenimiento.
 
 ## 2. Auditoría de la plantilla
 
-Repositorio auditado el 2026-09-29: un único commit (`Initial commit`), R3ZON SaaS
-Template **v1.0.0** (lo registraba `r3zon-template.json`, retirado antes de publicar el
+Repositorio auditado el 2026-09-29: un único commit (`Initial commit`), plantilla
+interna de R3ZON **v1.0.0** (lo registraba su manifiesto, retirado antes de publicar el
 repositorio; ver [TEMPLATE.md](TEMPLATE.md)), 118 ficheros versionados, sin `LICENSE`.
 
 ### 2.1 Qué trae
@@ -92,7 +92,7 @@ hacer con ella; la Fase 1 lo ejecutó (bitácora, iteración 3).
 | `robots.ts`, `sitemap.ts` | **Sustituidos** (Fase 2) | Se generan en la build desde `src/config/public-site.ts`, con el dominio de `project.ts` |
 | `.env.example` | **Eliminar** | BPDF no necesita variables de entorno |
 | `modules/` | **Eliminar** (o dejar una línea en MODULES.md) | Ningún módulo del catálogo aplica; `desktop-electron` recomendaba «URL remota», que BPDF descarta ([ELECTRON.md](ELECTRON.md)) |
-| `r3zon-template.json` | **Conservar como registro de origen** (D15). *Retirado después, antes de publicar el repositorio: el origen queda escrito en [TEMPLATE.md](TEMPLATE.md)* | BPDF se separa del core SaaS; no adoptará versiones nuevas del core |
+| Manifiesto de la plantilla | **Conservar como registro de origen** (D15). *Retirado después, antes de publicar el repositorio: el origen queda escrito en [TEMPLATE.md](TEMPLATE.md)* | BPDF se separa del core SaaS; no adoptará versiones nuevas del core |
 | `docs/auditoria-template-final.md` | **Eliminar** | Lo exige `tests/unit/project.test.ts` en un proyecto derivado |
 | Next.js 16 | **Sustituido por Vite + React en la Fase 2** (D1) | Ver §3 |
 
@@ -644,7 +644,7 @@ terceros sin licencia clara.
   fuente (`src/config/security-headers.ts`) y se generan para el hosting (`vercel.json`,
   `npm run cabeceras:vercel`, desde la iteración 11).
 - **Sin escritorio** (D19): ni empaquetado, ni instaladores, ni firma de binarios.
-- **Open source** (✅ Fase 16, pendiente de publicar): `LICENSE` (D3), `README.md` del producto, `CONTRIBUTING.md`,
+- **Open source** (✅ Fase 16; publicarlo lo hace el usuario): `LICENSE` (D3), `README.md` del producto, `CONTRIBUTING.md`,
   `SECURITY.md` (reporte privado por GitHub Security Advisories), `CODE_OF_CONDUCT.md`
   (Contributor Covenant), plantillas de issue/PR, `docs/` como documentación de
   arquitectura, `CHANGELOG` de versiones para usuarios (distinto de la bitácora interna,
@@ -667,7 +667,7 @@ terceros sin licencia clara.
 | **D2** | Interfaz en **español** en v1, con todos los textos en **un único módulo de mensajes** para facilitar otros idiomas | Fase 2 en adelante |
 | **D3** | Licencia **Apache-2.0** | Fase 1: `LICENSE` (texto canónico de apache.org) y `license` en `package.json` |
 | **D4** | Documentación pública **en el Docusaurus de R3ZON** (`docs.r3zon.com/bpdf`), sin que BPDF dependa de ese repositorio para compilar ni probar | Fase 1: se conserva `public_docs/` y su validador |
-| **D15** | BPDF **se separa del core SaaS** de la plantilla; conserva solo infraestructura, tooling y componentes útiles | Fase 1: registro de origen en `docs/TEMPLATE.md` (el manifiesto `r3zon-template.json` se retiró antes de publicar) |
+| **D15** | BPDF **se separa del core SaaS** de la plantilla; conserva solo infraestructura, tooling y componentes útiles | Fase 1: registro de origen en `docs/TEMPLATE.md` (el manifiesto de la plantilla se retiró antes de publicar) |
 | **D16** | **Un documento abierto a la vez**: sin pestañas, varios documentos, historial, recientes ni gestor de documentos. La arquitectura no lo impide más adelante | Fase 3: `DocumentProvider` guarda uno; abrir otro lo sustituye ([§4.2](#42-modelo-de-documento)) |
 | **D17** | **Visor PDF propio** sobre la API núcleo de pdf.js, sin `PDFViewer` ni `pdfjs-dist/web/pdf_viewer` (confirmada al empezar la Fase 5) | Fase 5: `src/pdf/visor/`, `src/app/pdf/` ([ARCHITECTURE.md](ARCHITECTURE.md) §4 quater) |
 | **D18** | Build **`legacy`** de pdf.js en web (confirmada al empezar la Fase 5) | Fase 5: `engine.ts` y el worker copiado ([STACK.md](STACK.md)) |

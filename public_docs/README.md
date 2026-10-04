@@ -1,8 +1,8 @@
 # `public_docs/` — contrato con el repositorio de documentación
 
 Contenido Markdown de la documentación pública del producto. **Se escribe y se mantiene
-aquí**, en el repositorio del producto. El repositorio de Docusaurus de R3ZON
-(`R3ZON-Docusaurus`, que publica `docs.r3zon.com`) lo **consume** y lo publica.
+aquí**, en el repositorio del producto. El repositorio de documentación de R3ZON
+(un Docusaurus que publica `docs.r3zon.com`) lo **consume** y lo publica.
 
 > Este fichero, `CONVENCIONES.md` y todo lo que empieza por `_` **no se publican**.
 > Docusaurus ignora `**/_*` de serie, y su configuración excluye `README.md` y
@@ -12,7 +12,8 @@ Este contrato es común a todos los productos de R3ZON. Si un producto necesita
 cambiarlo, el cambio se hace **en los dos repositorios a la vez** y se escribe aquí.
 
 > **Existir no es publicarse.** Todo proyecto tiene `public_docs/` y lo valida en CI,
-> pero solo se publica si se da de alta en `R3ZON-Docusaurus/config/products.ts` (§3).
+> pero solo se publica si se da de alta en la configuración de productos del repositorio de
+> documentación (§3).
 > Una aplicación interna no se da de alta: su `public_docs/` es el manual de uso dentro
 > del repositorio y no sale de él.
 
@@ -41,8 +42,8 @@ configuración del sitio. El validador lo impide.
 - El botón «Abrir en la app», resuelto contra `_meta/rutas-app.json`.
 - Validar en su build lo mismo que valida aquí `npm run docs:validar`.
 
-Para dar de alta un producto nuevo allí basta con una entrada en su
-`config/products.ts`:
+Para dar de alta un producto nuevo allí basta con una entrada en su configuración de
+productos, con esta forma:
 
 ```ts
 {
@@ -53,14 +54,15 @@ Para dar de alta un producto nuevo allí basta con una entrada en su
   appUrl: 'https://<dominio>',
   emoji: '🧩',
   status: 'stable',
-  source: { repo: '<owner>/<repo>', branch: 'main', path: 'public_docs', tokenEnv: 'DOCS_SYNC_TOKEN' },
+  source: { repo: '<owner>/<repo>', branch: 'main', path: 'public_docs', tokenEnv: '<credencial de sincronización>' },
 }
 ```
 
-`tokenEnv` solo hace falta si el repositorio del producto es privado: uno público se clona sin
-credenciales.
+`tokenEnv` nombra la credencial de sincronización configurada en el repositorio de
+documentación. Solo hace falta si el repositorio del producto es privado: uno público se clona
+sin credenciales.
 
-Su script `sync-docs` hace un clon superficial de `path` en `branch` y lo copia a
+Su sincronización hace un clon superficial de `path` en `branch` y lo copia a
 `docs/<id>/`. Los plugins SEO de R3ZON se activan solos cuando encuentran
 `_meta/entidad.json`: por eso ese fichero existe desde el primer día.
 

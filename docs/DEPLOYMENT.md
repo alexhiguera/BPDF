@@ -130,7 +130,7 @@ ninguno se edita a mano:
 
 - **`https://docs.r3zon.com/bpdf`**: el Docusaurus de R3ZON (D4) clona `public_docs/` en su
   build. Este repositorio no empuja nada ni guarda credenciales del otro. Los datos del alta
-  del producto (en el `config/products.ts` del repositorio del Docusaurus):
+  del producto (en la configuración de productos del repositorio de documentación de R3ZON):
 
   | Campo | Valor |
   |---|---|
@@ -140,7 +140,7 @@ ninguno se edita a mano:
   | `kind` | `tool` |
   | `appUrl` | `https://bpdf.r3zon.com` |
   | `status` | `stable` |
-  | `source` | `repo: 'alexhiguera/BPDF'`, `branch: 'main'`, `path: 'public_docs'` (repo público: sin `tokenEnv`) |
+  | `source` | `repo: 'alexhiguera/BPDF'`, `branch: 'main'`, `path: 'public_docs'` (repo público: sin credencial de sincronización) |
   | Módulos, planes, permisos | Ninguno: sin `r3zon.modulo`, `plan_minimo` ni `r3zon.permiso` |
   | Icono | [`public/favicon.svg`](../public/favicon.svg); identidad en `public_docs/_meta/identidad-visual.md` |
 
