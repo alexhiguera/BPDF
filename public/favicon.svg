@@ -1,11 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <title>BPDF</title>
-  <!-- BPDF (Fase 11): una hoja clara con la esquina doblada en el acento, sobre el
-       fondo de la app. Los colores son los tokens de src/styles/globals.css (app, fg,
-       accent): un SVG de favicon no puede leer las propiedades CSS de la página, así
-       que van escritos, y tests/unit/favicon.test.ts comprueba que coinciden. -->
-  <rect width="32" height="32" rx="7" fill="#171717"/>
-  <path d="M9 5h10l7 7v13a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" fill="#ececec"/>
-  <path d="M19 5v7h7z" fill="#10a37f"/>
-  <path d="M11 17h10M11 21h7" stroke="#171717" stroke-width="2" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="borde" x1="3" y1="3" x2="29" y2="29" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#c4b5fd"/>
+      <stop offset=".52" stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="papel" x1="8" y1="9" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ececec"/>
+      <stop offset="1" stop-color="#c4b5fd"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="#070b18"/>
+  <rect x="1.5" y="1.5" width="29" height="29" rx="5.8" fill="none" stroke="url(#borde)"/>
+  <path d="M6.8 9.5c3.3-1.2 6.2-.8 9.2 1.2v12.7c-2.7-2-5.6-2.5-9.2-1.3V9.5Z" fill="url(#papel)"/>
+  <path d="M25.2 9.5c-3.3-1.2-6.2-.8-9.2 1.2v12.7c2.7-2 5.6-2.5 9.2-1.3V9.5Z" fill="url(#papel)"/>
+  <path d="M16 10.7v12.7" stroke="#ececec" stroke-width="1.1" stroke-linecap="round"/>
 </svg>

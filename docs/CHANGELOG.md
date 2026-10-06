@@ -10,6 +10,50 @@ bitácora de esa plantilla.
 
 ---
 
+### Iteración 40 — *2026-10-06* — Portada de producto e identidad visual de libro
+
+**Contexto.** Antes de la publicación final, la pantalla vacía necesitaba dejar de parecer un
+estado provisional y presentar BPDF como un producto terminado, sin añadir funciones ni tocar
+los visores. La referencia aprobada marcaba una composición azul/violeta con hero central,
+acciones, tarjetas, privacidad, decoraciones laterales y un nuevo icono de libro.
+
+**Identidad y portada.**
+- `public/favicon.svg` pasa a ser el icono oficial: libro abierto blanco/lila en un cuadrado
+  redondeado oscuro con borde violeta → azul. `LogoBpdf` reutiliza el mismo SVG en cabecera y
+  hero, siempre decorativo porque el nombre BPDF está al lado.
+- `EmptyState` conserva los tres handlers existentes y los presenta como acciones principales:
+  «Abrir archivo» con degradado, «Abrir carpeta» y «Crear Markdown». El atajo sigue en `title`
+  y `aria-keyshortcuts`, pero deja de mostrarse como texto técnico.
+- Hero, seis tarjetas de función, panel local de privacidad, fondo con órbitas y documentos
+  abstractos laterales. Todo con CSS, Lucide y el SVG local: sin imágenes remotas, dependencias,
+  canvas, WebGL ni animaciones continuas.
+- Tokens `home-*`, `brand-*` y `feature-*` acotados a la portada; lector PDF,
+  Markdown y editor conservan su paleta y comportamiento.
+- Responsive medido: 6 columnas en 1600 px, 3×2 en 1024 px y 2 columnas a 375 px; acciones
+  apiladas y decoraciones laterales ocultas en móvil. Sin desplazamiento horizontal.
+
+**Accesibilidad y seguridad.** Contraste AA calculado para superficies y degradado; tres acciones
+de 44 px o más en móvil; foco visible, semántica de secciones, iconos decorativos, `jest-axe`
+y axe de navegador en verde. Sin cambios en CSP, almacenamiento, privacidad, routing ni lógica
+de documentos.
+
+**Documentación y pruebas.** Identidad visual, PLAN, novedades y fecha literal del sitemap
+actualizados. Tests de componente para contenido/logo, unitarios para el SVG y contrastes, y E2E
+para hero, seis tarjetas, ausencia del texto del atajo, responsive y acciones móviles. La primera
+ejecución E2E dejó 138/139: un test antiguo aún exigía ver «Atajo: Ctrl/⌘ O»; se actualizó para
+comprobar el anuncio accesible y la repetición completa pasó.
+
+**Revisión visual.** Build servida localmente y capturada a 1600×900, 1024×900 y 375×812. La
+composición replica la referencia; en tablet y móvil se ocultan los documentos laterales y el
+contenido continúa por desplazamiento para mantener legibilidad. Capturas finales en
+`C:\tmp\bpdf-home-redesign\final-*.png` (temporales, no versionadas).
+
+**Verificación.** `lint` y `typecheck` ✅; `test:run` **1113** en 58 ficheros;
+`test:e2e` **139/139**; `build`, `build:verificar`, `docs:enlaces` (339) y
+`docs:validar` (36 páginas) ✅. Arranque: **99,3 KB gzip**, antes **95,6 KB** (+3,7 KB;
+límite 150 KB). `npm audit`: 0 altas, 0 moderadas y las 4 bajas ya aceptadas de KaTeX
+transitivo en Mermaid. Sin commit, push, publicación ni release.
+
 ### Iteración 39 — *2026-10-06* — Fase 17 cerrada; F18, siguiente
 
 **Contexto.** El usuario hizo la comprobación manual de la Fase 17 y la aprobó entera: crear un

@@ -8,7 +8,7 @@ description: "Qué versión de BPDF está publicada, qué puede hacer y qué ha 
 keywords: [bpdf, novedades, versión, cambios, 1.0.0]
 tags: [novedades]
 last_update:
-  date: 2026-10-04
+  date: 2026-10-06
   author: Equipo R3ZON
 r3zon:
   tipo: referencia
@@ -26,6 +26,9 @@ BPDF».
 
 ## Qué trae la versión 1.0.0
 
+- **Nueva portada e identidad visual.** La pantalla inicial presenta BPDF como producto, con
+  accesos claros a abrir archivos, abrir carpetas y crear Markdown, un nuevo icono de libro y
+  un resumen de sus funciones y su privacidad local.
 - **Código abierto.** El repositorio de BPDF es público, con licencia Apache-2.0. «Acerca de
   BPDF» enlaza a él (**Código fuente en GitHub**).
 - **Documentación oficial**, con guías de cada función, referencia, preguntas frecuentes y
@@ -76,5 +79,5 @@ cambios de comportamiento y límites que desaparecen. Los arreglos internos que 
 nada visible no se anotan. Las versiones siguen SemVer: un cambio que notas sube la segunda
 cifra; un arreglo, la tercera.
 
-> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-04.
+> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-06.
 > https://docs.r3zon.com/bpdf/novedades

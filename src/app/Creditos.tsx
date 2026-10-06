@@ -17,7 +17,7 @@ const t = messages.credits;
 export function Creditos({ onOpenExternal }: { onOpenExternal: (url: string) => void }) {
   const url = project.organizationUrl;
   return (
-    <footer className="flex flex-wrap items-center justify-center gap-x-1.5 border-t border-border bg-app px-4 py-1 text-xs text-fg-subtle">
+    <footer className="home-footer flex flex-wrap items-center justify-center gap-x-1.5 border-t border-border bg-app px-4 py-1 text-xs text-fg-subtle">
       <span>{project.name}</span>
       <span aria-hidden="true">·</span>
       <span>{t.free}</span>

@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 /**
  * El favicon (Fase 11, `public/favicon.svg`). Un SVG de favicon no puede leer
  * las propiedades CSS de la página, así que sus colores van escritos: este test
- * comprueba que son exactamente tokens de `globals.css` (CLAUDE.md §13: colores
- * solo desde los tokens) y que no pide nada fuera (CSP, privacidad).
+ * comprueba que son exactamente tokens de globals.css (CLAUDE.md §13) y que
+ * sus degradados son internos: no pide nada fuera (CSP, privacidad).
  */
 const svg = readFileSync("public/favicon.svg", "utf8");
 const css = readFileSync("src/styles/globals.css", "utf8");
@@ -17,12 +17,20 @@ const hexDeToken = (nombre: string) => {
 };
 
 describe("public/favicon.svg", () => {
-  it("usa solo colores de los tokens (app, fg y accent)", () => {
+  it("usa solo colores de los tokens de identidad", () => {
     const usados = new Set(
-      [...svg.matchAll(/(?:fill|stroke)="(#[0-9a-f]{3,6})"/gi)].map((m) => m[1]?.toLowerCase()),
+      [...svg.matchAll(/(?:fill|stroke|stop-color)="(#[0-9a-f]{3,6})"/gi)].map((m) =>
+        m[1]?.toLowerCase(),
+      ),
     );
     expect([...usados].sort()).toEqual(
-      [hexDeToken("app"), hexDeToken("fg"), hexDeToken("accent")].sort(),
+      [
+        hexDeToken("home-bg"),
+        hexDeToken("fg"),
+        hexDeToken("brand-soft"),
+        hexDeToken("brand-violet"),
+        hexDeToken("brand-blue"),
+      ].sort(),
     );
     expect(svg).not.toMatch(/rgb\(|hsl\(/i);
   });
@@ -30,7 +38,7 @@ describe("public/favicon.svg", () => {
   it("es un SVG cuadrado y autónomo: sin scripts, imágenes, fuentes ni nada externo", () => {
     expect(svg).toMatch(/^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 32 32">/);
     expect(svg).toContain("<title>BPDF</title>");
-    expect(svg).not.toMatch(/<script|<image|<text|<foreignObject|<style|href=|url\(|@import/i);
+    expect(svg).not.toMatch(/<script|<image|<text|<foreignObject|<style|href=|url\((?!#)|@import/i);
     // Pequeño: es un icono, no una ilustración.
     expect(svg.length).toBeLessThan(2048);
   });

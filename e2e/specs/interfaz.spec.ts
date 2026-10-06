@@ -91,6 +91,15 @@ test.describe("pantalla estrecha (D12, 375 px)", () => {
   test("vacía, preferencias, PDF (búsqueda, miniaturas, ayuda) y contraseña", async ({ page }) => {
     const v = await abrir(page);
     await comprobarEstrecha(page, "vacía");
+    const acciones = page.locator(".home-action");
+    await expect(acciones).toHaveCount(3);
+    for (const accion of await acciones.all()) {
+      expect((await accion.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    }
+    const privacidad = page.getByText(messages.emptyState.privacyDetail);
+    await privacidad.scrollIntoViewIfNeeded();
+    await expect(privacidad).toBeVisible();
+    await comprobarEstrecha(page, "vacía al final");
     await abrirPreferencias(page);
     await comprobarEstrecha(page, "preferencias");
     await page.keyboard.press("Escape");

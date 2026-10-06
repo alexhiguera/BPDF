@@ -458,6 +458,10 @@ Implementados en la Fase 2 en `src/styles/globals.css` (utilidades `bg-app`, `te
 | `--rgb-link` | `128 182 255` | Enlaces de un Markdown (Fase 7): 4,5:1 sobre `page` |
 | `--rgb-code-*` | 8 colores de sintaxis | Cada uno ≥ 4,5:1 sobre el fondo de bloque de código (Fase 7) |
 
+La portada rediseñada el *2026-10-06* conserva esos tokens para la aplicación interna y añade
+tokens acotados `home-*`, `brand-*` y `feature-*`: fondo `#070b18`, superficies azuladas,
+degradado violeta → azul y verde para privacidad. Los visores y el editor no cambian de paleta.
+
 Contrastes calculados (WCAG): `fg` sobre `page` ≈ 12:1; `fg-muted` sobre `page` ≈ 6,8:1;
 `accent` sobre `reading` ≈ 5:1. **Un test unitario calcula el contraste de cada par
 declarado** a partir de los tokens (`tests/unit/tokens.test.ts`, Fase 2), para que un cambio de paleta no rompa la
@@ -469,9 +473,11 @@ con un bloque `[data-theme="light"]`.
 
 ### 9.3 Pantallas
 
-- **Vacía** (✅ F3): zona de soltar a pantalla completa, botón «Abrir archivo», atajo
-  visible y la frase de privacidad («Tus documentos no salen de este dispositivo»). F17:
-  «Crear Markdown».
+- **Vacía / portada** (✅ F3; rediseñada el *2026-10-06*): zona de soltar a pantalla completa,
+  hero de producto, «Abrir archivo», «Abrir carpeta» y «Crear Markdown», seis tarjetas de
+  funciones y un panel de privacidad. El atajo de abrir sigue en el botón y funciona, pero no
+  se muestra como texto técnico. En móvil desaparecen las ilustraciones laterales y las
+  acciones se apilan.
 - **PDF** (✅ F5): barra (miniaturas, página n/N, zoom, ajustar, girar, vista, página
   oscura/original, buscar, cerrar); panel de miniaturas a la izquierda. ✅ F6: girar a la
   izquierda, pantalla completa (del área de lectura), ayuda de atajos, opciones de búsqueda
@@ -481,15 +487,16 @@ con un bloque `[data-theme="light"]`.
   (~72 caracteres); en dividido, editor y vista previa con un separador. Tamaño de letra y
   ancho de columna: preferencias (✅ F10). F17: «Guardar como…» (Markdown, o PDF claro u
   oscuro por la impresión del navegador); un documento nuevo se abre en dividido.
-- **Cabecera** (✅ F3, F10, F11): el nombre del producto; con un documento abierto, «Crear
+- **Cabecera** (✅ F3, F10, F11): el icono oficial y el nombre del producto; con un documento abierto, «Crear
   Markdown» (F17; solo el icono en pantalla estrecha), «Abrir carpeta» y «Abrir archivo»; siempre, «Preferencias» (solo el icono en pantalla estrecha).
   Su diálogo termina con **«Acerca de»** (✅ F11): versión, licencia y la frase de
   privacidad y, desde la Fase 16, el enlace al repositorio («Código fuente en GitHub»).
 - **Título de la ventana** (✅ F11): siempre «BPDF», **nunca el nombre del documento**: el
   navegador guarda el título de cada visita en su historial (y lo sincroniza si se usa una
   cuenta), y eso sería guardar un nombre de fichero (CLAUDE.md §4).
-- **Favicon** (✅ F11): `public/favicon.svg`, una hoja con la esquina doblada en los colores
-  de los tokens, servida desde el propio origen.
+- **Favicon e icono** (✅ F11; sustituido el *2026-10-06*): `public/favicon.svg`, un libro
+  abierto blanco/lila en un cuadrado redondeado azul y violeta, servido desde el propio origen
+  y reutilizado en cabecera y portada.
 - **Mención al pie** (✅ F11), solo en la pantalla vacía: «BPDF · Gratis y open source ·
   Creado por R3ZON con ❤️», con «R3ZON» enlazado a `https://r3zon.com` por
   `Platform.openExternal`. Con un documento abierto no aparece: no quita espacio al visor.

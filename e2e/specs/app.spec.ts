@@ -18,8 +18,12 @@ test("la app carga sin errores, sin violaciones de CSP y sin salir del propio or
   await expect(page.locator("html")).toHaveAttribute("lang", "es");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(messages.emptyState.title);
   await expect(page.getByRole("banner")).toContainText(project.name);
-  // Tailwind y los tokens están aplicados: el área de lectura tiene su color.
-  await expect(page.getByRole("main")).toHaveCSS("background-color", "rgb(33, 33, 33)");
+  // Tailwind y los tokens están aplicados: la portada tiene su fondo propio.
+  await expect(page.getByRole("main")).toHaveCSS("background-color", "rgb(7, 11, 24)");
+  await expect(page.getByTestId("bpdf-logo")).toHaveCount(2);
+  await expect(page.locator(".home-feature-card")).toHaveCount(6);
+  await expect(page.getByText(messages.emptyState.privacyDetail)).toBeVisible();
+  await expect(page.getByText(messages.open.shortcut)).toHaveCount(0);
   await page.waitForLoadState("networkidle");
   expect(v.errores).toEqual([]);
   expect(v.violaciones).toEqual([]);

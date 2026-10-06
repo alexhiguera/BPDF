@@ -11,8 +11,8 @@ import { siteUrl } from "./project.ts";
  * el mismo commit (CLAUDE.md §9).
  */
 export const PAGINAS_PUBLICAS: readonly { path: string; lastModified: string }[] = [
-  // La Fase 11 cambió lo que se ve en `/` (pie con el crédito, estado vacío) el 2026-10-03.
-  { path: "/", lastModified: "2026-10-03" },
+  // La portada y la identidad visual se rediseñaron el 2026-10-06.
+  { path: "/", lastModified: "2026-10-06" },
 ];
 
 export function robotsTxt(): string {

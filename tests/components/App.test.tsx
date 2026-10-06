@@ -67,13 +67,23 @@ describe("App: estructura", () => {
       "#contenido",
     );
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(messages.emptyState.title);
+    const logos = screen.getAllByTestId("bpdf-logo");
+    expect(logos).toHaveLength(2);
+    for (const logo of logos) {
+      expect(logo).toHaveAttribute("alt", "");
+      expect(logo).toHaveAttribute("aria-hidden", "true");
+    }
   });
 
-  it("el estado vacío ofrece abrir un archivo, el atajo y la frase de privacidad", () => {
+  it("el estado vacío ofrece las tres acciones, funciones y el mensaje de privacidad", () => {
     montar();
     expect(screen.getAllByRole("button", { name: messages.open.button })).toHaveLength(1);
-    expect(screen.getByText(messages.open.shortcut)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: messages.open.folder })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: messages.open.create })).toBeInTheDocument();
+    expect(screen.queryByText(messages.open.shortcut)).toBeNull();
+    expect(screen.getByText(messages.emptyState.features.katex.title)).toBeInTheDocument();
     expect(screen.getByText(messages.emptyState.privacy)).toBeInTheDocument();
+    expect(screen.getByText(messages.emptyState.privacyDetail)).toBeInTheDocument();
   });
 
   it("no tiene violaciones de accesibilidad en el estado vacío", async () => {
@@ -132,7 +142,7 @@ describe("App: abrir documentos", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "notas.md" })).toHaveFocus();
     expect(screen.getByRole("heading", { level: 1, name: "Título" })).toBeInTheDocument();
     expect(screen.getByRole("main")).toHaveTextContent("<script>window.__x = 1</script>");
-    expect(container.querySelector("script, img")).toBeNull();
+    expect(container.querySelector("main script, main img")).toBeNull();
   });
 
   it("con un documento abierto, la cabecera ofrece abrir otro, que lo sustituye", async () => {
@@ -420,11 +430,11 @@ describe("App: Markdown con recursos y carpetas (Fase 7 bis)", () => {
       file: fichero(ruta.slice(ruta.lastIndexOf("/") + 1), contenido),
     }));
 
-  it("el estado vacío ofrece abrir archivo y abrir carpeta, y explica cómo ver las imágenes", () => {
+  it("el estado vacío ofrece abrir archivo y abrir carpeta, y presenta los recursos locales", () => {
     montar();
     expect(screen.getByRole("button", { name: messages.open.button })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: messages.open.folder })).toBeInTheDocument();
-    expect(screen.getByText(messages.emptyState.resources)).toBeInTheDocument();
+    expect(screen.getByText(messages.emptyState.features.privacy.body)).toBeInTheDocument();
   });
 
   it("una carpeta con varios Markdown pide elegir; elegir abre ese", async () => {

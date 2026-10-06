@@ -46,10 +46,41 @@ export const messages = {
   },
   emptyState: {
     title: "Tu lector de PDF y Markdown",
-    body: "Abre un PDF o un Markdown, o arrástralo a esta ventana.",
-    resources:
-      "¿Un Markdown con imágenes? Selecciona el .md junto con las imágenes que usa, o abre la carpeta que lo contiene.",
+    body: "Abre archivos PDF o Markdown, o arrástralos a esta ventana.",
+    local: "Tus documentos se mantienen en tu dispositivo, de forma privada y segura.",
     privacy: "Tus documentos no salen de este dispositivo.",
+    privacyDetail: "BPDF funciona de forma local. Tus archivos permanecen siempre en tu equipo.",
+    decorations: {
+      pdf: "PDF",
+      markdown: "M↓",
+    },
+    features: {
+      title: "Funciones de BPDF",
+      dark: {
+        title: "Modo oscuro",
+        body: "Interfaz moderna y cómoda",
+      },
+      privacy: {
+        title: "Privacidad local",
+        body: "Todo en tu dispositivo, sin subir archivos",
+      },
+      katex: {
+        title: "KaTeX",
+        body: "Fórmulas matemáticas en tus documentos",
+      },
+      mermaid: {
+        title: "Mermaid",
+        body: "Diagramas y gráficos desde Markdown",
+      },
+      edit: {
+        title: "Editar Markdown",
+        body: "Escribe y visualiza al instante",
+      },
+      export: {
+        title: "Exportar PDF",
+        body: "Convierte tu Markdown a PDF fácilmente",
+      },
+    },
   },
   /** Un botón con su atajo, para `title` (Fase 11). */
   withShortcut: (etiqueta: string, combinacion: readonly string[]) =>

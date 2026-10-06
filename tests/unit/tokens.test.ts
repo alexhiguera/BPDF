@@ -41,6 +41,15 @@ const PARES: [string, string, number][] = [
   ["fg-subtle", "app", 4.5],
   ["fg-subtle", "reading", 4.5],
   ["primary-fg", "primary", 4.5],
+  ["fg", "home-bg", 4.5],
+  ["fg", "home-surface", 4.5],
+  ["fg", "home-surface-strong", 4.5],
+  ["fg-muted", "home-bg", 4.5],
+  ["fg-muted", "home-surface", 4.5],
+  ["fg-muted", "home-surface-strong", 4.5],
+  ["fg", "brand-violet", 4.5],
+  ["fg", "brand-blue", 4.5],
+  ["brand-soft", "home-bg", 3],
   ["border", "reading", 1.2],
   // Markdown: enlaces sobre la hoja; código sobre el fondo de sus bloques.
   ["link", "page", 4.5],
@@ -73,7 +82,13 @@ describe("tokens de diseño", () => {
       return (l1 + 0.05) / (l2 + 0.05);
     };
     const PARES_CLARO = PARES.filter(
-      ([fg, fondo]) => !fg.startsWith("primary") && fondo !== "primary",
+      ([fg, fondo]) =>
+        !fg.startsWith("primary") &&
+        !fg.startsWith("brand") &&
+        !fg.startsWith("home") &&
+        fondo !== "primary" &&
+        !fondo.startsWith("brand") &&
+        !fondo.startsWith("home"),
     );
     it.each(PARES_CLARO)("%s sobre %s alcanza %s:1", (fg, fondo, minimo) => {
       expect(contrasteClaro(fg, fondo)).toBeGreaterThanOrEqual(minimo);

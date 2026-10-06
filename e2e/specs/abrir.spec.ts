@@ -66,13 +66,16 @@ function limpia(v: Vigilancia) {
   expect(v.externas).toEqual([]);
 }
 
-test("estado inicial: sin documento, con el botón para abrir, el atajo y sin avisos", async ({
-  page,
-}) => {
+test("estado inicial: sin documento, con el botón para abrir y sin avisos", async ({ page }) => {
   const v = await abrir(page);
   await expect(titulo(page)).toHaveText(messages.emptyState.title);
-  await expect(botonAbrir(page)).toHaveCount(1);
-  await expect(page.getByText(messages.open.shortcut)).toBeVisible();
+  const boton = botonAbrir(page);
+  await expect(boton).toHaveCount(1);
+  await expect(boton).toHaveAttribute(
+    "title",
+    messages.withShortcut(messages.open.button, messages.keys.abrir),
+  );
+  await expect(page.getByText(messages.open.shortcut)).toHaveCount(0);
   await expect(aviso(page)).toHaveCount(0);
   limpia(v);
 });

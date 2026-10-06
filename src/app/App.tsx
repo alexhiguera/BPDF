@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { project } from "@/config/project";
 import { DocumentProvider, useDocument } from "@/documents/DocumentProvider";
 import { messages } from "@/i18n/messages";
+import { cn } from "@/lib/utils";
 import type { Platform } from "@/platform";
 import { Cargando } from "./Cargando";
 import { ConfirmarDescarte } from "./ConfirmarDescarte";
@@ -12,6 +13,7 @@ import { DocumentErrorAlert } from "./DocumentErrorAlert";
 import { DropZone } from "./DropZone";
 import { ElegirMarkdown } from "./ElegirMarkdown";
 import { EmptyState } from "./EmptyState";
+import { LogoBpdf } from "./LogoBpdf";
 import { anuncioDeAtajo } from "./pdf/atajos";
 
 /**
@@ -84,8 +86,18 @@ function Shell({ platform }: { platform: Platform }) {
       >
         {messages.app.skipToContent}
       </a>
-      <header className="flex items-center justify-between gap-4 border-b border-border bg-app px-4 py-2">
-        <span className="font-semibold">{project.name}</span>
+      <header
+        className={cn(
+          "flex items-center justify-between gap-4 border-b border-border bg-app px-4 py-2",
+          !document && "home-header",
+        )}
+      >
+        <div className="flex items-center gap-2.5">
+          <LogoBpdf className={document ? "size-7" : "size-10"} />
+          <span className={cn("font-semibold", !document && "text-lg tracking-wide")}>
+            {project.name}
+          </span>
+        </div>
         {/* Fase 17: con «Crear Markdown» no caben todos en 375 px (D12): pasan a otra línea. */}
         <div className="flex min-w-0 flex-wrap justify-end gap-2">
           {/* Sin documento, abrir está en el centro del estado vacío. */}
@@ -113,6 +125,7 @@ function Shell({ platform }: { platform: Platform }) {
             variant="secondary"
             aria-haspopup="dialog"
             title={messages.preferences.open}
+            className={cn(!document && "home-preferences")}
             onClick={() => setPreferencias(true)}
           >
             <Settings aria-hidden="true" className="size-4" />
@@ -133,7 +146,10 @@ function Shell({ platform }: { platform: Platform }) {
         ref={main}
         id="contenido"
         tabIndex={-1}
-        className="flex min-h-0 flex-1 flex-col overflow-auto bg-reading"
+        className={cn(
+          "flex min-h-0 flex-1 flex-col overflow-auto",
+          document ? "bg-reading" : "home-main",
+        )}
       >
         {error && <DocumentErrorAlert error={error} onDismiss={dismissError} />}
         {choice && <ElegirMarkdown choice={choice} onChoose={choose} onCancel={cancelarEleccion} />}
