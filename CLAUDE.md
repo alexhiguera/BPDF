@@ -28,11 +28,13 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   Dividido con 1 MB + KaTeX muy lento. La 15 (distribución web; la 14 se canceló) se
   cerró el *2026-10-04*, verificada en producción: dominio oficial, versión 0.1.0 y registro
   de cambios para usuarios ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). La 16 (open
-  source, documentación final y v1.0.0) se cerró el *2026-10-04*: **v1 completa**. El
-  repositorio está listo para hacerse público, la documentación pública completa en
-  `public_docs/` (también como GitHub Wiki generada) y la versión es 1.0.0. Publicarlo (repo
-  público, Wiki, `docs.r3zon.com`, etiqueta y release) lo hace el usuario
-  ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), «Publicación final»). La app es una SPA estática de Vite + React (D1)
+  source y documentación final) dejó preparada la publicación (repositorio listo para
+  hacerse público, `public_docs/` completa y como GitHub Wiki generada, versión 1.0.0); su
+  cierre pasó a la 18. La 17 (crear Markdown y exportar a PDF por la impresión del
+  navegador; ARCHITECTURE §4 duodecies) se cerró el *2026-10-06*. Siguiente: **Fase 18**,
+  publicación final de v1.0.0 (repo público, Wiki, `docs.r3zon.com`, etiqueta y release;
+  las acciones externas las hace el usuario: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md),
+  «Publicación final»). La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
   oscuro selectivo en un worker, búsqueda avanzada, pantalla completa, atajos de una tecla

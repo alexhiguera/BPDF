@@ -6,9 +6,12 @@ import { anuncioDeAtajo } from "./pdf/atajos";
 export function EmptyState({
   onOpen,
   onOpenFolder,
+  onCreate,
 }: {
   onOpen: () => void;
   onOpenFolder: () => void;
+  /** Fase 17: un Markdown nuevo, vacío, en «Dividido». */
+  onCreate: () => void;
 }) {
   const t = messages.emptyState;
   return (
@@ -26,6 +29,9 @@ export function EmptyState({
         </Button>
         <Button variant="secondary" onClick={onOpenFolder}>
           {messages.open.folder}
+        </Button>
+        <Button variant="secondary" onClick={onCreate}>
+          {messages.open.create}
         </Button>
       </div>
       <p className="text-sm text-fg-subtle">{messages.open.shortcut}</p>

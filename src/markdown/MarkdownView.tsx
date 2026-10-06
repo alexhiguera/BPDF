@@ -1,4 +1,4 @@
-import { PanelLeft, Save, X } from "lucide-react";
+import { FileDown, PanelLeft, Save, X } from "lucide-react";
 import {
   lazy,
   memo,
@@ -12,20 +12,23 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import Markdown, { type Components } from "react-markdown";
 import type { OpenedMarkdown } from "@/documents/types";
+import { GuardarComo } from "@/editor/GuardarComo";
 import { ModeSwitch } from "@/editor/ModeSwitch";
 import { SplitView } from "@/editor/SplitView";
 import { useDesplazamientoSincronizado } from "@/editor/sincronia";
 import type { EstadoGuardado, ManejadorEditor, ModoMarkdown } from "@/editor/tipos";
 import { messages } from "@/i18n/messages";
-import type { ResultadoGuardado } from "@/platform";
+import type { OpcionesGuardado, ResultadoGuardado } from "@/platform";
 import { usePreferences } from "@/preferences/usePreferences";
 import {
   type AccionesDocumento,
   ContextoAcciones,
   ContextoDiagramas,
   ContextoImagenes,
+  ContextoImpresion,
   type ImagenesDocumento,
 } from "./components/acciones";
 import { Enlace } from "./components/Enlace";
@@ -34,10 +37,12 @@ import { Imagen } from "./components/Imagen";
 import { Indice } from "./components/Indice";
 import { CodigoEnLinea, Preformateado } from "./components/Preformateado";
 import { AlmacenUrls } from "./imagenes";
+import { esperarImpresion, imprimir, type TemaExportacion } from "./impresion";
 import { MarcoMermaid } from "./mermaid";
 import { opcionesPipeline } from "./pipeline";
 import { type EntradaIndice, idsCandidatos, leerIndice } from "./toc";
 import "@/styles/markdown.css";
+import "@/styles/impresion.css";
 
 const t = messages.markdown;
 
@@ -119,6 +124,12 @@ const Contenido = memo(function Contenido({ texto }: { texto: string }) {
  * `documento` no cambia: sus recursos son los que se entregaron al abrir, y
  * editar no da acceso a nada más. Los cambios se marcan con `onModificado` y se
  * guardan con `onGuardar` (Ctrl/⌘+S o el botón). Nada se guarda por su cuenta.
+ *
+ * **Crear y exportar (Fase 17).** Un documento nuevo (`documento.nuevo`) empieza
+ * en «Dividido», con el editor cargado y el foco en él. «Guardar como…» guarda el
+ * Markdown pidiendo destino, o lo exporta a PDF con la impresión del navegador
+ * (`impresion.ts`): una copia renderizada con este mismo pipeline, montada solo
+ * mientras se exporta, en claro u oscuro (sin guardar la elección).
  */
 export default function MarkdownView({
   documento,
@@ -134,7 +145,7 @@ export default function MarkdownView({
   /** El documento pasa a tener (o deja de tener) cambios sin guardar. */
   onModificado?: (modificado: boolean) => void;
   /** Guarda el texto (`Platform.saveText`). Sin esto no se ofrece guardar. */
-  onGuardar?: (texto: string) => Promise<ResultadoGuardado>;
+  onGuardar?: (texto: string, opciones?: OpcionesGuardado) => Promise<ResultadoGuardado>;
   /** Para los tests: el umbral de la pausa de la vista previa. */
   umbralPausaMs?: number;
 }) {
@@ -153,7 +164,8 @@ export default function MarkdownView({
   const abrirFuera = useRef(onOpenExternal);
 
   // --- Edición (Fase 9) ----------------------------------------------------
-  const [modo, setModo] = useState<ModoMarkdown>("lectura");
+  // Un documento nuevo (Fase 17) se escribe: empieza en «Dividido». Uno abierto, a leer.
+  const [modo, setModo] = useState<ModoMarkdown>(documento.nuevo ? "dividido" : "lectura");
   const modoRef = useRef(modo);
   modoRef.current = modo;
   /** El texto que pinta la vista previa: el del documento hasta que se edita. */
@@ -178,7 +190,7 @@ export default function MarkdownView({
     setTextoVista(texto);
   }, []);
   /** El editor se carga la primera vez que se entra en un modo con él, y ya se queda. */
-  const [editorCargado, setEditorCargado] = useState(false);
+  const [editorCargado, setEditorCargado] = useState(documento.nuevo === true);
   const [estadoEditor] = useState<EstadoGuardado>(() => ({ actual: null }));
   const editor = useRef<ManejadorEditor | null>(null);
   const [editorListo, setEditorListo] = useState(false);
@@ -242,26 +254,31 @@ export default function MarkdownView({
     if (editorListo && modo !== "lectura") editor.current?.enfocar();
   }, [editorListo, modo]);
 
-  const guardar = useCallback(async () => {
-    if (!onGuardar || guardandoRef.current) return;
-    guardandoRef.current = true;
-    setGuardando(true);
-    setErrorGuardado(false);
-    const guardada = version.current;
-    try {
-      const resultado = await onGuardar(textoActual());
-      if (resultado !== "cancelado") {
-        // Si se escribió algo mientras se guardaba, sigue modificado.
-        if (version.current === guardada && modificado.current) marcarModificado(false);
-        setAviso(resultado === "guardado" ? t.saved : t.downloaded);
+  const guardar = useCallback(
+    async (opciones?: OpcionesGuardado) => {
+      if (!onGuardar || guardandoRef.current) return;
+      guardandoRef.current = true;
+      setGuardando(true);
+      setErrorGuardado(false);
+      const guardada = version.current;
+      try {
+        // Guardar a secas, como siempre; solo «Guardar como» (Fase 17) pasa opciones.
+        const texto = textoActual();
+        const resultado = await (opciones ? onGuardar(texto, opciones) : onGuardar(texto));
+        if (resultado !== "cancelado") {
+          // Si se escribió algo mientras se guardaba, sigue modificado.
+          if (version.current === guardada && modificado.current) marcarModificado(false);
+          setAviso(resultado === "guardado" ? t.saved : t.downloaded);
+        }
+      } catch {
+        setErrorGuardado(true);
+      } finally {
+        guardandoRef.current = false;
+        setGuardando(false);
       }
-    } catch {
-      setErrorGuardado(true);
-    } finally {
-      guardandoRef.current = false;
-      setGuardando(false);
-    }
-  }, [onGuardar, textoActual, marcarModificado]);
+    },
+    [onGuardar, textoActual, marcarModificado],
+  );
 
   // Ctrl/⌘+S: guarda aquí, no «Guardar página» del navegador. Con un diálogo
   // modal abierto (otra pregunta está en curso) no guarda, pero tampoco deja
@@ -278,6 +295,61 @@ export default function MarkdownView({
     window.addEventListener("keydown", alTeclear);
     return () => window.removeEventListener("keydown", alTeclear);
   }, [onGuardar, guardar]);
+
+  // --- Guardar como… y exportar a PDF (Fase 17) ---------------------------
+  const [guardarComo, setGuardarComo] = useState(false);
+  /** La copia imprimible montada: su texto y su tema. `null` fuera de una exportación. */
+  const [exportacion, setExportacion] = useState<{ texto: string; tema: TemaExportacion } | null>(
+    null,
+  );
+  /**
+   * «preparando»: la copia está montada y se espera a fórmulas, diagramas e
+   * imágenes (se ve «Preparando PDF…»). «imprimiendo»: ya está; el aviso se quita
+   * y, en el render siguiente (sin aviso en pantalla), se abre el diálogo.
+   */
+  const [fasePdf, setFasePdf] = useState<"preparando" | "imprimiendo" | null>(null);
+  const [errorPdf, setErrorPdf] = useState("");
+  const raizImpresion = useRef<HTMLDivElement>(null);
+  /** El oyente de `afterprint` de la impresión en curso: se cancela al irse o al exportar otra vez. */
+  const impresionEnCurso = useRef<AbortController | null>(null);
+  useEffect(() => () => impresionEnCurso.current?.abort(), []);
+  const exportarPdf = (tema: TemaExportacion) => {
+    impresionEnCurso.current?.abort();
+    impresionEnCurso.current = null;
+    setGuardarComo(false);
+    setErrorPdf("");
+    // El texto de ESTE momento (el del editor si se está editando): lo que se ve.
+    setExportacion({ texto: textoActual(), tema });
+    setFasePdf("preparando");
+  };
+  useEffect(() => {
+    const raiz = raizImpresion.current;
+    if (!exportacion || !raiz) return;
+    const control = new AbortController();
+    esperarImpresion(raiz, { senal: control.signal }).then(
+      () => setFasePdf("imprimiendo"),
+      (e) => {
+        if (control.signal.aborted) return;
+        console.error(e);
+        setFasePdf(null);
+        setErrorPdf(t.pdf.failed);
+        setExportacion(null);
+      },
+    );
+    return () => control.abort();
+  }, [exportacion]);
+  useEffect(() => {
+    if (fasePdf !== "imprimiendo") return;
+    setFasePdf(null);
+    // La copia sigue montada hasta que el navegador cierra su diálogo (`afterprint`).
+    const control = new AbortController();
+    impresionEnCurso.current = control;
+    const listo = () => {
+      if (impresionEnCurso.current === control) impresionEnCurso.current = null;
+      setExportacion(null);
+    };
+    if (!imprimir(window, listo, control.signal)) setErrorPdf(t.pdf.unavailable);
+  }, [fasePdf]);
 
   useDesplazamientoSincronizado({
     activo: modo === "dividido",
@@ -319,9 +391,12 @@ export default function MarkdownView({
     abrirFuera.current = onOpenExternal;
   }, [onOpenExternal]);
 
-  // Como el resto de vistas de documento: el foco va al título al abrir.
+  // Como el resto de vistas de documento: el foco va al título al abrir. Un documento
+  // nuevo (Fase 17) se abre para escribir: el foco va al editor en cuanto carga (efecto
+  // de arriba), sin pasar antes por el título (un lector de pantalla anunciaría los dos).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: solo al abrir
   useEffect(() => {
-    titulo.current?.focus();
+    if (!documento.nuevo) titulo.current?.focus();
   }, []);
 
   // Documento grande: primero se pinta la barra y «Preparando…», y después el
@@ -474,6 +549,16 @@ export default function MarkdownView({
         <button
           type="button"
           className="md-boton"
+          aria-haspopup="dialog"
+          disabled={fasePdf !== null}
+          onClick={() => setGuardarComo(true)}
+        >
+          <FileDown aria-hidden="true" className="size-4 shrink-0" />
+          {t.saveAs.button}
+        </button>
+        <button
+          type="button"
+          className="md-boton"
           aria-label={t.close}
           title={t.close}
           onClick={onClose}
@@ -481,6 +566,29 @@ export default function MarkdownView({
           <X aria-hidden="true" className="size-4 shrink-0" />
         </button>
       </div>
+      {guardarComo && (
+        <GuardarComo
+          onMarkdown={() => {
+            setGuardarComo(false);
+            void guardar({ nuevoDestino: true });
+          }}
+          onPdf={exportarPdf}
+          onCancelar={() => setGuardarComo(false)}
+        />
+      )}
+      {fasePdf === "preparando" && (
+        <p
+          role="status"
+          className="border-b border-border bg-app px-3 py-1.5 text-sm text-fg-muted"
+        >
+          {t.pdf.preparing}
+        </p>
+      )}
+      {errorPdf && (
+        <p role="alert" className="border-b border-border bg-app px-3 py-1.5 text-sm text-danger">
+          {errorPdf}
+        </p>
+      )}
       {errorGuardado && (
         <p role="alert" className="border-b border-border bg-app px-3 py-1.5 text-sm text-danger">
           {t.saveFailed}
@@ -524,6 +632,30 @@ export default function MarkdownView({
       <p className="sr-only" aria-live="polite">
         {aviso}
       </p>
+      {/* La copia que se imprime (Fase 17): fuera de la app (en <body>) para que
+          impresion.css la deje sola en la página; oculta en pantalla. */}
+      {exportacion &&
+        createPortal(
+          <div
+            ref={raizImpresion}
+            className="bpdf-impresion"
+            data-tema={exportacion.tema}
+            aria-hidden="true"
+          >
+            <div className="md-contenido">
+              <ContextoAcciones value={acciones}>
+                <ContextoImagenes value={imagenes}>
+                  <ContextoDiagramas value={diagramas}>
+                    <ContextoImpresion value={true}>
+                      <Contenido texto={exportacion.texto} />
+                    </ContextoImpresion>
+                  </ContextoDiagramas>
+                </ContextoImagenes>
+              </ContextoAcciones>
+            </div>
+          </div>,
+          document.body,
+        )}
     </section>
   );
 }

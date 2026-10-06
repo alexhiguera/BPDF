@@ -30,7 +30,8 @@ servidor que los reciba.
   miniaturas, zoom, giro, pantalla completa y PDF protegidos con contraseña.
 - **Markdown:** un lector con tablas, listas de tareas, notas al pie, índice, código
   resaltado, fórmulas (KaTeX) y diagramas (Mermaid), y un editor con vista previa y modo
-  dividido.
+  dividido. Puedes crear un Markdown desde cero y guardarlo como `.md` o como PDF, claro u
+  oscuro.
 - **Imágenes locales:** muestra las imágenes de un Markdown si eliges sus archivos junto con
   el `.md` o abres su carpeta.
 - **Preferencias:** zoom, vista y colores del PDF, tamaño de letra y ancho del Markdown, y la

@@ -152,6 +152,31 @@ describe("App: abrir documentos", () => {
     expect(screen.queryByText("primero.pdf")).toBeNull();
   });
 
+  it("Crear Markdown (Fase 17): desde el estado vacío y desde la cabecera, en «Dividido»", async () => {
+    montar(new PlataformaEnMemoria().elegira(fichero("notas.md", "# Notas")));
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: messages.open.create })),
+    );
+    expect(
+      await screen.findByRole("heading", { level: 1, name: messages.document.newUntitled }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: messages.markdown.mode.dividido })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    // Con un documento abierto, también desde la cabecera (sin volver al estado vacío).
+    await abrir();
+    expect(await screen.findByRole("heading", { level: 1, name: "notas.md" })).toBeInTheDocument();
+    await act(async () =>
+      fireEvent.click(
+        within(screen.getByRole("banner")).getByRole("button", { name: messages.open.create }),
+      ),
+    );
+    expect(
+      await screen.findByRole("heading", { level: 1, name: messages.document.newUntitled }),
+    ).toBeInTheDocument();
+  });
+
   it("cancelar el selector deja la app como estaba", async () => {
     const { plataforma } = montar(new PlataformaEnMemoria().elegira(null));
     await abrir();

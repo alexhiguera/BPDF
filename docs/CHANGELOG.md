@@ -10,6 +10,163 @@ bitácora de esa plantilla.
 
 ---
 
+### Iteración 39 — *2026-10-06* — Fase 17 cerrada; F18, siguiente
+
+**Contexto.** El usuario hizo la comprobación manual de la Fase 17 y la aprobó entera: crear un
+Markdown (con apertura en «Dividido»), guardarlo, el estado de cambios, «Guardar como…», la
+exportación a PDF por la impresión del navegador en claro y en oscuro (con KaTeX, Mermaid,
+imágenes locales y varias páginas), la limpieza al imprimir o cancelar (con la corrección del
+oyente de `afterprint`, iteración 38) y el comportamiento de privacidad y seguridad. Confirmó
+también el aviso transitivo de KaTeX como riesgo aceptado para v1 (A1-13). **La Fase 17 queda
+CERRADA / APROBADA.**
+
+**Estado de las fases.** La 16 deja de estar «pausada»: su trabajo preparó la publicación y lo
+que quedaba (publicar y cerrar) se absorbe en la **Fase 18, publicación final de BPDF v1.0.0**,
+que queda como siguiente y no empieza. Su alcance, explícito en FASES y TAREAS: commit y push,
+CI completo, verificación en producción, repositorio público y su metadata, Issues, Private
+Vulnerability Reporting, Wiki, `docs.r3zon.com/bpdf`, enlace público al repositorio, versión
+1.0.0, etiqueta `v1.0.0`, GitHub Release y comprobación final de documentación y enlaces.
+
+**TAREAS.** Fuera la prueba manual de exportar a PDF (hecha). A las limitaciones aceptadas de
+v1 pasan lo que sigue siendo cierto: el nombre del PDF y las opciones de impresión dependen del
+diálogo del navegador; en Safari/WebKit, el margen superior de las páginas siguientes del PDF
+oscuro sigue sin verificar en Safari real; y el KaTeX transitivo de Mermaid.
+
+**Sin cambios de código.** La documentación pública no decía que la F17 estuviera pendiente: no
+se toca. **Verificación:** `docs:enlaces`, `docs:validar` y `git diff --check`.
+
+### Iteración 38 — *2026-10-06* — KaTeX transitivo aceptado para v1; revisión de la Fase 17
+
+**Contexto.** El usuario aceptó el aviso de KaTeX (iteración 37) como **riesgo conocido de
+dependencia transitiva para v1** y pidió una revisión final de la Fase 17, sin ampliar alcance.
+La Fase 17 sigue **implementada y pendiente de revisión**.
+
+**KaTeX: decisión.** Aceptado (auditoría A1-13; SEGURIDAD §2.5; STACK). BPDF pinta sus fórmulas con `katex@0.18.9`, que no está afectado. La copia vulnerable que llega a producción es `katex@0.16.47`, transitiva de Mermaid 11.17.2, que declara `katex ^0.16.47`: forzar 0.18.x queda fuera del rango de upstream. El aviso es de gravedad baja y explotarlo exige además una contaminación de prototipo previa. Esa copia solo corre en el marco aislado de Mermaid (iframe `sandbox="allow-scripts"`, origen opaco, CSP con `connect-src`, `img-src` y `font-src` a `'none'`, sin red) y su SVG se sanea y se muestra como `<img>`. La copia de `micromark-extension-math` no llega a la build. Un `override` fuera de rango aportaría ahora más riesgo de compatibilidad que reducción de riesgo real. Sin `override`
+ni `npm audit fix --force`, y Mermaid sin tocar. Tarea de seguimiento en TAREAS: retirarlo cuando
+Mermaid admita KaTeX ≥ 0.18.2. Estado de seguridad para v1: 0 altas, 0 moderadas, 4 bajas, todas
+por este aviso. No bloquea v1.
+
+**Revisión de la Fase 17.** Se repasó cada punto pedido: crear, guardar, exportar, la copia
+temporal, la seguridad y la compatibilidad. Un fallo real, en la copia temporal:
+- **El oyente de `afterprint` podía quedarse colgado.** Solo se quitaba al llegar el evento. Si
+  el documento se cerraba (o se abría otro) después de imprimir y antes de `afterprint`, el oyente
+  seguía en `window`. Y si se exportaba otra vez en ese hueco, el `afterprint` de la primera
+  desmontaba la copia de la segunda.
+- **Arreglo mínimo:** `imprimir()` acepta una señal; el visor la cancela al desmontarse y al
+  empezar otra exportación (quita el oyente sin limpiar nada más).
+- **Tests de componente:** cerrar con el diálogo abierto no deja copia ni oyente; exportar dos
+  veces deja una copia y un oyente; la exportación no toca los cambios sin guardar ni la vista;
+  las imágenes locales comparten la URL `blob:` de la vista y no se revoca ninguna de más.
+- **Unitario:** cancelar quita el oyente y un `afterprint` tardío no hace nada.
+- Se comprobó que los dos primeros tests fallan sin el arreglo y pasan con él.
+
+**Seguridad, comprobada sobre el diff de la fase:** `security-headers.ts`, `vercel.json` y los HTML
+sin cambios (CSP intacta); en el código nuevo, ni `fetch`, ni `innerHTML` y similares, ni
+almacenamiento, ni cambios de `document.title`.
+
+**Verificación.** `lint`, `typecheck`, `npm test` **1104** (58 ficheros), `build`, `build:tamano`
+(95,6 KB), `build:verificar`, `docs:enlaces`, `docs:validar`, `test:e2e` (Chromium) **139**, y
+`crear-exportar.spec.ts` en Firefox y WebKit (modo CI): 14 pasan y 4 saltados (el PDF real solo
+existe en Chromium). `npm audit`: 0 altas, 0 moderadas, 4 bajas (KaTeX transitivo, aceptado).
+
+**Error propio:** el primer script de esta documentación decía ser «todo o nada», pero escribía
+fichero a fichero. Falló en TAREAS después de escribir la auditoría y SEGURIDAD; se completó el
+resto sin duplicar nada.
+
+### Iteración 37 — *2026-10-06* — npm audit: source-map-js 1.2.2; KaTeX transitivo, analizado
+
+**Contexto.** Al verificar la Fase 17 aparecieron dos avisos publicados entre el *2026-10-04* y el
+*2026-10-06*, ajenos a la fase. El usuario pidió arreglar el primero y analizar el segundo sin
+cerrar todavía la decisión. Sin cambios de funcionalidad: la Fase 17 sigue **implementada y
+pendiente de revisión**.
+
+**`source-map-js` (GHSA-68fv-2mgg-jv7q, alto, `< 1.2.2`).** Solo lo usan herramientas de build y
+de test (Vite y PostCSS, Tailwind, jsdom, la cobertura de Vitest): no llega al navegador. Primero
+`npm audit fix --dry-run`: un solo cambio, `source-map-js 1.2.1 => 1.2.2`. Aplicado: tres líneas
+del lockfile (versión, URL e integridad), `package.json` igual, y `npm ls source-map-js` con las
+cuatro rutas deduplicadas en 1.2.2. Con esto `npm audit --audit-level=high` (lo que corre
+`security.yml`) pasa; sin ello, el próximo push habría dejado CI en rojo.
+
+**KaTeX (GHSA-238p-pmpm-9mq7, bajo, CWE-807, `>=0.11.0 <0.18.2`, corregido en 0.18.2).** «Una
+contaminación de prototipo ya existente puede saltarse las restricciones de `trust`».
+- **Árbol:** BPDF usa directamente KaTeX **0.18.9** (no afectado: es el que pinta las fórmulas
+  del lector). Mermaid 11.17.2 y `micromark-extension-math` 3.1.0 traen **0.16.47**, por sus
+  rangos `^0.16.47` y `^0.16.0`. No existe ninguna 0.16.x corregida.
+- **¿Se ejecuta?** La copia de `micromark-extension-math` no: esa librería solo importa KaTeX en
+  `mathHtml`, y `remark-math` usa `math` (la sintaxis); en `dist/` no aparece. La de Mermaid
+  sí está en la build (un trozo que carga el marco de `mermaid.html`) y se importa a demanda
+  cuando una etiqueta de un diagrama lleva `$…$`, con `trust` por defecto (desactivado).
+- **Contención:** ese marco es un iframe `sandbox="allow-scripts"` de origen opaco, con su propia
+  CSP (`connect-src`, `img-src` y `font-src` a `'none'`); su SVG se sanea y se muestra como
+  `<img>`, donde un enlace o un comando que se colara quedaría inerte. Explotarlo exige además
+  una contaminación de prototipo previa en ese marco.
+- **`overrides`:** técnicamente posible (`"mermaid": { "katex": "0.18.9" }`), pero fuerza una
+  versión fuera del rango que declara Mermaid (0.16 → 0.18 es un cambio mayor en 0.x): habría que
+  probar las fórmulas en diagramas y vigilarlo en cada actualización de Mermaid. Para
+  `micromark-extension-math` no aporta nada (esa copia no se empaqueta).
+- **Descartado:** `npm audit fix --force`, que bajaría Mermaid a 10.8.0.
+- **Pendiente:** la decisión es del usuario (TAREAS).
+
+**Verificación.** `lint`, `typecheck`, `npm test` (1099), `build`, `build:tamano` (95,6 KB),
+`build:verificar` y `npm audit`: 0 altas, 4 bajas (el mismo aviso de KaTeX). Sin E2E: solo cambió
+una dependencia de herramientas.
+
+### Iteración 36 — *2026-10-06* — Fase 17 implementada: crear Markdown y exportar a PDF
+
+**Contexto.** Antes de publicar v1, el usuario añadió una fase con dos capacidades y las
+decisiones ya tomadas: crear un Markdown desde cero y guardar cualquier Markdown como PDF.
+La **Fase 16 queda pausada** (implementada, sin deshacer nada) y su publicación pasa a una
+**Fase 18** nueva. **La Fase 17 queda IMPLEMENTADA / PENDIENTE DE REVISIÓN.** La versión sigue
+en 1.0.0: no se ha publicado nada. El trabajo empezó el *2026-10-04* y se interrumpió al
+apagarse el ordenador; se retomó el *2026-10-06* desde el estado del repositorio.
+
+**Auditoría previa.** Casi todo se reutiliza: la apertura de `DocumentProvider` (confirmación
+de cambios, `beforeunload`, carreras), `saveText`, el pipeline `Contenido` con sus contextos y
+los estados que ya exponían fórmulas y diagramas (`data-formula`, `data-diagrama`).
+
+**Lo hecho** (ARCHITECTURE §4 duodecies):
+- **Documento nuevo**: `crearMarkdown()` (`nuevo: true`, sin recursos, «Sin título» solo para
+  mostrar) y `createMarkdown()` por el mismo `load` que cualquier apertura. Se abre en
+  «Dividido», con el foco directo en el editor. «Crear Markdown» en la pantalla vacía y en la
+  cabecera (solo el icono en pantalla estrecha).
+- **«Guardar como…»**: un `<dialog>` con radios nativos (formato; colores del PDF), no un menú
+  propio. Markdown: `saveText(..., { nuevoDestino: true })`, que pide destino aunque haya uno;
+  cancelar deja el anterior. Ctrl/⌘+S sigue guardando a secas.
+- **PDF con la impresión del navegador**, sin dependencias: una copia del documento en un
+  portal (`.bpdf-impresion`), con el mismo pipeline, que `impresion.css` deja sola al imprimir.
+  Se espera a fórmulas, diagramas e imágenes (dos comprobaciones seguidas sin nada pendiente,
+  tope de 30 s), con «Preparando PDF…», y el diálogo se abre en el render siguiente, ya sin el
+  aviso. La copia se va con `afterprint`. Sin `window.print`, aviso.
+- **Claro u oscuro**, efímero. El claro redefine los tokens dentro de la copia (con su test de
+  contraste); los diagramas leen los colores desde su bloque.
+
+**Errores y descubrimientos del camino:**
+- **El margen del PDF claro salía casi negro.** Una sonda leyó con pdf.js las órdenes de
+  dibujo del PDF de Chromium: el blanco solo cubría el área de contenido, y el margen lo pintaba
+  el lienzo del navegador, oscuro por el `color-scheme: dark` de la app (`#121212`). Arreglo:
+  `color-scheme: light` al imprimir en claro. Un E2E lo vigila, y se comprobó que falla sin el
+  arreglo. El oscuro (página con nombre y `margin: 0`) cubre cada página entera.
+- **Pantalla estrecha (D12)**: con «Crear Markdown», la cabecera desbordaba 2 px a 375 px.
+  Ahora los botones pasan a otra línea si no caben.
+- **Un test del editor** buscaba el botón «Guardar» por subcadena y encontraba también «Guardar
+  como…»: ahora con `exact`, sin cambiar lo que comprueba.
+- **Errores propios**:
+  - un `cat` sin entrada dejó colgado un comando, que detuve antes de que escribiera nada;
+  - al editar un test con `sed` perdí una barra invertida, y la expresión `/s+/g` borraba las
+    «s» del texto extraído del PDF; pareció un fallo de la fuente hasta que lo vi;
+  - mi primera sonda de píxeles leía el lienzo del propio visor, repintado en su propio modo, y
+    no servía para medir el PDF;
+  - lancé Playwright a la vez que una verificación en segundo plano, y compartían
+    `test-results`.
+- **Descartado**:
+  - poner el nombre del documento en el título de la página para que el navegador lo proponga
+    como nombre del PDF (la Fase 11 lo prohíbe: el título va al historial);
+  - un menú propio para «Guardar como…»;
+  - una segunda vista previa visible;
+  - cualquier librería de PDF.
+
+**Verificación.** `lint` y `typecheck` ✅; `npm test` **1099** en 58 ficheros; `test:e2e` (Chromium) **139**; compatibilidad en modo CI: Firefox **132** pasan, 6 saltados y 1 intermitente que pasa al reintentar (el de Markdown de ~1 MB, ya conocido), WebKit **132** pasan y 7 saltados (el PDF real con `page.pdf` solo existe en Chromium); `build`, `build:tamano` (95,6 KB, +0,4), `build:verificar`, `docs:enlaces` (336), `docs:validar` (36 páginas). **`npm audit` no queda limpio**, por dos avisos publicados entre el 4 y el 6 de octubre que no vienen de esta fase: KaTeX 0.16.47 anidado en Mermaid y `micromark-extension-math` (bajo; el KaTeX directo, 0.18.9, no está afectado) y `source-map-js` 1.2.1 (alto; solo herramientas de build). No se tocan dependencias sin decisión del usuario: queda en TAREAS. Sin benchmarks: no cambia el render.
+
 ### Iteración 35 — *2026-10-04* — Fase 16 cerrada: v1 completa; limpieza antes de publicar
 
 **Contexto.** El usuario aprobó la implementación de la Fase 16, resolvió las tres decisiones

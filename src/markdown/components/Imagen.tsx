@@ -8,7 +8,7 @@ import type { RecursoLocal } from "@/documents/types";
 import { messages } from "@/i18n/messages";
 import { formatBytes } from "@/lib/format";
 import { clasificarImagen } from "../url-policy";
-import { useAcciones, useImagenes } from "./acciones";
+import { useAcciones, useImagenes, useImpresion } from "./acciones";
 
 const t = messages.markdown.image;
 
@@ -87,6 +87,7 @@ function ImagenLocal({
   title?: string;
 }) {
   const { almacen } = useImagenes();
+  const impresion = useImpresion();
   const [url, setUrl] = useState<string | null>(null);
   const [rota, setRota] = useState(false);
 
@@ -103,7 +104,8 @@ function ImagenLocal({
       src={url}
       alt={alt}
       title={title}
-      loading="lazy"
+      // En la copia para imprimir (Fase 17) no se ve nada: `lazy` no la cargaría nunca.
+      loading={impresion ? "eager" : "lazy"}
       decoding="async"
       data-imagen="local"
       data-recurso={recurso.ruta}

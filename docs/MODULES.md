@@ -25,6 +25,7 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 | Fórmulas (KaTeX) y diagramas (Mermaid, en un marco aislado) | ✅ F8 | `src/markdown/matematicas.ts`, `mermaid*.ts`, `marco-mermaid.ts`, `svg-seguro.ts`, `mermaid.html` |
 | Recursos locales de Markdown (varios ficheros, carpeta, imágenes) | ✅ F7 bis | `src/documents/recursos.ts`, `src/documents/seleccion.ts`, `src/markdown/imagenes.ts`, `src/platform/web.ts` |
 | Editor de Markdown (CodeMirror 6, vista previa, dividido, guardar) | ✅ F9 (aprobada con una excepción de rendimiento: Dividido con 1 MB + KaTeX o 1 MB de encabezados; FASES, Fase 9) | `src/editor/`, `src/markdown/MarkdownView.tsx`, `src/platform/guardar-web.ts` |
+| Crear Markdown, «Guardar como…» y exportar a PDF (impresión del navegador, claro u oscuro) | ✅ F17 (cerrada el *2026-10-06*) | `src/documents/nuevo.ts`, `src/editor/GuardarComo.tsx`, `src/markdown/impresion.ts`, `src/styles/impresion.css` |
 | Interfaz final: atajos anunciados, «Acerca de», mención a R3ZON, favicon, pantalla estrecha (D12) | ✅ F11 (enlace al repositorio en «Acerca de»: F16) | `src/app/`, `src/preferences/PreferencesDialog.tsx`, `src/config/version.ts`, `public/favicon.svg` |
 | Accesibilidad, rendimiento y compatibilidad (barra con flechas, separador de 24 px, axe, Firefox y WebKit, memoria con CDP) | ✅ F13 (Firefox y WebKit también en CI) | `src/app/pdf/barra-teclado.ts`, `e2e/specs/a11y.spec.ts`, `playwright.compat.config.ts`, `e2e/bench/memoria.bench.ts` |
 | Escritorio (Electron) | ❌ F14 cancelada (D19: BPDF es solo web) | |

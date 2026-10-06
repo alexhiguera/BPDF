@@ -44,6 +44,11 @@ Markdown de alrededor de 1 MB tarda unos segundos en aparecer.
 - **Sin tema claro** para la interfaz.
 - **Sin imágenes, fuentes ni scripts de internet** en los documentos.
 - **Enlaces a otros archivos** desde un Markdown: no se abren.
+- **Exportar a PDF** pasa por el diálogo de impresión del navegador: el nombre del archivo
+  lo escribes ahí (BPDF propone el que el navegador elija, normalmente «BPDF»), y no se
+  exporta a otros formatos (Word, texto).
+- **Un Markdown nuevo no tiene imágenes**: no se pueden insertar; se ven al abrirlo con sus
+  imágenes o su carpeta.
 
 ## Qué casos son lentos
 

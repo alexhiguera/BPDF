@@ -1145,6 +1145,79 @@ marca como tal en el informe (TAREAS).
 Fase 12 (sigue sin adoptarse en v1). La compatibilidad no añadió sumideros nuevos, y WebKit
 —que aplica Trusted Types desde Safari 26— es justo el motor con menos horas de prueba.
 
+### 4 duodecies. Crear Markdown y exportar a PDF (Fase 17)
+
+> **Cerrada y aprobada** el *2026-10-06* (iteraciones 36, 38 y 39). Decisiones del usuario en
+> [FASES.md](FASES.md), Fase 17.
+
+**Documento nuevo.** `crearMarkdown()` (`src/documents/nuevo.ts`) devuelve un
+`OpenedMarkdown` con `nuevo: true`, texto vacío, `SIN_RECURSOS` y el nombre «Sin título»,
+que solo se muestra: la identidad es el id opaco de la sesión, como en cualquier documento,
+y el nombre no se guarda en ningún sitio. `DocumentProvider.createMarkdown()` lo abre por el
+mismo `load` que el selector o soltar un fichero: la confirmación de cambios sin guardar,
+`beforeunload` y las carreras de apertura no tienen una vía aparte. `MarkdownView` lo abre en
+«Dividido» con el editor cargado, y el foco va al editor sin pasar antes por el título (un
+lector de pantalla anunciaría los dos). Un documento abierto sigue empezando en «Lectura».
+
+**Guardar como… → Markdown.** El mismo `Platform.saveText`, con `{ nuevoDestino: true }`: con
+`showSaveFilePicker` pide destino aunque la sesión ya tenga uno, y el elegido pasa a ser el
+del documento (los siguientes Ctrl/⌘+S escriben ahí: el original abierto desde disco nunca se
+toca, como hasta ahora); cancelar deja el destino anterior. Sin `showSaveFilePicker`, una
+descarga, como el guardado normal. Ctrl/⌘+S no cambia: guarda el Markdown, sin opciones.
+
+**Guardar como… → PDF: la impresión del navegador.** Sin librería de PDF (jsPDF,
+html2canvas, pdf-lib…) ni conversión remota: `window.print()` y «Guardar como PDF» en el
+diálogo del navegador. El texto queda seleccionable, las fórmulas y los diagramas vectoriales,
+los enlaces activos, y no entra ningún motor nuevo que procese contenido.
+
+- **Una copia, no la vista.** Mientras se exporta, `MarkdownView` monta en `<body>` (portal)
+  un `.bpdf-impresion` con el texto de ese momento (el del editor si se edita) renderizado con
+  el mismo `Contenido`: mismo pipeline, mismas políticas de URL, mismos recursos entregados y
+  el mismo marco aislado de Mermaid. Así se exporta igual desde Lectura, Edición (donde la
+  vista previa no está montada) o Dividido. En pantalla no se ve (`display: none`,
+  `aria-hidden`); al imprimir es lo único visible.
+- **Completa antes de imprimir** (`impresion.ts`): fórmulas (`data-formula="cargando"`),
+  diagramas (`data-diagrama` esperando o dibujando) e imágenes (`img.complete`); listo tras
+  dos miradas seguidas sin nada pendiente (una imagen local aparece un instante después de
+  montarse). En la copia, `ContextoImpresion` hace que los diagramas se dibujen sin esperar a
+  entrar en pantalla y que las imágenes no sean `loading="lazy"`. Tope: 30 s (más que los 20
+  de un diagrama, que después se muestra con error, es decir, listo); si se agota, aviso y no
+  se imprime: mejor eso que un PDF con «Dibujando el diagrama…».
+- **Dos fases**: «preparando» (se ve «Preparando PDF…», `role="status"`) e «imprimiendo»: el
+  aviso se quita y el diálogo se abre en el render siguiente. La copia sigue montada hasta
+  `afterprint` (en algunos navegadores `print()` vuelve antes de imprimir). Sin
+  `window.print`, o si lanza, aviso y la copia se desmonta: la app no se queda bloqueada.
+- **Hoja de impresión** (`src/styles/impresion.css`, en el trozo del lector): solo actúa si
+  existe la copia (`body:has(> .bpdf-impresion)`), así que Ctrl+P a mano no cambia. Oculta todo
+  lo demás; quita botones y el desplegable del código de los diagramas; `break-inside: avoid`
+  en figuras, fórmulas en bloque, citas y filas; títulos que no se quedan solos al pie; código
+  con salto de línea. Sin `size` (el papel lo elige quien imprime) y sin cabeceras ni pies.
+- **Claro u oscuro, efímero.** La elección vive en el diálogo «Guardar como…»: ni
+  `bpdf:prefs`, ni almacenamiento, ni URL. «Oscuro» usa los tokens de la app; «claro» los
+  redefine dentro de la copia (un test calcula sus contrastes, como los de la app). Los
+  diagramas leen los tokens desde su propio bloque, así que en claro se dibujan en claro.
+  Medido en el PDF de Chromium (leyendo sus órdenes de dibujo con pdf.js): en **oscuro**, la
+  página es `margin: 0` (página con nombre `bpdf-oscuro`) y el fondo `#2b2b2b` cubre cada
+  página entera, con el margen como relleno de la copia (`box-decoration-break: clone`); en
+  **claro**, el margen del papel lo pinta el lienzo del navegador, que con el
+  `color-scheme: dark` de la app salía casi negro (`#121212`): se imprime con
+  `color-scheme: light`. Un E2E lo vigila.
+- **El nombre del PDF lo propone el navegador**, normalmente a partir del título de la
+  página, que en BPDF es siempre «BPDF» (Fase 11: el nombre de un documento nunca va al
+  título, porque el navegador lo guarda en su historial). No se cambia el título para
+  exportar: el nombre se escribe en el diálogo.
+
+**Seguridad y privacidad.** Nada nuevo sale del dispositivo ni se guarda: la copia usa el
+mismo pipeline (el HTML del documento sigue sin interpretarse), Mermaid sigue en su marco,
+las imágenes remotas siguen sin cargarse y los recursos siguen siendo los entregados. La CSP
+no cambia: imprimir no pide nada y la hoja va en el propio paquete.
+
+**Límites conocidos.** El nombre del PDF y las opciones de impresión (papel, márgenes, fondos)
+los pone el diálogo del navegador. Donde el navegador no repite el relleno de un bloque al
+saltar de página (`box-decoration-break: clone`; WebKit, según su documentación), en «oscuro»
+las páginas siguientes empezarían sin margen superior: no verificado en Safari real. Con la copia montada, el documento existe dos veces en el DOM con los mismos
+`id` de títulos, solo mientras se exporta.
+
 ### 5. La menor complejidad que cumpla los requisitos
 
 Ante dos soluciones válidas: menos código, menos dependencias, menos superficie de ataque,

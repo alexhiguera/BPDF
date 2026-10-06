@@ -1,7 +1,13 @@
 import type { Platform } from "./types";
 import { createWebPlatform } from "./web";
 
-export type { DocumentoAGuardar, Platform, ResultadoGuardado, Soltado } from "./types";
+export type {
+  DocumentoAGuardar,
+  OpcionesGuardado,
+  Platform,
+  ResultadoGuardado,
+  Soltado,
+} from "./types";
 
 /**
  * La plataforma en la que corre la app: la web, la única (D19: BPDF no tiene

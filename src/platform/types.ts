@@ -66,9 +66,19 @@ export interface Platform {
    *
    * `"cancelado"` si el usuario cierra el diálogo sin elegir. Rechaza si no se
    * pudo escribir (sin permiso, disco lleno…): el texto sigue sin guardar.
+   *
+   * `nuevoDestino` (Fase 17, «Guardar como… → Markdown»): pide el destino aunque
+   * ya haya uno en esta sesión; el elegido pasa a ser el del documento. Sin
+   * `showSaveFilePicker` no cambia nada: ya es siempre una descarga.
    */
-  saveText(documento: DocumentoAGuardar, texto: string): Promise<ResultadoGuardado>;
+  saveText(
+    documento: DocumentoAGuardar,
+    texto: string,
+    opciones?: OpcionesGuardado,
+  ): Promise<ResultadoGuardado>;
 }
+
+export type OpcionesGuardado = { readonly nuevoDestino?: boolean };
 
 /** Lo que la plataforma necesita saber del documento para guardarlo: nada más. */
 export type DocumentoAGuardar = { readonly id: string; readonly name: string };

@@ -37,11 +37,17 @@ export type OpenedPdf = DocumentBase & {
  * `resources`: las imágenes que el usuario entregó JUNTO con el `.md` (varios
  * ficheros o una carpeta, Fase 7 bis). Un `.md` abierto solo lleva
  * `SIN_RECURSOS`. BPDF nunca busca nada fuera de este conjunto.
+ *
+ * `nuevo` (Fase 17): creado en memoria con «Crear Markdown», no leído de un
+ * fichero (`crearMarkdown`). Sin recursos, con el texto vacío y un nombre solo
+ * para mostrar («Sin título»), que no identifica nada ni se guarda en ningún
+ * sitio. Se abre en «Dividido».
  */
 export type OpenedMarkdown = DocumentBase & {
   readonly kind: "markdown";
   readonly text: string;
   readonly resources: RecursosDocumento;
+  readonly nuevo?: true;
 };
 
 export type OpenedDocument = OpenedPdf | OpenedMarkdown;

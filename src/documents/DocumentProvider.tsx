@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { Platform, Soltado } from "@/platform";
 import { DocumentError } from "./errors";
+import { crearMarkdown } from "./nuevo";
 import type { Apertura, EleccionMarkdown, OpenedDocument } from "./types";
 
 type DocumentState = {
@@ -31,6 +32,11 @@ export type DocumentContextValue = DocumentState & {
   openFolder(): Promise<void>;
   /** Lo soltado en la ventana, ya capturado dentro del evento (ver `Soltado`). */
   openDropped(soltado: Soltado): Promise<void>;
+  /**
+   * Fase 17: un Markdown nuevo y vacío (`crearMarkdown`). Sustituye al abierto
+   * como cualquier apertura: con cambios sin guardar, tras confirmar.
+   */
+  createMarkdown(): Promise<void>;
   /** Abre el Markdown elegido de `choice`. */
   choose(index: number): Promise<void>;
   /** Descarta la elección pendiente: el documento abierto sigue como estaba. */
@@ -156,6 +162,7 @@ export function DocumentProvider({
     (soltado: Soltado) => load(() => platform.openDropped(soltado)),
     [load, platform],
   );
+  const createMarkdown = useCallback(() => load(async () => crearMarkdown()), [load]);
 
   const choice = state.choice;
   const choose = useCallback(
@@ -180,6 +187,7 @@ export function DocumentProvider({
       openWithPicker,
       openFolder,
       openDropped,
+      createMarkdown,
       choose,
       cancelChoice,
       close,
@@ -194,6 +202,7 @@ export function DocumentProvider({
       openWithPicker,
       openFolder,
       openDropped,
+      createMarkdown,
       choose,
       cancelChoice,
       close,

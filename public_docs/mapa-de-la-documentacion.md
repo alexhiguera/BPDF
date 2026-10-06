@@ -33,6 +33,7 @@ la referencia, las preguntas frecuentes y los problemas cuando los necesites.
 - [Abrir un PDF](primeros-pasos/abrir-un-pdf.md)
 - [Abrir un Markdown](primeros-pasos/abrir-un-markdown.md)
 - [Abrir un Markdown con sus imágenes](primeros-pasos/markdown-con-imagenes.md)
+- [Crear un Markdown](primeros-pasos/crear-un-markdown.md)
 
 ## Guías de PDF
 
@@ -51,6 +52,7 @@ la referencia, las preguntas frecuentes y los problemas cuando los necesites.
 - [Imágenes locales](guias/markdown/imagenes-locales.md)
 - [Fórmulas (KaTeX)](guias/markdown/formulas.md)
 - [Diagramas (Mermaid)](guias/markdown/diagramas.md)
+- [Exportar a PDF](guias/markdown/exportar-a-pdf.md)
 
 ## Guías de Preferencias
 

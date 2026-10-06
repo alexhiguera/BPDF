@@ -71,6 +71,11 @@ No: uno cada vez. Para tener dos, abre BPDF en dos pestañas.
 
 No. BPDF muestra los PDF y los formularios, pero no los modifica. Lo que se edita es Markdown.
 
+### ¿Puedo convertir un Markdown en PDF?
+
+Sí: **Guardar como… → PDF (.pdf)**, en claro u oscuro. Lo genera tu navegador al imprimir,
+sin subir nada ([Exportar a PDF](../guias/markdown/exportar-a-pdf.md)).
+
 ### ¿Por qué no se ven las imágenes de mi Markdown?
 
 Porque el navegador solo da a BPDF los archivos que eliges. Abre la carpeta del documento o

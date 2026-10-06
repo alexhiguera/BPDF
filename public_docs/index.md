@@ -30,6 +30,7 @@ tienes cómo usar cada función.
   tu equipo.
 - [Abrir un PDF](primeros-pasos/abrir-un-pdf.md) y [abrir un Markdown](primeros-pasos/abrir-un-markdown.md).
 - [Abrir un Markdown con sus imágenes](primeros-pasos/markdown-con-imagenes.md).
+- [Crear un Markdown nuevo](primeros-pasos/crear-un-markdown.md).
 
 ## Qué puedo hacer con un PDF
 
@@ -45,6 +46,7 @@ tienes cómo usar cada función.
   y [ver el texto y el resultado a la vez](guias/markdown/modo-dividido.md).
 - [Mostrar sus imágenes](guias/markdown/imagenes-locales.md),
   [fórmulas](guias/markdown/formulas.md) y [diagramas](guias/markdown/diagramas.md).
+- [Guardarlo como PDF](guias/markdown/exportar-a-pdf.md), claro u oscuro.
 
 ## Dónde está el resto
 

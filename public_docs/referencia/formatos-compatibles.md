@@ -52,6 +52,14 @@ internet no se cargan.
 - Una carpeta con uno o varios Markdown: eliges cuál leer. Hasta 10 000 archivos y 32 niveles
   de subcarpetas; `.git` y `node_modules` no se recorren.
 
+## A qué formatos guarda
+
+- **Markdown (`.md`)**: con **Guardar** o **Guardar como…**.
+- **PDF**: con **Guardar como… → PDF (.pdf)**, a través del diálogo de impresión del
+  navegador, en claro u oscuro ([Exportar a PDF](../guias/markdown/exportar-a-pdf.md)).
+
+Un PDF abierto no se modifica ni se vuelve a guardar.
+
 ## Qué no abre
 
 Documentos de Word, hojas de cálculo, EPUB, texto plano (`.txt`), HTML ni imágenes sueltas.

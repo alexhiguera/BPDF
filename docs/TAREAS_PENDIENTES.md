@@ -11,32 +11,33 @@ archivos, tests, criterios de aceptación). El diseño que construyen: [PLAN.md]
 [SEGURIDAD.md](SEGURIDAD.md) ([ELECTRON.md](ELECTRON.md) es histórico: D19). Aquí solo el
 estado.
 
-## Estado hoy — *2026-10-04*
+## Estado hoy — *2026-10-06*
 
-Medido con Node 24.21.0 y npm 11.19.0 en **WSL2 (Ubuntu) sobre Windows**, tras **cerrar la Fase 16: v1
-completa** (iteraciones 34 y 35). E2E con Chromium, Firefox y WebKit
-de Playwright. Cerradas las Fases 0–13, la 15 y la 16 (la 6 se hizo después de las 7, 7 bis y 8, por orden
+Medido con Node 24.21.0 y npm 11.19.0 en **WSL2 (Ubuntu) sobre Windows**, tras **cerrar la Fase 17**
+(iteraciones 36 a 39). E2E con Chromium, Firefox y WebKit
+de Playwright. Cerradas las Fases 0–13, la 15 y la 17 (la 6 se hizo después de las 7, 7 bis y 8, por orden
 del usuario, y conserva su número). **La 9 se aprobó con una excepción de rendimiento**
 (*2026-10-03*): teclear en Dividido con 1 MB + KaTeX o con 1 MB de encabezados supera los
 objetivos de latencia ([FASES.md](FASES.md), Fase 9). **BPDF es solo una aplicación web**
 (D19): la Fase 14 (Electron) se canceló y la 15 se reescribió sin escritorio. La 12
 (seguridad) se cerró verificada en producción ([auditoria.md](auditoria.md), Auditoría 1).
 La 13 (accesibilidad, rendimiento y compatibilidad) se cerró el *2026-10-04*. La 15
-(distribución web) se cerró el *2026-10-04*, verificada en producción. La 16 (open source,
-documentación final y v1.0.0), la última de v1, se cerró el *2026-10-04*. Queda publicarla,
-que lo hace el usuario (abajo).
+(distribución web) se cerró el *2026-10-04*, verificada en producción. La 16 (open source y
+documentación final) dejó preparada la publicación, que se absorbe en la 18. La 17 (crear
+Markdown y exportar a PDF) se cerró el *2026-10-06*. Siguiente: **Fase 18**, publicación final
+de v1.0.0.
 
 | Comprobación | Resultado |
 |---|---|
 | Código | SPA estática de Vite 8 + React 19 que abre un PDF o un Markdown local, uno a la vez (D16): visor PDF propio sobre pdf.js con modo oscuro selectivo (ARCHITECTURE §4 quater), lector GFM con recursos locales, KaTeX y Mermaid aislado (§4 quinquies a septies), editor CodeMirror 6 (§4 octies), preferencias (§4 nonies), interfaz final (§4 decies) y, desde la Fase 13, barra del visor con flechas, separador de 24 px y foco en los diálogos (§4 undecies). **Web publicada** en Vercel (`bpdf.r3zon.com`), en `9fb5f6a` (Fase 15, verificada: [DEPLOYMENT.md](DEPLOYMENT.md)) |
 | `npm run lint` · `typecheck` | ✅ |
-| `npm run test:run` | ✅ 1043 tests en 55 ficheros (Fase 16: el enlace de «Acerca de», el validador de `public_docs/` ampliado y la Wiki; Fase 15: dominio oficial y `dist/` publicable; Fase 13: la barra con el teclado, el campo de página que no pierde lo escrito, los escuchadores del selector, el campo de contraseña sin nada que enviar; antes: CSP congelada, `Permissions-Policy`, D14 con pdf.js real, `worker-destruido`, interfaz, preferencias, XSS, recursos, Mermaid, `vercel.json`…) |
-| `npm run test:e2e` (Chromium) | ✅ 130 tests en 12 ficheros contra la build de producción, entre ellos 9 de accesibilidad (Fase 13: axe en cada pantalla y estado, barra con flechas, diálogos y foco, separador) y el de IME sobre una selección (CDP). Smoke de producción (`test:humo`, Fase 15) contra `https://bpdf.r3zon.com`: 6 de 6 |
+| `npm run test:run` | ✅ 1104 tests en 58 ficheros (Fase 17: documento nuevo, espera de impresión, «Guardar como…», contraste del PDF claro; Fase 16: el enlace de «Acerca de», el validador de `public_docs/` ampliado y la Wiki; Fase 15: dominio oficial y `dist/` publicable; Fase 13: la barra con el teclado, el campo de página que no pierde lo escrito, los escuchadores del selector, el campo de contraseña sin nada que enviar; antes: CSP congelada, `Permissions-Policy`, D14 con pdf.js real, `worker-destruido`, interfaz, preferencias, XSS, recursos, Mermaid, `vercel.json`…) |
+| `npm run test:e2e` (Chromium) | ✅ 139 tests en 13 ficheros contra la build de producción, entre ellos 9 de accesibilidad (Fase 13: axe en cada pantalla y estado, barra con flechas, diálogos y foco, separador) y el de IME sobre una selección (CDP). Smoke de producción (`test:humo`, Fase 15) contra `https://bpdf.r3zon.com`: 6 de 6 |
 | `npm run test:e2e:compat` (Firefox y WebKit; en CI, job `compat` de `e2e.yml`) | ✅ En modo CI (cierre de la Fase 13): Firefox 125 pasan y WebKit 123, más 1 y 2 intermitentes que pasan al reintentar (carga de la máquina; uno, el de los 200 ms, ya conocido); ~1,5 y ~2,3 min de tests por navegador. 9 saltados con su motivo (solo Chromium: memoria con CDP, `Permissions-Policy`, bloques saltados observables, IME; WebKit: `beforeunload` con `runBeforeUnload`) |
-| `npm run build` · `build:tamano` · `build:verificar` | ✅ · `dist/` publicable (Fase 15) · arranque **95,2 KB gzip** (límite 150; +0,1 KB en la F16 por el enlace de «Acerca de»; +0,3 KB en la F13: la barra con flechas y el foco al cancelar). A demanda, sin cambios: visor PDF, pdf.js 148 KB, lector de Markdown, editor 98 KB, KaTeX, Mermaid en el marco, workers |
+| `npm run build` · `build:tamano` · `build:verificar` | ✅ · `dist/` publicable (Fase 15) · arranque **95,6 KB gzip** (límite 150; +0,4 KB en la F17 por «Crear Markdown»; +0,1 KB en la F16 por el enlace de «Acerca de»; +0,3 KB en la F13: la barra con flechas y el foco al cancelar). A demanda, sin cambios: visor PDF, pdf.js 148 KB, lector de Markdown, editor 98 KB, KaTeX, Mermaid en el marco, workers |
 | CSP | ✅ Definitiva (Fase 12, congelada en un test; T-3 cerrada; T-4, Trusted Types, no adoptado en v1: riesgo aceptado, revisado tras la F13 sin cambios). Sin cambios en la F13 |
-| `npm run docs:validar` · `docs:enlaces` | ✅ · ✅ (328 enlaces en 22 ficheros) |
-| `npm audit` | ✅ 0 vulnerabilidades · **1 override** (`micromark` 4.0.2: regresión cuadrática de la 4.0.3, micromark#246; STACK.md) · 0 scripts de instalación sin aprobar |
+| `npm run docs:validar` · `docs:enlaces` | ✅ · ✅ (336 enlaces en 22 ficheros) |
+| `npm audit` | ✅ 0 altas · 0 moderadas · 4 bajas, todas el mismo aviso de KaTeX transitivo en Mermaid, **aceptado para v1** (auditoría A1-13) · `source-map-js` 1.2.2 (iteración 37) · **1 override** (`micromark` 4.0.2: regresión cuadrática de la 4.0.3, micromark#246; STACK.md) · 0 scripts de instalación sin aprobar |
 | Dependencias | 20 de runtime (las de contenido no confiable, con versión exacta). Desarrollo: + `@axe-core/playwright` (Fase 13) |
 | Rendimiento (Ryzen 7 5800X; ARCHITECTURE §4 undecies, PLAN §11) | PDF de 1000 páginas: primera página 0,95 s, ninguna tarea larga > 200 ms al navegar (CPU ×4: 1,3 s; máx. 179 ms). Modo oscuro con worker: 8–60 ms de hilo principal por página (×4: hasta 226 ms a 400 % y DPR 2). Markdown 1 MB: 3,0 s; listas cortas 200 KB: 1,45 s, lineal. Editor (teclear): Chromium como en la F9; Firefox, Dividido 1 MB + KaTeX máx. 40 ms; WebKit (de Playwright, en Linux), Dividido 1 MB + KaTeX: P50 ~400 ms (**limitación conocida de v1**, sin confirmar en Safari real) |
 | Memoria (CDP, `bench:memoria`) | Al cerrar, el montón vuelve a 6–9 MiB (de 44–63 MiB con 1 MB); workers y URL `blob:` a 0; escuchadores estables. ~10 nodos por apertura: el `<input>` del selector, retenido por las herramientas de medida |
@@ -54,15 +55,13 @@ Ninguna (*2026-10-04*).
 
 ## Fases
 
-Ninguna: v1 completa (F0–F13, F15 y F16 cerradas; F14 cancelada).
-
-## Publicación de v1.0.0 (del usuario)
-
-- [ ] 🔴 **Publicar v1.0.0**, en este orden ([DEPLOYMENT.md](DEPLOYMENT.md), «Publicación
-  final»): commit y push; CI en verde; `test:humo` y `cabeceras:verificar` contra producción
-  (Versión 1.0.0 en «Acerca de»); repositorio público y sus ajustes; aviso privado de
-  vulnerabilidades; etiquetas `fallo` y `mejora`; Wiki; alta en `docs.r3zon.com`; etiqueta
-  `v1.0.0` y GitHub Release
+- [ ] 🔴 **F18** (siguiente, no empezada) Publicación final de BPDF v1.0.0. Hereda lo pendiente de
+  la F16, en este orden ([DEPLOYMENT.md](DEPLOYMENT.md), «Publicación final»; FASES, Fase 18):
+  commit y push finales; CI completo en verde; verificación en producción (`test:humo`,
+  `cabeceras:verificar`; «Acerca de» con la versión 1.0.0 y el enlace público al repositorio);
+  repositorio público y su metadata; Issues y etiquetas `fallo` y `mejora`; Private
+  Vulnerability Reporting; Wiki; `docs.r3zon.com/bpdf`; etiqueta `v1.0.0` y GitHub Release;
+  comprobación final de documentación y enlaces
 
 ## Limitaciones aceptadas de v1
 
@@ -74,9 +73,20 @@ No son tareas: están decididas y documentadas. Se reabren solo si el usuario lo
   pulsación), medido con el WebKit de Playwright en Linux; los recorridos funcionales de WebKit
   pasan. Sin confirmar en Safari real (seguimiento abajo)
 - **Trusted Types (T-4): no adoptado** (Fase 12, A1-5; revisado tras la F13 sin cambios)
+- **Exportar a PDF depende del diálogo de impresión del navegador** (F17): el nombre sugerido
+  (normalmente «BPDF»: el título de la página nunca lleva el del documento), el papel, los
+  márgenes y si imprime fondos los decide ese diálogo. En Safari/WebKit, el margen superior de
+  las páginas siguientes del PDF oscuro no se ha verificado en Safari real
+- **KaTeX transitivo de Mermaid** (GHSA-238p-pmpm-9mq7, bajo): riesgo conocido aceptado para v1
+  (auditoría A1-13; seguimiento abajo)
 
 ## Seguimiento futuro
 
+- [ ] 🟡 **Retirar el riesgo aceptado de KaTeX transitivo** cuando Mermaid publique una versión
+  compatible con KaTeX ≥ 0.18.2 (GHSA-238p-pmpm-9mq7; [auditoria.md](auditoria.md) A1-13,
+  aceptado para v1 el *2026-10-06*). En cada actualización de Mermaid, comprobar: el rango de
+  KaTeX que declara, `npm audit`, fórmulas (`$…$`) dentro de diagramas,
+  `tests/fixtures/markdown/mermaid-hostil.md` y los E2E de Mermaid. No bloquea v1
 - [ ] 🟢 **WebKit de Playwright en Linux + DPR 2 + CPU limitada pinta el PDF mucho más lento**
   (observado al diagnosticar el E2E «cerrar o sustituir el PDF», iteración 33): con 1 núcleo, la
   misma secuencia de abrir y cerrar tarda 31 s a DPR 2 y 10 s a DPR 1 en WebKit; Chromium y

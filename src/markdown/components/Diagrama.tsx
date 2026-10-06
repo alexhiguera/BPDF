@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { messages } from "@/i18n/messages";
 import { DiagramaConImagenesError, DiagramaGrandeError } from "../mermaid";
 import type { ColoresDiagrama } from "../mermaid-config";
-import { useDiagramas } from "./acciones";
+import { useDiagramas, useImpresion } from "./acciones";
 
 const t = messages.markdown.diagram;
 
@@ -29,14 +29,16 @@ export function Diagrama({ fuente }: { fuente: string }) {
   const contenedor = useRef<HTMLDivElement>(null);
   const [estado, setEstado] = useState<Estado>({ fase: "esperando" });
   const diagramas = useDiagramas();
+  const impresion = useImpresion();
 
-  // Empezar al entrar en pantalla (o ya, si el navegador no tiene IntersectionObserver).
+  // Empezar al entrar en pantalla (o ya, si el navegador no tiene IntersectionObserver,
+  // o en la copia para imprimir, que no se ve: Fase 17).
   // Depende de `fuente` aunque no la lea: otra fuente vuelve a empezar.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ver arriba
   useEffect(() => {
     setEstado({ fase: "esperando" });
     const el = contenedor.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
+    if (!el || impresion || typeof IntersectionObserver === "undefined") {
       setEstado({ fase: "dibujando" });
       return;
     }
@@ -51,7 +53,7 @@ export function Diagrama({ fuente }: { fuente: string }) {
     );
     observador.observe(el);
     return () => observador.disconnect();
-  }, [fuente]);
+  }, [fuente, impresion]);
 
   const dibujando = estado.fase === "dibujando";
   useEffect(() => {
@@ -62,7 +64,7 @@ export function Diagrama({ fuente }: { fuente: string }) {
       setEstado({ fase: "error", motivo: "invalid" });
       return;
     }
-    marco.dibujar(fuente, coloresDelTema()).then(
+    marco.dibujar(fuente, coloresDelTema(contenedor.current)).then(
       (svg) => {
         // La URL solo se crea si el bloque sigue montado y con esta fuente.
         if (!vigente) return;
@@ -141,9 +143,13 @@ export function tipoDe(fuente: string): string {
   return "";
 }
 
-/** Colores de los tokens de BPDF (globals.css), como `#rrggbb`. */
-function coloresDelTema(): ColoresDiagrama {
-  const estilo = getComputedStyle(document.documentElement);
+/**
+ * Colores de los tokens de BPDF (globals.css), como `#rrggbb`, vistos desde el
+ * propio bloque: en la copia para imprimir en claro (Fase 17) los tokens son los
+ * de ese tema (`impresion.css`) y el diagrama se dibuja con ellos.
+ */
+function coloresDelTema(desde: Element | null): ColoresDiagrama {
+  const estilo = getComputedStyle(desde ?? document.documentElement);
   const hex = (token: string, reserva: string) => {
     const partes = estilo.getPropertyValue(`--rgb-${token}`).trim().split(/\s+/).map(Number);
     if (partes.length !== 3 || partes.some((n) => !Number.isFinite(n))) return reserva;

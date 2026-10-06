@@ -1,4 +1,4 @@
-import { Settings } from "lucide-react";
+import { FilePlus, Settings } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { project } from "@/config/project";
@@ -48,6 +48,7 @@ function Shell({ platform }: { platform: Platform }) {
     openWithPicker,
     openFolder,
     openDropped,
+    createMarkdown,
     choose,
     cancelChoice,
     close,
@@ -85,10 +86,16 @@ function Shell({ platform }: { platform: Platform }) {
       </a>
       <header className="flex items-center justify-between gap-4 border-b border-border bg-app px-4 py-2">
         <span className="font-semibold">{project.name}</span>
-        <div className="flex gap-2">
+        {/* Fase 17: con «Crear Markdown» no caben todos en 375 px (D12): pasan a otra línea. */}
+        <div className="flex min-w-0 flex-wrap justify-end gap-2">
           {/* Sin documento, abrir está en el centro del estado vacío. */}
           {document && (
             <>
+              {/* Fase 17: crear sin volver a la pantalla vacía. En estrecha, solo el icono. */}
+              <Button variant="secondary" title={messages.open.create} onClick={createMarkdown}>
+                <FilePlus aria-hidden="true" className="size-4" />
+                <span className="max-sm:sr-only">{messages.open.create}</span>
+              </Button>
               <Button variant="secondary" onClick={openFolder}>
                 {messages.open.folder}
               </Button>
@@ -147,11 +154,17 @@ function Shell({ platform }: { platform: Platform }) {
               onClose={cerrar}
               onOpenExternal={(url) => platform.openExternal(url)}
               onModificado={setModified}
-              onGuardar={(texto) => platform.saveText(document, texto)}
+              onGuardar={(texto, opciones) => platform.saveText(document, texto, opciones)}
             />
           </Suspense>
         ) : (
-          !choice && <EmptyState onOpen={openWithPicker} onOpenFolder={openFolder} />
+          !choice && (
+            <EmptyState
+              onOpen={openWithPicker}
+              onOpenFolder={openFolder}
+              onCreate={createMarkdown}
+            />
+          )
         )}
         {pendingDiscard && document && (
           <ConfirmarDescarte nombre={document.name} onResponder={respondDiscard} />

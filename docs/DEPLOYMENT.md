@@ -68,7 +68,8 @@ pública, la GitHub Wiki y la publicación final de v1.0.0 ([FASES.md](FASES.md)
   que el usuario espera (quitar una función, cambiar lo que se guarda sin migrarlo), MAJOR. Lo
   que no cambia nada para el usuario (docs, tests, CI) no sube la versión.
 - **Historia:** 0.1.0 fue la primera versión publicada y se mantuvo en la Fase 15, que no cambió
-  nada de lo que el usuario usa. **1.0.0** llega con la Fase 16: repositorio público, enlace a él
+  nada de lo que el usuario usa. **1.0.0** llega con la Fase 16 (y la 17, crear Markdown y exportar a PDF, que entra antes
+  de publicarla): repositorio público, enlace a él
   en «Acerca de» y documentación oficial (`npm version 1.0.0 --no-git-tag-version`; la etiqueta
   `v1.0.0` y la GitHub Release las crea quien publica, tras el push).
 - **Registro de cambios para usuarios:**
@@ -165,9 +166,10 @@ ninguno se edita a mano:
   `push` a `main` podría hacer los pasos 2–4 con el `GITHUB_TOKEN`; no existe todavía, a
   propósito: la primera publicación la revisa una persona.
 
-## Publicación final de v1.0.0 (Fase 16)
+## Publicación final de v1.0.0 (Fase 18)
 
-Lo hace quien mantiene el proyecto, en este orden, después del commit y el push de la Fase 16:
+Lo hace quien mantiene el proyecto, en este orden, en la Fase 18 (después de cerrar la 17, que
+entra en la primera versión pública, y del commit y el push):
 
 1. **CI en verde** en `main` (CI, E2E con sus tres navegadores, Security).
 2. **Producción:** `npm run test:humo`, `npm run cabeceras:verificar -- https://bpdf.r3zon.com`

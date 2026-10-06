@@ -58,6 +58,8 @@ export const messages = {
   open: {
     button: "Abrir archivo",
     folder: "Abrir carpeta",
+    /** Un Markdown nuevo, vacío, en «Dividido» (Fase 17). */
+    create: "Crear Markdown",
     /** Las mismas teclas que la ayuda y los tooltips (Fase 11). */
     shortcut: `Atajo: ${teclas.abrir.join(" ")}`,
   },
@@ -74,6 +76,8 @@ export const messages = {
   document: {
     /** Nombre que se muestra si el fichero no trae uno utilizable. */
     untitled: "Sin nombre",
+    /** Nombre visible de un Markdown creado con «Crear Markdown» (Fase 17). No se guarda. */
+    newUntitled: "Sin título",
   },
   /** Carpeta con varios Markdown (Fase 7 bis): el usuario elige el principal. */
   chooseMarkdown: {
@@ -311,6 +315,30 @@ export const messages = {
     },
     save: "Guardar",
     saveShortcut: "Guardar (Ctrl+S, ⌘S en Mac)",
+    /** «Guardar como…» (Fase 17): Markdown en otro destino, o PDF por la impresión del navegador. */
+    saveAs: {
+      button: "Guardar como…",
+      title: "Guardar como",
+      format: "Formato",
+      markdown: "Markdown (.md)",
+      pdf: "PDF (.pdf)",
+      theme: "Colores del PDF",
+      light: "Claro",
+      dark: "Oscuro",
+      markdownHint: "Elige dónde guardarlo; en Firefox y Safari se descarga una copia.",
+      pdfHint:
+        "Se abre el diálogo de impresión del navegador: elige «Guardar como PDF». El PDF lleva solo el documento, sin nada de BPDF.",
+      confirm: "Guardar",
+      cancel: "Cancelar",
+    },
+    /** Exportar a PDF (Fase 17). */
+    pdf: {
+      preparing: "Preparando PDF…",
+      failed:
+        "No se ha podido preparar el PDF: algo del documento no terminó de dibujarse. Inténtalo de nuevo.",
+      unavailable:
+        "Este navegador no permite imprimir desde BPDF, así que no puede guardar el PDF.",
+    },
     saving: "Guardando…",
     saved: "Guardado.",
     downloaded: "Descargado como copia en la carpeta de descargas.",

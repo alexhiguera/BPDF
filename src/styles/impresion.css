@@ -1,0 +1,155 @@
+/*
+ * Exportar un Markdown a PDF (Fase 17, src/markdown/impresion.ts).
+ *
+ * Mientras se exporta, el visor monta una copia del documento en
+ * `.bpdf-impresion`, colgada de <body>. En pantalla no se ve; al imprimir es lo
+ * ÚNICO que se ve: ni la cabecera, ni las barras, ni el editor, ni los créditos.
+ * Sin la copia (Ctrl+P a mano) nada de esto actúa: las reglas de impresión
+ * dependen de que exista (`:has`).
+ *
+ * Tamaño de papel: ninguno fijo (sin `size`); lo elige quien imprime en el
+ * diálogo del navegador (A4, Letter…). Los márgenes están pensados para A4 y
+ * valen para los demás.
+ *
+ * Temas: «oscuro» usa los tokens de la app tal cual; «claro» los redefine aquí,
+ * solo dentro de la copia. No es un tema claro de BPDF (D10): es el aspecto del
+ * PDF. `tests/unit/impresion.test.ts` calcula el contraste de sus pares.
+ */
+
+.bpdf-impresion {
+  display: none;
+}
+
+/* Tokens del PDF claro. Los `--color-*` se redefinen también: los de :root ya
+   están calculados con los `--rgb-*` oscuros y se heredan así. Los diagramas leen
+   estos `--rgb-*` desde su propio bloque al dibujarse (Diagrama.tsx). */
+.bpdf-impresion[data-tema="claro"] {
+  --rgb-app: 246 248 250;
+  --rgb-reading: 255 255 255;
+  --rgb-page: 255 255 255;
+  --rgb-elevated: 246 248 250;
+  --rgb-border: 208 215 222;
+  --rgb-fg: 31 35 40;
+  --rgb-fg-muted: 87 96 106;
+  --rgb-fg-subtle: 87 96 106;
+  --rgb-accent: 26 127 100;
+  --rgb-danger: 207 34 46;
+  --rgb-link: 9 105 218;
+  --rgb-code-keyword: 130 80 223;
+  --rgb-code-string: 10 48 105;
+  --rgb-code-number: 5 80 174;
+  --rgb-code-comment: 87 96 106;
+  --rgb-code-function: 102 57 186;
+  --rgb-code-type: 149 56 0;
+  --rgb-code-tag: 17 99 41;
+  --rgb-code-attr: 5 80 174;
+  --color-app: rgb(var(--rgb-app));
+  --color-reading: rgb(var(--rgb-reading));
+  --color-page: rgb(var(--rgb-page));
+  --color-elevated: rgb(var(--rgb-elevated));
+  --color-border: rgb(var(--rgb-border));
+  --color-fg: rgb(var(--rgb-fg));
+  --color-fg-muted: rgb(var(--rgb-fg-muted));
+  --color-fg-subtle: rgb(var(--rgb-fg-subtle));
+  --color-accent: rgb(var(--rgb-accent));
+  --color-danger: rgb(var(--rgb-danger));
+  --color-link: rgb(var(--rgb-link));
+}
+
+/* Página por defecto (PDF claro): márgenes en el papel, que queda blanco. */
+@page {
+  margin: 16mm 14mm;
+}
+
+/* PDF oscuro: sin margen de papel, para que el fondo oscuro llegue al borde de
+   cada página; el margen lo pone el relleno de la copia, repetido en cada página
+   donde el navegador lo admite (`box-decoration-break: clone`). */
+@page bpdf-oscuro {
+  margin: 0;
+}
+
+@media print {
+  body:has(> .bpdf-impresion) > :not(.bpdf-impresion) {
+    display: none !important;
+  }
+
+  html:has(> body > .bpdf-impresion),
+  body:has(> .bpdf-impresion) {
+    height: auto;
+    overflow: visible;
+    /* Sin esto, el navegador no imprime fondos por defecto. */
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* `color-scheme: light`: el margen de la página lo pinta el lienzo del navegador, que
+     con el `color-scheme: dark` de la app es casi negro (#121212, medido en el PDF de
+     Chromium). En claro, el papel tiene que ser blanco también en los márgenes. */
+  html:has(> body > .bpdf-impresion[data-tema="claro"]) {
+    color-scheme: light;
+  }
+  html:has(> body > .bpdf-impresion[data-tema="claro"]),
+  body:has(> .bpdf-impresion[data-tema="claro"]) {
+    background: #fff;
+  }
+
+  html:has(> body > .bpdf-impresion[data-tema="oscuro"]),
+  body:has(> .bpdf-impresion[data-tema="oscuro"]) {
+    background: var(--color-page);
+  }
+
+  .bpdf-impresion {
+    display: block;
+    color: var(--color-fg);
+    background: var(--color-page);
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .bpdf-impresion[data-tema="oscuro"] {
+    page: bpdf-oscuro;
+    padding: 16mm 14mm;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+
+  /* El documento ocupa el ancho de la página, con un cuerpo de texto de papel. */
+  .bpdf-impresion .md-contenido {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    font-size: 11pt;
+  }
+
+  /* `content-visibility: auto` (markdown.css) deja sin pintar lo que no se ve: al
+     imprimir tiene que pintarse todo. */
+  .bpdf-impresion * {
+    content-visibility: visible !important;
+  }
+
+  /* Controles de la vista: no son del documento. */
+  .bpdf-impresion button,
+  .bpdf-impresion .md-diagrama details,
+  .bpdf-impresion .md-diagrama-aviso {
+    display: none !important;
+  }
+
+  /* Que un bloque no quede partido entre dos páginas cuando cabe en una, y que un
+     título no se quede solo al pie. Sin perseguir maquetación editorial. */
+  .bpdf-impresion :is(figure, img, .md-formula-bloque, .md-diagrama, blockquote, tr) {
+    break-inside: avoid;
+  }
+  .bpdf-impresion :is(h1, h2, h3, h4, h5, h6) {
+    break-after: avoid;
+  }
+  .bpdf-impresion img {
+    max-width: 100%;
+  }
+  .bpdf-impresion pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .bpdf-impresion a {
+    text-decoration: underline;
+  }
+}

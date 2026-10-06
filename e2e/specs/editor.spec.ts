@@ -356,7 +356,8 @@ test("guardar con showSaveFilePicker: pide destino la primera vez y lo reutiliza
   const v = await cargar(page, texto("destino.md", "# A"));
   await modo(page, "edicion").click();
   await teclearAlFinal(page, "B");
-  await page.getByRole("button", { name: t.save }).click();
+  // `exact`: desde la Fase 17 también existe «Guardar como…».
+  await page.getByRole("button", { name: t.save, exact: true }).click();
   await expect(page.getByText(t.modified)).toHaveCount(0);
   await teclearAlFinal(page, "C");
   await page.keyboard.press("Control+s");

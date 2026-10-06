@@ -56,12 +56,19 @@ No. Ni en el navegador ni en ningún servidor: guarda solo cuando pulsas **Guard
 
 ### ¿Puedo crear un Markdown nuevo?
 
-No desde cero: BPDF abre documentos que ya existen, y no abre archivos vacíos. Crea en tu
-equipo un `.md` con al menos una línea (por ejemplo, un título) y ábrelo.
+Sí: **Crear Markdown** abre uno vacío en **Dividido**
+([Crear un Markdown](../../primeros-pasos/crear-un-markdown.md)).
+
+### ¿Qué hace «Guardar como…»?
+
+Guarda el documento en otro destino, como Markdown (`.md`), o lo exporta a PDF, claro u
+oscuro ([Exportar a PDF](exportar-a-pdf.md)). **Guardar** y Ctrl/⌘+S siguen guardando el
+Markdown.
 
 ## Qué leer después
 
 - [Modo dividido](modo-dividido.md)
+- [Exportar a PDF](exportar-a-pdf.md)
 - [Leer un Markdown](leer-un-markdown.md)
 
 > Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-04.

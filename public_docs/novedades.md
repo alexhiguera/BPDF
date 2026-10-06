@@ -30,7 +30,9 @@ BPDF».
   BPDF» enlaza a él (**Código fuente en GitHub**).
 - **Documentación oficial**, con guías de cada función, referencia, preguntas frecuentes y
   soluciones a problemas habituales.
-- Las funciones son las de la 0.1.0: la 1.0.0 las declara estables.
+- **Crear Markdown**: un documento nuevo, vacío, en modo **Dividido**.
+- **Guardar como…**: el Markdown en otro destino, o **exportado a PDF**, claro u oscuro, con
+  la impresión del navegador y sin nada de BPDF en el PDF.
 
 ## Qué trae la versión 0.1.0
 

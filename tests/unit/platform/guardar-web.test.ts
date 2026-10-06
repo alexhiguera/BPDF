@@ -47,6 +47,32 @@ describe("guardar con showSaveFilePicker", () => {
     expect(destino.escrito).toEqual(["uno", "dos"]);
   });
 
+  it("«Guardar como» (nuevoDestino) pide destino aunque haya uno, y el nuevo pasa a ser el del documento", async () => {
+    const primero = destinoFalso();
+    const segundo = destinoFalso();
+    const selector = vi.fn().mockResolvedValueOnce(primero).mockResolvedValueOnce(segundo);
+    const guardar = crearGuardadoWeb({ showSaveFilePicker: selector } as unknown as Ventana);
+    await guardar(DOC, "uno");
+    expect(await guardar(DOC, "dos", { nuevoDestino: true })).toBe("guardado");
+    await guardar(DOC, "tres");
+    expect(selector).toHaveBeenCalledTimes(2);
+    expect(primero.escrito).toEqual(["uno"]);
+    expect(segundo.escrito).toEqual(["dos", "tres"]);
+  });
+
+  it("cancelar un «Guardar como» deja el destino que ya tenía", async () => {
+    const destino = destinoFalso();
+    const selector = vi
+      .fn()
+      .mockResolvedValueOnce(destino)
+      .mockRejectedValueOnce(new DOMException("cancelado", "AbortError"));
+    const guardar = crearGuardadoWeb({ showSaveFilePicker: selector } as unknown as Ventana);
+    await guardar(DOC, "uno");
+    expect(await guardar(DOC, "dos", { nuevoDestino: true })).toBe("cancelado");
+    await guardar(DOC, "tres");
+    expect(destino.escrito).toEqual(["uno", "tres"]);
+  });
+
   it("otro documento vuelve a pedir destino (nunca escribe en el del anterior)", async () => {
     const selector = vi.fn(async () => destinoFalso());
     const guardar = crearGuardadoWeb({ showSaveFilePicker: selector } as unknown as Ventana);

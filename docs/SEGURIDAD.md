@@ -312,6 +312,14 @@ característica desconocida).
   (`fsevents` no necesita denegación: [STACK.md](STACK.md)); motores con versión exacta.
   Avisos publicados de pdf.js, KaTeX y Mermaid: todos corregidos en versiones anteriores a
   las fijadas. Mermaid se queda en 11.17.2 (Mermaid 12 es una tarea propia, fuera de v1).
+- **Estado de `npm audit` para v1** (*2026-10-06*): **0 altas, 0 moderadas**; 4 avisos bajos,
+  todos por un mismo aviso de KaTeX (GHSA-238p-pmpm-9mq7) en la copia **transitiva** 0.16.47
+  que trae Mermaid. **Aceptado como riesgo conocido** ([auditoria.md](auditoria.md) A1-13): el
+  KaTeX de BPDF (0.18.9) no está afectado; la copia vulnerable solo corre en el marco aislado
+  de Mermaid (§2.4) y su SVG se sanea y se muestra como imagen; la de `micromark-extension-math`
+  no se empaqueta. Sin `override` fuera del rango de Mermaid ni `npm audit fix --force`. Los
+  avisos bajos aceptados no bloquean v1; `security.yml` sigue fallando con cualquiera alto.
+  `source-map-js` (alto, solo herramientas de build) se actualizó a 1.2.2 (iteración 37).
 
 ### 2.6 Apertura de ficheros ✅ (Fase 3)
 
@@ -474,7 +482,8 @@ enlace bloqueado no hace nada. Casos:
   | «Abrir fuera» una imagen remota bloqueada de un Markdown | Su URL, igual que un enlace | El usuario hace clic en el enlace del marcador; la imagen nunca se pide sola |
   | Crédito «R3ZON» (pantalla vacía) | `https://r3zon.com/`, igual que un enlace | El usuario hace clic en él |
   | «Código fuente en GitHub» («Acerca de», Fase 16) | La URL del repositorio, igual que un enlace | El usuario hace clic en él |
-  | Guardar un Markdown | Un fichero local que elige el usuario (o una descarga) | El usuario pulsa «Guardar» |
+  | Guardar un Markdown | Un fichero local que elige el usuario (o una descarga) | El usuario pulsa «Guardar» o «Guardar como… → Markdown» (Fase 17) |
+  | Exportar a PDF (Fase 17) | Nada: `window.print()` abre el diálogo del navegador, que genera el PDF en el dispositivo | El usuario pulsa «Guardar como… → PDF» |
 
   Nada más: ni `fetch` propio, ni telemetría, ni fuentes o imágenes remotas, ni el
   documento como URL. Las URL `blob:` (imágenes, diagramas, descarga) no salen a la red.
@@ -517,3 +526,12 @@ entero (*2026-10-03*), verificó cada control con su test y registró el resulta
 [auditoria.md](auditoria.md) (Auditoría 1: 12 hallazgos; 5 cerrados con su test, 7
 aceptados con su motivo; ninguno 🔴 ni 🟠). **Cerrada** el *2026-10-03*, verificada en
 producción.
+
+**Fase 17 (crear Markdown y exportar a PDF; cerrada el *2026-10-06*).** Superficie nueva
+revisada (y comprobada otra vez al cerrarla, iteración 38): un
+documento nuevo no tiene recursos (no gana acceso a imágenes); la exportación renderiza el
+documento con el MISMO pipeline (HTML sin interpretar, políticas de URL, recursos
+entregados, Mermaid en su marco) en una copia que se imprime con `window.print()`; nada se
+guarda (ni los colores elegidos) y nada sale a la red; la CSP no cambia (la hoja de impresión
+va en el paquete; imprimir no pide nada). Lo prueban los E2E de `crear-exportar.spec.ts` en
+los tres navegadores, con un Markdown hostil exportado (sin ejecutar nada, sin peticiones).

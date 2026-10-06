@@ -1,4 +1,4 @@
-import type { DocumentoAGuardar, ResultadoGuardado } from "./types";
+import type { DocumentoAGuardar, OpcionesGuardado, ResultadoGuardado } from "./types";
 
 /**
  * Guardar texto en web (Fase 9, `Platform.saveText`).
@@ -33,6 +33,7 @@ export function crearGuardadoWeb(ventana: (Window & typeof globalThis) | null) {
   return async function guardar(
     documento: DocumentoAGuardar,
     texto: string,
+    opciones: OpcionesGuardado = {},
   ): Promise<ResultadoGuardado> {
     const datos = new Blob([texto], { type: "text/markdown;charset=utf-8" });
     const nombre = nombreSugerido(documento.name);
@@ -43,7 +44,8 @@ export function crearGuardadoWeb(ventana: (Window & typeof globalThis) | null) {
       descargar(ventana, datos, nombre);
       return "descargado";
     }
-    let destino = actual?.id === documento.id ? actual.destino : null;
+    // «Guardar como» (Fase 17) pide destino aunque ya haya uno; cancelarlo deja el anterior.
+    let destino = actual?.id === documento.id && !opciones.nuevoDestino ? actual.destino : null;
     if (!destino) {
       try {
         destino = await selector.call(ventana, {

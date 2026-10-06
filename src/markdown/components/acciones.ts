@@ -47,3 +47,12 @@ export const useImagenes = () => useContext(ContextoImagenes);
 export const ContextoDiagramas = createContext<{ marco(): MarcoMermaid } | null>(null);
 
 export const useDiagramas = () => useContext(ContextoDiagramas);
+
+/**
+ * `true` en la copia imprimible del documento (Fase 17, `impresion.ts`): ahí no se
+ * espera a que nada entre en pantalla, porque no se ve. Los diagramas se dibujan
+ * enseguida y las imágenes se cargan sin `loading="lazy"`.
+ */
+export const ContextoImpresion = createContext(false);
+
+export const useImpresion = () => useContext(ContextoImpresion);

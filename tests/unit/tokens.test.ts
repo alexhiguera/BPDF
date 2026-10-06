@@ -55,6 +55,31 @@ describe("tokens de diseño", () => {
     expect(contraste(fg, fondo)).toBeGreaterThanOrEqual(minimo);
   });
 
+  // Fase 17: el PDF claro redefine los tokens dentro de su copia (impresion.css). Mismos
+  // pares y mismos mínimos que en la app: un PDF claro también se lee con lector o impreso.
+  describe("PDF claro (impresion.css)", () => {
+    const claro = readFileSync("src/styles/impresion.css", "utf8").match(
+      /\.bpdf-impresion\[data-tema="claro"\] \{([\s\S]*?)\}/,
+    )?.[1];
+    const tokenClaro = (nombre: string): [number, number, number] => {
+      const m = claro?.match(new RegExp(`--rgb-${nombre}:\\s*(\\d+) (\\d+) (\\d+);`));
+      if (!m) throw new Error(`No existe --rgb-${nombre} en el tema claro de impresion.css`);
+      return [Number(m[1]), Number(m[2]), Number(m[3])];
+    };
+    const contrasteClaro = (a: string, b: string) => {
+      const [l1, l2] = [luminancia(tokenClaro(a)), luminancia(tokenClaro(b))].sort(
+        (x, y) => y - x,
+      ) as [number, number];
+      return (l1 + 0.05) / (l2 + 0.05);
+    };
+    const PARES_CLARO = PARES.filter(
+      ([fg, fondo]) => !fg.startsWith("primary") && fondo !== "primary",
+    );
+    it.each(PARES_CLARO)("%s sobre %s alcanza %s:1", (fg, fondo, minimo) => {
+      expect(contrasteClaro(fg, fondo)).toBeGreaterThanOrEqual(minimo);
+    });
+  });
+
   it("los tres planos (app, lectura, página) son distintos y ninguno es negro puro", () => {
     const planos = ["app", "reading", "page"].map((p) => token(p).join(" "));
     expect(new Set(planos).size).toBe(3);

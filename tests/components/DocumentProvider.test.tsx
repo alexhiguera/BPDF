@@ -277,6 +277,26 @@ describe("DocumentProvider: cambios sin guardar (Fase 9)", () => {
     expect(v().modified).toBe(false);
   });
 
+  it("Crear Markdown (Fase 17): sin documento, abre uno nuevo, vacío y limpio", async () => {
+    const v = montar(new PlataformaEnMemoria());
+    await act(() => v().createMarkdown());
+    expect(v().document).toMatchObject({ kind: "markdown", nuevo: true, text: "" });
+    expect(v().modified).toBe(false);
+    expect(v().pendingDiscard).toBe(false);
+  });
+
+  it("Crear Markdown con cambios sin guardar pide confirmar, como cualquier sustitución", async () => {
+    const { v } = await conCambios();
+    const { promesa: seguir } = await pedir(v, () => v().createMarkdown());
+    await responder(v, false, seguir);
+    expect(v().document).toMatchObject({ name: "a.md" });
+    expect(v().modified).toBe(true);
+    const { promesa: descartar } = await pedir(v, () => v().createMarkdown());
+    await responder(v, true, descartar);
+    expect(v().document).toMatchObject({ kind: "markdown", nuevo: true });
+    expect(v().modified).toBe(false);
+  });
+
   it("cancelar el selector o elegir algo no válido no pregunta ni pierde nada", async () => {
     const { v } = await conCambios(null, fichero("x.txt", "hola"));
     await act(() => v().openWithPicker());

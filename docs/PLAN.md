@@ -410,6 +410,8 @@ tabla.
 | Contenido de documentos | **No** | — | Principio rector |
 | Contraseñas de PDF | **No** | — | D13 |
 | Borradores sin guardar del editor | **No en v1** | — | Se reevalúa si hay demanda (sería contenido) |
+| Colores del PDF exportado (claro u oscuro) | **No** (decisión del *2026-10-04*, Fase 17) | — | Elección efímera de cada exportación |
+| Nombre de un Markdown nuevo («Sin título») | **No** | — | Solo se muestra; no identifica nada |
 
 - **Huella de documento:** `pdfDocument.fingerprints[0]` en PDF (lo calcula pdf.js a
   partir del ID del fichero). Nunca el nombre. Los Markdown no tienen huella: no se guarda
@@ -468,7 +470,8 @@ con un bloque `[data-theme="light"]`.
 ### 9.3 Pantallas
 
 - **Vacía** (✅ F3): zona de soltar a pantalla completa, botón «Abrir archivo», atajo
-  visible y la frase de privacidad («Tus documentos no salen de este dispositivo»).
+  visible y la frase de privacidad («Tus documentos no salen de este dispositivo»). F17:
+  «Crear Markdown».
 - **PDF** (✅ F5): barra (miniaturas, página n/N, zoom, ajustar, girar, vista, página
   oscura/original, buscar, cerrar); panel de miniaturas a la izquierda. ✅ F6: girar a la
   izquierda, pantalla completa (del área de lectura), ayuda de atajos, opciones de búsqueda
@@ -476,9 +479,10 @@ con un bloque `[data-theme="light"]`.
 - **Markdown** (✅ F7–F9): barra (índice, modos lectura/edición/dividido, «Sin guardar»,
   guardar, cerrar); índice a la izquierda en lectura; hoja centrada con ancho de lectura
   (~72 caracteres); en dividido, editor y vista previa con un separador. Tamaño de letra y
-  ancho de columna: preferencias (✅ F10).
-- **Cabecera** (✅ F3, F10, F11): el nombre del producto; con un documento abierto, «Abrir
-  carpeta» y «Abrir archivo»; siempre, «Preferencias» (solo el icono en pantalla estrecha).
+  ancho de columna: preferencias (✅ F10). F17: «Guardar como…» (Markdown, o PDF claro u
+  oscuro por la impresión del navegador); un documento nuevo se abre en dividido.
+- **Cabecera** (✅ F3, F10, F11): el nombre del producto; con un documento abierto, «Crear
+  Markdown» (F17; solo el icono en pantalla estrecha), «Abrir carpeta» y «Abrir archivo»; siempre, «Preferencias» (solo el icono en pantalla estrecha).
   Su diálogo termina con **«Acerca de»** (✅ F11): versión, licencia y la frase de
   privacidad y, desde la Fase 16, el enlace al repositorio («Código fuente en GitHub»).
 - **Título de la ventana** (✅ F11): siempre «BPDF», **nunca el nombre del documento**: el
@@ -644,7 +648,7 @@ terceros sin licencia clara.
   fuente (`src/config/security-headers.ts`) y se generan para el hosting (`vercel.json`,
   `npm run cabeceras:vercel`, desde la iteración 11).
 - **Sin escritorio** (D19): ni empaquetado, ni instaladores, ni firma de binarios.
-- **Open source** (✅ Fase 16; publicarlo lo hace el usuario): `LICENSE` (D3), `README.md` del producto, `CONTRIBUTING.md`,
+- **Open source** (✅ preparado en la Fase 16; se publica en la Fase 18): `LICENSE` (D3), `README.md` del producto, `CONTRIBUTING.md`,
   `SECURITY.md` (reporte privado por GitHub Security Advisories), `CODE_OF_CONDUCT.md`
   (Contributor Covenant), plantillas de issue/PR, `docs/` como documentación de
   arquitectura, `CHANGELOG` de versiones para usuarios (distinto de la bitácora interna,
