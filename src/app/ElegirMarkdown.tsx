@@ -28,7 +28,7 @@ export function ElegirMarkdown({
   return (
     <section
       aria-labelledby="elegir-markdown-titulo"
-      className="mx-auto mt-6 flex w-full max-w-xl flex-col gap-3 rounded-md border border-border bg-app p-4"
+      className="ui-notice mx-auto mt-6 flex w-[calc(100%-2rem)] max-w-xl flex-col gap-3 p-4"
       // Fase 13: Esc cancela, como en los diálogos (el foco está dentro: empieza en el título).
       onKeyDown={(e) => {
         if (e.key === "Escape") {
@@ -49,7 +49,7 @@ export function ElegirMarkdown({
             <button
               type="button"
               onClick={() => onChoose(i)}
-              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left wrap-anywhere hover:bg-elevated"
+              className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-left wrap-anywhere hover:border-border hover:bg-hover"
             >
               <FileText aria-hidden="true" className="size-4 shrink-0 text-fg-muted" />
               {ruta}

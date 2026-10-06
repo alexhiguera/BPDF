@@ -20,7 +20,7 @@ import {
 } from "@/markdown/mermaid-config";
 
 const COLORES = {
-  fondo: "#2b2b2b",
+  fondo: "#0e1425",
   nodo: "#303030",
   texto: "#ececec",
   linea: "#b4b4b4",

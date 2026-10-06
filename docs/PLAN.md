@@ -435,35 +435,38 @@ los paneles (miniaturas, índice, búsqueda) están cerrados por defecto, y nada
 el documento. Tipografía del sistema (sin fuentes web: privacidad y rendimiento):
 `system-ui` para interfaz y Markdown, `ui-monospace` para código.
 
-### 9.2 Tokens (paleta inspirada en ChatGPT Dark)
+### 9.2 Tokens (paleta azul tinta de BPDF)
 
 Implementados en la Fase 2 en `src/styles/globals.css` (utilidades `bg-app`, `text-fg`,
 `outline-accent`…). Tres planos **distintos** y ninguno negro puro:
 
 | Token | Valor | Uso |
 |---|---|---|
-| `--rgb-app` | `23 23 23` (`#171717`) | Cromo: barra superior, paneles laterales |
-| `--rgb-reading` | `33 33 33` (`#212121`) | Área de lectura (detrás de las páginas) |
-| `--rgb-page` | `43 43 43` (`#2b2b2b`) | Página PDF en modo oscuro, hoja de Markdown |
-| `--rgb-elevated` | `48 48 48` (`#303030`) | Menús, popovers, campos |
-| `--rgb-border` | `61 61 61` (`#3d3d3d`) | Bordes y separadores; contorno de página (con sombra) |
+| `--rgb-app` | `7 11 24` (`#070b18`) | Cromo: cabecera y paneles laterales |
+| `--rgb-reading` | `10 15 29` (`#0a0f1d`) | Área de lectura (detrás de las páginas) |
+| `--rgb-page` | `14 20 37` (`#0e1425`) | Página PDF en modo oscuro, hoja de Markdown |
+| `--rgb-elevated` | `18 25 46` (`#12192e`) | Menús, diálogos y campos |
+| `--rgb-toolbar` / `hover` / `active` | `#0c1222` / `#1e2744` / `#2e265b` | Barras, interacción y selección |
+| `--rgb-border` | `49 59 88` (`#313b58`) | Bordes y separadores; contorno de página (con sombra) |
 | `--rgb-fg` | `236 236 236` (`#ececec`) | Texto principal y texto de PDF remapeado |
 | `--rgb-fg-muted` | `180 180 180` (`#b4b4b4`) | Texto secundario (válido sobre los cuatro fondos) |
 | `--rgb-fg-subtle` | `142 142 142` (`#8e8e8e`) | Solo sobre `app` y `reading` (sobre `page` no llega a 4,5:1) |
-| `--rgb-accent` | `16 163 127` (`#10a37f`) | Foco, estado activo, progreso. **No** como fondo de texto blanco (3,2:1) |
+| `--rgb-accent` | `139 92 246` (`#8b5cf6`) | Foco, estado activo y progreso; ≥ 3:1 sobre superficies de trabajo |
 | `--rgb-primary` / `--rgb-primary-fg` | `236 236 236` / `13 13 13` | Botón principal (claro con texto oscuro) |
 | `--rgb-danger` | `248 113 113` (`#f87171`) | Errores |
+| `--rgb-warning` / `--rgb-success` | `#fbbf24` / `#34d399` | Advertencias y confirmación/privacidad; siempre con icono o texto |
 | Selección | `--rgb-accent` al 35 % | `::selection` |
 | Coincidencias de búsqueda (PDF) | `--rgb-accent` al 30 % / al 65 % con contorno | Coincidencia / coincidencia activa, en [`visor-pdf.css`](../src/styles/visor-pdf.css) (Fase 5). **Sin tokens propios**: los `--rgb-find` / `--rgb-find-current` que preveía este plan no se crearon, y la Fase 6 no los necesita (sus opciones de búsqueda no cambian el resaltado) |
 | `--rgb-link` | `128 182 255` | Enlaces de un Markdown (Fase 7): 4,5:1 sobre `page` |
 | `--rgb-code-*` | 8 colores de sintaxis | Cada uno ≥ 4,5:1 sobre el fondo de bloque de código (Fase 7) |
 
-La portada rediseñada el *2026-10-06* conserva esos tokens para la aplicación interna y añade
-tokens acotados `home-*`, `brand-*` y `feature-*`: fondo `#070b18`, superficies azuladas,
-degradado violeta → azul y verde para privacidad. Los visores y el editor no cambian de paleta.
+La segunda pasada visual del *2026-10-06* lleva esa familia azul tinta, el acento violeta y
+las superficies de la portada a todo el producto. La portada conserva mayor expresión con
+los tokens `home-*`, `brand-*` y `feature-*`; los visores y el editor usan los mismos matices
+con menos brillo y mayor densidad funcional.
 
-Contrastes calculados (WCAG): `fg` sobre `page` ≈ 12:1; `fg-muted` sobre `page` ≈ 6,8:1;
-`accent` sobre `reading` ≈ 5:1. **Un test unitario calcula el contraste de cada par
+Contrastes calculados (WCAG): `fg` y `fg-muted` superan 4,5:1 sobre todos los planos;
+`accent` supera 3:1 sobre `toolbar`, `hover` y `active`. **Un test unitario calcula el contraste de cada par
 declarado** a partir de los tokens (`tests/unit/tokens.test.ts`, Fase 2), para que un cambio de paleta no rompa la
 accesibilidad en silencio.
 
@@ -478,14 +481,17 @@ con un bloque `[data-theme="light"]`.
   funciones y un panel de privacidad. El atajo de abrir sigue en el botón y funciona, pero no
   se muestra como texto técnico. En móvil desaparecen las ilustraciones laterales y las
   acciones se apilan.
-- **PDF** (✅ F5): barra (miniaturas, página n/N, zoom, ajustar, girar, vista, página
-  oscura/original, buscar, cerrar); panel de miniaturas a la izquierda. ✅ F6: girar a la
+- **PDF** (✅ F5): en escritorio, barra agrupada (miniaturas, navegación, vista y
+  herramientas) y panel de miniaturas a la izquierda; en móvil, barra mínima y hoja inferior
+  para página, zoom, vista y acciones, con miniaturas en otra hoja superpuesta. ✅ F6: girar a la
   izquierda, pantalla completa (del área de lectura), ayuda de atajos, opciones de búsqueda
   (mayúsculas, palabra completa) y el diálogo de contraseña.
-- **Markdown** (✅ F7–F9): barra (índice, modos lectura/edición/dividido, «Sin guardar»,
+- **Markdown** (✅ F7–F9): en escritorio, barra agrupada (índice, modos lectura/edición/dividido, «Sin guardar»,
   guardar, cerrar); índice a la izquierda en lectura; hoja centrada con ancho de lectura
   (~72 caracteres); en dividido, editor y vista previa con un separador. Tamaño de letra y
-  ancho de columna: preferencias (✅ F10). F17: «Guardar como…» (Markdown, o PDF claro u
+  ancho de columna: preferencias (✅ F10). En móvil, índice y acciones secundarias se abren
+  como hojas inferiores; Dividido muestra las pestañas Editar/Vista previa y conserva ambos
+  lados montados. F17: «Guardar como…» (Markdown, o PDF claro u
   oscuro por la impresión del navegador); un documento nuevo se abre en dividido.
 - **Cabecera** (✅ F3, F10, F11): el icono oficial y el nombre del producto; con un documento abierto, «Crear
   Markdown» (F17; solo el icono en pantalla estrecha), «Abrir carpeta» y «Abrir archivo»; siempre, «Preferencias» (solo el icono en pantalla estrecha).
@@ -688,7 +694,7 @@ terceros sin licencia clara.
 | **D9** | Editor de Markdown: **CodeMirror 6** (frente a `<textarea>`; confirmada al empezar la Fase 9, *2026-10-01*) | Fase 9: `src/editor/` ([ARCHITECTURE.md](ARCHITECTURE.md) §4 octies) |
 | **D8** | Recordar página y zoom **por PDF**: **activado por defecto**, con la huella de pdf.js (no el nombre), máx. 50 entradas (LRU), botón «Olvidar posiciones guardadas»; sin nombres ni contenido. Solo PDF: los Markdown no guardan posición (confirmada el *2026-10-03*) | Fase 10: `src/preferences/positions.ts` ([§8](#8-persistencia-y-privacidad), [FASES.md](FASES.md)) |
 | **D10** | **Sin tema claro en v1**: solo el tema oscuro (en PDF sigue la «página original»). Sin infraestructura para un tema claro (confirmada al empezar la Fase 11, *2026-10-03*) | Fase 11 |
-| **D12** | Móvil y tablet: **adaptación básica**, no una experiencia móvil propia: sin desplazamiento horizontal a 375 px, controles ≥ 24 px, barras que se reparten, sin gestos ni zoom con los dedos nuevos (confirmada al empezar la Fase 11) | Fase 11: E2E `interfaz.spec.ts` |
+| **D12** | Móvil y tablet: documento prioritario, barras mínimas y acciones secundarias en hojas inferiores nativas; controles importantes ≥ 44 px, sin desplazamiento horizontal desde 320 px y sin gestos nuevos. Dividido alterna Editar/Vista previa sin desmontar el editor (ampliada en la pasada visual previa a F18) | E2E `interfaz.spec.ts` y `a11y.spec.ts` |
 | **D14** | Formularios y anotaciones de PDF: **se muestran, pero no se rellenan ni se editan en v1** (confirmada el *2026-10-03*; ya era así desde la Fase 5: apariencias pintadas en el lienzo, sin capa interactiva) | Fase 5: `src/pdf/render.ts` (`AnnotationMode.ENABLE`) |
 | **D5** | Hosting web: **Vercel**; URL oficial: **`https://bpdf.r3zon.com`** (confirmada el *2026-10-03*). Las cabeceras salen de `vercel.json`, generado desde la fuente única. `project.ts` usa el dominio oficial desde la Fase 15 (y con él `robots.txt`, `sitemap.xml` y `public_docs/_meta/`), verificado en producción al cerrarla (*2026-10-04*) | Fases 12 y 15 ([DEPLOYMENT.md](DEPLOYMENT.md)) |
 | **D19** | **BPDF es solo una aplicación web: sin versión de escritorio (Electron) ni sustituto.** Decisión de producto del usuario (*2026-10-03*). Sustituye toda la planificación anterior de Electron | La Fase 14 se cancela; la 15 se reescribe solo para la web; D11 y T-5 dejan de aplicar; [ELECTRON.md](ELECTRON.md) queda como histórico |

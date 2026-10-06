@@ -9,6 +9,7 @@ import {
   RotateCcw,
   RotateCw,
   Search,
+  Settings2,
   X,
   ZoomIn,
   ZoomOut,
@@ -22,7 +23,9 @@ import {
   useRef,
   useState,
 } from "react";
+import { MobileSheet, ToolbarGroup } from "@/components/ui/Chrome";
 import { messages } from "@/i18n/messages";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import { cn } from "@/lib/utils";
 import { leerPagina, ZOOM_MAXIMO, ZOOM_MINIMO } from "@/pdf/visor/disposicion";
 import { ATAJOS_BOTON, anuncioDeAtajo, ID_CAMPO_PAGINA } from "./atajos";
@@ -49,12 +52,7 @@ function Boton({
       type="button"
       aria-label={etiqueta}
       title={etiqueta}
-      className={cn(
-        "inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-md px-2 text-sm text-fg",
-        "hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-50",
-        "aria-pressed:bg-elevated aria-pressed:outline aria-pressed:outline-1 aria-pressed:outline-border",
-        className,
-      )}
+      className={cn("ui-control", className)}
       {...props}
     >
       {children}
@@ -63,8 +61,6 @@ function Boton({
 }
 
 const icono = "size-4 shrink-0";
-const Separador = () => <span aria-hidden="true" className="mx-1 h-5 w-px bg-border" />;
-
 export function BarraHerramientas({
   nombre,
   estado,
@@ -100,175 +96,371 @@ export function BarraHerramientas({
     }
   }, []);
   const continua = estado.vista === "continua";
+  const [herramientas, setHerramientas] = useState(false);
+  const movil = useMediaQuery("(max-width: 52rem)");
   // Una sola parada de Tab y ← / → entre controles (Fase 13, `barra-teclado.ts`).
   const barra = useRef<HTMLDivElement>(null);
   const teclado = useBarraHerramientas(barra);
   return (
-    <div className="flex flex-col border-b border-border bg-app">
-      <div className="flex items-center gap-2 px-3 pt-2">
-        <h1
-          ref={titulo}
-          id="titulo-documento"
-          tabIndex={-1}
-          className="min-w-0 flex-1 truncate text-sm font-semibold"
-        >
-          {nombre}
-        </h1>
-        <Boton etiqueta={t.close} onClick={onClose}>
-          <X aria-hidden="true" className={icono} />
-        </Boton>
-      </div>
-      <div
-        ref={barra}
-        role="toolbar"
-        aria-label={t.toolbar}
-        className="flex flex-wrap items-center gap-1 px-2 py-1"
-        onFocus={teclado.onFocus}
-        onKeyDown={teclado.onKeyDown}
-      >
-        <Boton
-          etiqueta={estado.miniaturas ? t.hideThumbnails : t.showThumbnails}
-          {...atajo("miniaturas", estado.miniaturas ? t.hideThumbnails : t.showThumbnails)}
-          aria-pressed={estado.miniaturas}
-          onClick={() => despachar({ tipo: "miniaturas" })}
-        >
-          <PanelLeft aria-hidden="true" className={icono} />
-        </Boton>
-        <Separador />
-        <Boton
-          etiqueta={t.previous}
-          {...atajo("anterior", t.previous)}
-          disabled={estado.pagina <= 1}
-          onClick={() => despachar({ tipo: "anterior" })}
-        >
-          <ChevronUp aria-hidden="true" className={icono} />
-        </Boton>
-        <CampoPagina estado={estado} despachar={despachar} />
-        <Boton
-          etiqueta={t.next}
-          {...atajo("siguiente", t.next)}
-          disabled={estado.pagina >= estado.total}
-          onClick={() => despachar({ tipo: "siguiente" })}
-        >
-          <ChevronDown aria-hidden="true" className={icono} />
-        </Boton>
-        <Separador />
-        <Boton
-          etiqueta={t.zoomOut}
-          {...atajo("alejar", t.zoomOut)}
-          disabled={porcentaje <= ZOOM_MINIMO * 100}
-          onClick={() => despachar({ tipo: "paso-zoom", actual: porcentaje / 100, direccion: -1 })}
-        >
-          <ZoomOut aria-hidden="true" className={icono} />
-        </Boton>
-        <Boton
-          etiqueta={t.zoomReset(porcentaje)}
-          {...atajo("zoom100", t.zoomReset(porcentaje))}
-          className="w-16 tabular-nums"
-          onClick={() => despachar({ tipo: "zoom", zoom: { tipo: "fijo", valor: 1 } })}
-        >
-          {t.zoomPercent(porcentaje)}
-        </Boton>
-        <Boton
-          etiqueta={t.zoomIn}
-          {...atajo("acercar", t.zoomIn)}
-          disabled={porcentaje >= ZOOM_MAXIMO * 100}
-          onClick={() => despachar({ tipo: "paso-zoom", actual: porcentaje / 100, direccion: 1 })}
-        >
-          <ZoomIn aria-hidden="true" className={icono} />
-        </Boton>
-        <Boton
-          etiqueta={t.fitWidth}
-          aria-pressed={estado.zoom.tipo === "ancho"}
-          onClick={() => despachar({ tipo: "zoom", zoom: { tipo: "ancho" } })}
-        >
-          <MoveHorizontal aria-hidden="true" className={icono} />
-        </Boton>
-        <Boton
-          etiqueta={t.fitPage}
-          aria-pressed={estado.zoom.tipo === "pagina"}
-          onClick={() => despachar({ tipo: "zoom", zoom: { tipo: "pagina" } })}
-        >
-          <Maximize aria-hidden="true" className={icono} />
-        </Boton>
-        <Boton
-          etiqueta={t.rotateLeft}
-          {...atajo("girarIzquierda", t.rotateLeft)}
-          onClick={() => despachar({ tipo: "girar", sentido: -1 })}
-        >
-          <RotateCcw aria-hidden="true" className={icono} />
-        </Boton>
-        <Boton
-          etiqueta={t.rotate}
-          {...atajo("girarDerecha", t.rotate)}
-          onClick={() => despachar({ tipo: "girar" })}
-        >
-          <RotateCw aria-hidden="true" className={icono} />
-        </Boton>
-        <Separador />
-        <fieldset className="flex items-center gap-1">
-          <legend className="sr-only">{t.view}</legend>
-          <Boton
-            etiqueta={t.viewContinuous}
-            aria-pressed={continua}
-            onClick={() => despachar({ tipo: "vista", vista: "continua" })}
+    <div className="pdf-toolbar flex flex-col border-b border-border bg-toolbar">
+      <h1 ref={titulo} id="titulo-documento" tabIndex={-1} className="sr-only">
+        {nombre}
+      </h1>
+      {!movil ? (
+        <>
+          <div className="pdf-close-desktop">
+            <Boton etiqueta={t.close} onClick={onClose}>
+              <X aria-hidden="true" className={icono} />
+            </Boton>
+          </div>
+          <div
+            ref={barra}
+            role="toolbar"
+            aria-label={t.toolbar}
+            className="pdf-toolbar-desktop flex items-center gap-2 overflow-x-auto px-3 py-2 pr-16"
+            onFocus={teclado.onFocus}
+            onKeyDown={teclado.onKeyDown}
           >
-            {t.viewContinuous}
+            <ToolbarGroup label={t.thumbnails}>
+              <Boton
+                etiqueta={estado.miniaturas ? t.hideThumbnails : t.showThumbnails}
+                {...atajo("miniaturas", estado.miniaturas ? t.hideThumbnails : t.showThumbnails)}
+                aria-pressed={estado.miniaturas}
+                onClick={() => despachar({ tipo: "miniaturas" })}
+              >
+                <PanelLeft aria-hidden="true" className={icono} />
+              </Boton>
+            </ToolbarGroup>
+            <ToolbarGroup label={t.groups.navigation}>
+              <Boton
+                etiqueta={t.previous}
+                {...atajo("anterior", t.previous)}
+                disabled={estado.pagina <= 1}
+                onClick={() => despachar({ tipo: "anterior" })}
+              >
+                <ChevronUp aria-hidden="true" className={icono} />
+              </Boton>
+              <CampoPagina estado={estado} despachar={despachar} />
+              <Boton
+                etiqueta={t.next}
+                {...atajo("siguiente", t.next)}
+                disabled={estado.pagina >= estado.total}
+                onClick={() => despachar({ tipo: "siguiente" })}
+              >
+                <ChevronDown aria-hidden="true" className={icono} />
+              </Boton>
+            </ToolbarGroup>
+            <ToolbarGroup label={t.groups.view}>
+              <Boton
+                etiqueta={t.zoomOut}
+                {...atajo("alejar", t.zoomOut)}
+                disabled={porcentaje <= ZOOM_MINIMO * 100}
+                onClick={() =>
+                  despachar({ tipo: "paso-zoom", actual: porcentaje / 100, direccion: -1 })
+                }
+              >
+                <ZoomOut aria-hidden="true" className={icono} />
+              </Boton>
+              <Boton
+                etiqueta={t.zoomReset(porcentaje)}
+                {...atajo("zoom100", t.zoomReset(porcentaje))}
+                className="w-16 tabular-nums"
+                onClick={() => despachar({ tipo: "zoom", zoom: { tipo: "fijo", valor: 1 } })}
+              >
+                {t.zoomPercent(porcentaje)}
+              </Boton>
+              <Boton
+                etiqueta={t.zoomIn}
+                {...atajo("acercar", t.zoomIn)}
+                disabled={porcentaje >= ZOOM_MAXIMO * 100}
+                onClick={() =>
+                  despachar({ tipo: "paso-zoom", actual: porcentaje / 100, direccion: 1 })
+                }
+              >
+                <ZoomIn aria-hidden="true" className={icono} />
+              </Boton>
+              <Boton
+                etiqueta={t.fitWidth}
+                aria-pressed={estado.zoom.tipo === "ancho"}
+                onClick={() => despachar({ tipo: "zoom", zoom: { tipo: "ancho" } })}
+              >
+                <MoveHorizontal aria-hidden="true" className={icono} />
+              </Boton>
+              <Boton
+                etiqueta={t.fitPage}
+                aria-pressed={estado.zoom.tipo === "pagina"}
+                onClick={() => despachar({ tipo: "zoom", zoom: { tipo: "pagina" } })}
+              >
+                <Maximize aria-hidden="true" className={icono} />
+              </Boton>
+              <Boton
+                etiqueta={t.rotateLeft}
+                {...atajo("girarIzquierda", t.rotateLeft)}
+                onClick={() => despachar({ tipo: "girar", sentido: -1 })}
+              >
+                <RotateCcw aria-hidden="true" className={icono} />
+              </Boton>
+              <Boton
+                etiqueta={t.rotate}
+                {...atajo("girarDerecha", t.rotate)}
+                onClick={() => despachar({ tipo: "girar" })}
+              >
+                <RotateCw aria-hidden="true" className={icono} />
+              </Boton>
+              <Boton
+                etiqueta={t.viewContinuous}
+                aria-pressed={continua}
+                onClick={() => despachar({ tipo: "vista", vista: "continua" })}
+              >
+                {t.viewContinuous}
+              </Boton>
+              <Boton
+                etiqueta={t.viewSingle}
+                aria-pressed={!continua}
+                onClick={() => despachar({ tipo: "vista", vista: "pagina" })}
+              >
+                {t.viewSingle}
+              </Boton>
+            </ToolbarGroup>
+            <ToolbarGroup label={t.groups.tools} className="ml-auto">
+              <Boton
+                etiqueta={t.search}
+                {...atajo("buscar", t.search)}
+                aria-pressed={estado.busqueda}
+                onClick={() => despachar({ tipo: "busqueda", abierta: !estado.busqueda })}
+              >
+                <Search aria-hidden="true" className={icono} />
+              </Boton>
+              <Boton
+                etiqueta={t.modeDark}
+                aria-pressed={oscuro}
+                onClick={() => despachar({ tipo: "modo", modo: "oscuro" })}
+              >
+                {t.modeDark}
+              </Boton>
+              <Boton
+                etiqueta={t.modeOriginal}
+                aria-pressed={!oscuro}
+                onClick={() => despachar({ tipo: "modo", modo: "original" })}
+              >
+                {t.modeOriginal}
+              </Boton>
+              {pantallaCompleta !== null && (
+                <Boton
+                  etiqueta={t.fullscreen}
+                  {...atajo("pantallaCompleta", t.fullscreen)}
+                  aria-pressed={pantallaCompleta}
+                  onClick={onPantallaCompleta}
+                >
+                  <Fullscreen aria-hidden="true" className={icono} />
+                </Boton>
+              )}
+              <Boton
+                etiqueta={t.shortcuts}
+                {...atajo("ayuda", t.shortcuts)}
+                aria-haspopup="dialog"
+                onClick={onAyuda}
+              >
+                <Keyboard aria-hidden="true" className={icono} />
+              </Boton>
+            </ToolbarGroup>
+          </div>
+        </>
+      ) : (
+        <div className="pdf-toolbar-mobile" role="toolbar" aria-label={t.toolbar}>
+          <Boton etiqueta={t.close} onClick={onClose}>
+            <X aria-hidden="true" className={icono} />
+          </Boton>
+          <span className="pdf-mobile-page">{t.status.page(estado.pagina, estado.total)}</span>
+          <Boton
+            etiqueta={t.search}
+            aria-pressed={estado.busqueda}
+            onClick={() => despachar({ tipo: "busqueda", abierta: !estado.busqueda })}
+          >
+            <Search aria-hidden="true" className={icono} />
           </Boton>
           <Boton
-            etiqueta={t.viewSingle}
-            aria-pressed={!continua}
-            onClick={() => despachar({ tipo: "vista", vista: "pagina" })}
+            etiqueta={t.tools}
+            aria-haspopup="dialog"
+            aria-expanded={herramientas}
+            onClick={() => setHerramientas(true)}
           >
-            {t.viewSingle}
+            <Settings2 aria-hidden="true" className={icono} />
+            <span>{t.tools}</span>
           </Boton>
-        </fieldset>
-        <Separador />
-        <fieldset className="flex items-center gap-1">
-          <legend className="sr-only">{t.colors}</legend>
-          <Boton
-            etiqueta={t.modeDark}
-            aria-pressed={oscuro}
-            onClick={() => despachar({ tipo: "modo", modo: "oscuro" })}
-          >
-            {t.modeDark}
-          </Boton>
-          <Boton
-            etiqueta={t.modeOriginal}
-            aria-pressed={!oscuro}
-            onClick={() => despachar({ tipo: "modo", modo: "original" })}
-          >
-            {t.modeOriginal}
-          </Boton>
-        </fieldset>
-        <Separador />
-        <Boton
-          etiqueta={t.search}
-          {...atajo("buscar", t.search)}
-          aria-pressed={estado.busqueda}
-          onClick={() => despachar({ tipo: "busqueda", abierta: !estado.busqueda })}
+        </div>
+      )}
+      {movil && herramientas && (
+        <MobileSheet
+          title={t.toolsTitle}
+          closeLabel={t.closeTools}
+          onClose={() => setHerramientas(false)}
+          testId="herramientas-pdf"
         >
-          <Search aria-hidden="true" className={icono} />
-        </Boton>
-        {pantallaCompleta !== null && (
-          <Boton
-            etiqueta={t.fullscreen}
-            {...atajo("pantallaCompleta", t.fullscreen)}
-            aria-pressed={pantallaCompleta}
-            onClick={onPantallaCompleta}
-          >
-            <Fullscreen aria-hidden="true" className={icono} />
-          </Boton>
-        )}
-        <Boton
-          etiqueta={t.shortcuts}
-          {...atajo("ayuda", t.shortcuts)}
-          aria-haspopup="dialog"
-          onClick={onAyuda}
-        >
-          <Keyboard aria-hidden="true" className={icono} />
-        </Boton>
-      </div>
+          <div className="ui-sheet-section">
+            <h3>{t.groups.page}</h3>
+            <div className="pdf-sheet-page">
+              <Boton
+                etiqueta={t.previous}
+                disabled={estado.pagina <= 1}
+                onClick={() => despachar({ tipo: "anterior" })}
+              >
+                <ChevronUp aria-hidden="true" className={icono} />
+                {t.previous}
+              </Boton>
+              <CampoPagina id={`${ID_CAMPO_PAGINA}-mobile`} estado={estado} despachar={despachar} />
+              <Boton
+                etiqueta={t.next}
+                disabled={estado.pagina >= estado.total}
+                onClick={() => despachar({ tipo: "siguiente" })}
+              >
+                <ChevronDown aria-hidden="true" className={icono} />
+                {t.next}
+              </Boton>
+            </div>
+          </div>
+          <div className="ui-sheet-section">
+            <h3>{t.groups.zoom}</h3>
+            <div className="ui-sheet-grid">
+              <Boton
+                etiqueta={t.zoomOut}
+                disabled={porcentaje <= ZOOM_MINIMO * 100}
+                onClick={() =>
+                  despachar({ tipo: "paso-zoom", actual: porcentaje / 100, direccion: -1 })
+                }
+              >
+                <ZoomOut aria-hidden="true" className={icono} />
+                {t.zoomOut}
+              </Boton>
+              <Boton
+                etiqueta={t.zoomIn}
+                disabled={porcentaje >= ZOOM_MAXIMO * 100}
+                onClick={() =>
+                  despachar({ tipo: "paso-zoom", actual: porcentaje / 100, direccion: 1 })
+                }
+              >
+                <ZoomIn aria-hidden="true" className={icono} />
+                {t.zoomIn}
+              </Boton>
+              <Boton
+                etiqueta={t.zoomReset(porcentaje)}
+                onClick={() => despachar({ tipo: "zoom", zoom: { tipo: "fijo", valor: 1 } })}
+              >
+                {t.zoomPercent(porcentaje)}
+              </Boton>
+              <Boton
+                etiqueta={t.fitWidth}
+                aria-pressed={estado.zoom.tipo === "ancho"}
+                onClick={() => despachar({ tipo: "zoom", zoom: { tipo: "ancho" } })}
+              >
+                <MoveHorizontal aria-hidden="true" className={icono} />
+                {t.fitWidth}
+              </Boton>
+              <Boton
+                etiqueta={t.fitPage}
+                aria-pressed={estado.zoom.tipo === "pagina"}
+                onClick={() => despachar({ tipo: "zoom", zoom: { tipo: "pagina" } })}
+              >
+                <Maximize aria-hidden="true" className={icono} />
+                {t.fitPage}
+              </Boton>
+            </div>
+          </div>
+          <div className="ui-sheet-section">
+            <h3>{t.groups.appearance}</h3>
+            <div className="ui-sheet-grid">
+              <Boton
+                etiqueta={t.viewContinuous}
+                aria-pressed={continua}
+                onClick={() => despachar({ tipo: "vista", vista: "continua" })}
+              >
+                {t.viewContinuous}
+              </Boton>
+              <Boton
+                etiqueta={t.viewSingle}
+                aria-pressed={!continua}
+                onClick={() => despachar({ tipo: "vista", vista: "pagina" })}
+              >
+                {t.viewSingle}
+              </Boton>
+              <Boton
+                etiqueta={t.rotateLeft}
+                onClick={() => despachar({ tipo: "girar", sentido: -1 })}
+              >
+                <RotateCcw aria-hidden="true" className={icono} />
+                {t.rotateLeft}
+              </Boton>
+              <Boton etiqueta={t.rotate} onClick={() => despachar({ tipo: "girar" })}>
+                <RotateCw aria-hidden="true" className={icono} />
+                {t.rotate}
+              </Boton>
+              <Boton
+                etiqueta={t.modeDark}
+                aria-pressed={oscuro}
+                onClick={() => despachar({ tipo: "modo", modo: "oscuro" })}
+              >
+                {t.modeDark}
+              </Boton>
+              <Boton
+                etiqueta={t.modeOriginal}
+                aria-pressed={!oscuro}
+                onClick={() => despachar({ tipo: "modo", modo: "original" })}
+              >
+                {t.modeOriginal}
+              </Boton>
+              <Boton
+                etiqueta={estado.miniaturas ? t.hideThumbnails : t.showThumbnails}
+                aria-pressed={estado.miniaturas}
+                onClick={() => {
+                  despachar({ tipo: "miniaturas" });
+                  setHerramientas(false);
+                }}
+              >
+                <PanelLeft aria-hidden="true" className={icono} />
+                {t.thumbnails}
+              </Boton>
+            </div>
+          </div>
+          <div className="ui-sheet-section">
+            <h3>{t.groups.actions}</h3>
+            <div className="ui-sheet-grid">
+              <Boton
+                etiqueta={t.search}
+                onClick={() => {
+                  despachar({ tipo: "busqueda", abierta: true });
+                  setHerramientas(false);
+                }}
+              >
+                <Search aria-hidden="true" className={icono} />
+                {t.search}
+              </Boton>
+              {pantallaCompleta !== null && (
+                <Boton
+                  etiqueta={t.fullscreen}
+                  aria-pressed={pantallaCompleta}
+                  onClick={() => {
+                    onPantallaCompleta();
+                    setHerramientas(false);
+                  }}
+                >
+                  <Fullscreen aria-hidden="true" className={icono} />
+                  {t.fullscreen}
+                </Boton>
+              )}
+              <Boton
+                etiqueta={t.shortcuts}
+                onClick={() => {
+                  onAyuda();
+                  setHerramientas(false);
+                }}
+              >
+                <Keyboard aria-hidden="true" className={icono} />
+                {t.shortcuts}
+              </Boton>
+            </div>
+          </div>
+        </MobileSheet>
+      )}
     </div>
   );
 }
@@ -278,7 +470,15 @@ export function BarraHerramientas({
  * cambia con la rueda del ratón). Se valida al pulsar Intro o salir: solo un
  * entero entre 1 y el total; si no, se avisa y el visor no se mueve.
  */
-function CampoPagina({ estado, despachar }: { estado: EstadoVisor; despachar: Dispatch<Accion> }) {
+function CampoPagina({
+  estado,
+  despachar,
+  id = ID_CAMPO_PAGINA,
+}: {
+  estado: EstadoVisor;
+  despachar: Dispatch<Accion>;
+  id?: string;
+}) {
   const [texto, setTexto] = useState(String(estado.pagina));
   const [invalido, setInvalido] = useState(false);
   const idAviso = useId();
@@ -318,7 +518,7 @@ function CampoPagina({ estado, despachar }: { estado: EstadoVisor; despachar: Di
   return (
     <span className="relative flex items-center gap-1 text-sm">
       <input
-        id={ID_CAMPO_PAGINA}
+        id={id}
         type="text"
         inputMode="numeric"
         autoComplete="off"

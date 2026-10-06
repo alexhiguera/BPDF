@@ -144,7 +144,7 @@ test("escribir, guardar el .md (descarga), cerrar sin aviso; volver a cambiar re
   await boton(page, messages.open.create).click();
   await expect(editor(page)).toBeFocused();
   await page.keyboard.type("# Nuevo documento");
-  await expect(page.getByText(t.modified)).toBeVisible();
+  await expect(page.getByRole("banner").getByText(t.modified)).toBeVisible();
   // La vista previa se pone al día sola en «Dividido».
   await expect(
     page.getByRole("article").getByRole("heading", { name: "Nuevo documento" }),
@@ -181,7 +181,7 @@ test("Guardar como… es accesible (axe) y Markdown pide destino aunque ya haya 
   await boton(page, messages.open.create).click();
   await expect(editor(page)).toBeFocused(); // el visor se carga a demanda
   await page.keyboard.type("# Uno");
-  await expect(page.getByText(t.modified)).toBeVisible();
+  await expect(page.getByRole("banner").getByText(t.modified)).toBeVisible();
   await page.keyboard.press("Control+s"); // primer destino
   await expect(page.getByText(t.modified)).toHaveCount(0);
   await boton(page, s.button).click();
@@ -227,7 +227,7 @@ for (const tema of ["claro", "oscuro"] as const) {
     const fondo = await page
       .locator(".bpdf-impresion")
       .evaluate((e) => getComputedStyle(e).backgroundColor);
-    expect(fondo).toBe(tema === "claro" ? "rgb(255, 255, 255)" : "rgb(43, 43, 43)");
+    expect(fondo).toBe(tema === "claro" ? "rgb(255, 255, 255)" : "rgb(14, 20, 37)");
     await page.emulateMedia({ media: "screen" });
 
     // Al cerrar el diálogo del navegador, la copia se va.
@@ -304,7 +304,7 @@ test("el PDF real (Chromium): claro, papel blanco hasta el borde; oscuro, oscuro
         ).toEqual([]);
       } else {
         expect(
-          fondos.some((f) => f.color === "#2b2b2b" && f.cubre),
+          fondos.some((f) => f.color === "#0e1425" && f.cubre),
           `oscuro, página ${pagina}`,
         ).toBe(true);
       }

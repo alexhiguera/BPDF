@@ -5,8 +5,11 @@
  */
 export function Cargando({ texto }: { texto: string }) {
   return (
-    <p role="status" className="p-6 text-fg-muted">
-      {texto}
-    </p>
+    <div role="status" className="flex flex-1 items-center justify-center p-6 text-fg-muted">
+      <p className="ui-notice flex items-center gap-3 px-4 py-3">
+        <span aria-hidden="true" className="ui-spinner" />
+        {texto}
+      </p>
+    </div>
   );
 }

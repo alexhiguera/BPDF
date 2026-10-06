@@ -84,6 +84,34 @@ test("axe: visor PDF con búsqueda, miniaturas y la ayuda de atajos", async ({ p
   limpia(v);
 });
 
+test("axe móvil: sheets de PDF y Markdown, foco y Escape", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 740 });
+  const v = await abrir(page);
+  await elegir(page, botonAbrir(page), PDF);
+  await pdfListo(page);
+  await page.getByRole("button", { name: t.tools, exact: true }).click();
+  const herramientasPdf = page.getByRole("dialog", { name: t.toolsTitle });
+  await expect(herramientasPdf).toBeVisible();
+  expect(await herramientasPdf.evaluate((d) => d.contains(document.activeElement))).toBe(true);
+  await sinViolaciones(page, "herramientas PDF móvil");
+  await page.keyboard.press("Escape");
+  await expect(herramientasPdf).toBeHidden();
+
+  await elegir(
+    page,
+    page.getByRole("banner").getByRole("button", { name: messages.open.button }),
+    md("indice.md"),
+  );
+  const m = messages.markdown;
+  await page.getByRole("button", { name: m.tools, exact: true }).click();
+  const herramientasMd = page.getByRole("dialog", { name: m.toolsTitle });
+  await sinViolaciones(page, "herramientas Markdown móvil");
+  await herramientasMd.getByRole("button", { name: m.mode.dividido }).click();
+  await expect(page.getByRole("button", { name: m.split.mobileEditor })).toBeVisible();
+  await sinViolaciones(page, "dividido adaptado móvil");
+  limpia(v);
+});
+
 test("axe: Markdown con índice, código, fórmulas y diagramas; editor en edición y dividido", async ({
   page,
 }) => {

@@ -57,7 +57,7 @@ web); conserva su número, sin trabajo pendiente.
 | 15 | Distribución web | Incluye la publicación web (antes no tenía fase). **Reescrita** el *2026-10-03* sin la parte de escritorio (D19). ✅ **Cerrada** (*2026-10-04*), verificada en producción |
 | 16 | Open source y documentación final | Igual; la licencia ya existe desde F1. ✅ **Implementada**: su trabajo preparó la publicación, que se absorbe en la F18 |
 | 17 | Crear Markdown y exportar a PDF | **Nueva** (*2026-10-04*), antes de publicar v1. ✅ **Cerrada** (*2026-10-06*) |
-| 18 | Publicación final de BPDF v1.0.0 | **Nueva** (*2026-10-04*): hereda de la F16 la publicación. **Siguiente** (no empezada) |
+| 18 | Publicación final de BPDF v1.0.0 | **Nueva** (*2026-10-04*): hereda de la F16 la publicación. La pasada visual responsive previa no la inicia. **Siguiente** (no empezada) |
 
 Paralelizables (si hay dos sesiones a la vez): **F7–F9** con **F5–F6**. Todas tocan
 `src/app/App.tsx` en un punto (montar el visor en lugar de `DocumentSummary`, ya hecho en F5 y F7): conflicto
@@ -1494,7 +1494,8 @@ documento; el diálogo real de impresión, probado a mano en cada navegador.
 
 ## Fase 18 — Publicación final de BPDF v1.0.0
 
-> **SIGUIENTE, NO EMPEZADA** (*2026-10-06*). La Fase 17 está cerrada.
+> **SIGUIENTE, NO EMPEZADA** (*2026-10-06*). La Fase 17 está cerrada. La unificación visual
+> y móvil hecha como pasada previa no publica, etiqueta ni cierra esta fase.
 
 **Objetivo.** Publicar BPDF v1.0.0: el cierre que la Fase 16 dejó preparado, ya con la Fase 17
 dentro de la primera versión pública (la versión sigue siendo 1.0.0: no se ha publicado nada).

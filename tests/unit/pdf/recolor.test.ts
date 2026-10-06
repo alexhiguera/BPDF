@@ -9,7 +9,7 @@ import {
   transformarPixeles,
 } from "@/pdf/dark/recolor";
 
-/** Los tokens de globals.css (`--rgb-page`, `--rgb-fg`). */
+/** Par neutro sintético: aísla la inversión de luminosidad del tono de la UI. */
 const PAGINA: Rgb = [43, 43, 43];
 const TEXTO: Rgb = [236, 236, 236];
 const op = { pagina: PAGINA, texto: TEXTO };

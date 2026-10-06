@@ -1,4 +1,7 @@
 <h1 align="center">
+  <a href="https://bpdf.r3zon.com">
+    <img src="public/favicon.svg" alt="BPDF Logo" width="40" height="40" align="center">
+  </a>
   <strong>BPDF</strong>
 </h1>
 
@@ -28,6 +31,12 @@
   </a>
   <a href="https://docs.r3zon.com/bpdf">
     <img alt="Documentación" src="https://img.shields.io/badge/docs-docs.r3zon.com%2Fbpdf-171717">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://bpdf.r3zon.com">
+    <img src="public/bpdf-preview.png" alt="Vista previa de BPDF - Tu lector de PDF y Markdown" width="100%">
   </a>
 </p>
 

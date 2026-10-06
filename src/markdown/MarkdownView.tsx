@@ -1,4 +1,14 @@
-import { FileDown, PanelLeft, Save, X } from "lucide-react";
+import {
+  Columns2,
+  Eye,
+  FileDown,
+  FilePlus,
+  PanelLeft,
+  Pencil,
+  Save,
+  Settings2,
+  X,
+} from "lucide-react";
 import {
   lazy,
   memo,
@@ -14,6 +24,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import Markdown, { type Components } from "react-markdown";
+import { MobileSheet, ToolbarGroup } from "@/components/ui/Chrome";
 import type { OpenedMarkdown } from "@/documents/types";
 import { GuardarComo } from "@/editor/GuardarComo";
 import { ModeSwitch } from "@/editor/ModeSwitch";
@@ -21,6 +32,7 @@ import { SplitView } from "@/editor/SplitView";
 import { useDesplazamientoSincronizado } from "@/editor/sincronia";
 import type { EstadoGuardado, ManejadorEditor, ModoMarkdown } from "@/editor/tipos";
 import { messages } from "@/i18n/messages";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import type { OpcionesGuardado, ResultadoGuardado } from "@/platform";
 import { usePreferences } from "@/preferences/usePreferences";
 import {
@@ -137,6 +149,7 @@ export default function MarkdownView({
   onOpenExternal,
   onModificado = () => {},
   onGuardar,
+  onCreateMarkdown,
   umbralPausaMs = UMBRAL_PAUSA_MS,
 }: {
   documento: OpenedMarkdown;
@@ -146,6 +159,7 @@ export default function MarkdownView({
   onModificado?: (modificado: boolean) => void;
   /** Guarda el texto (`Platform.saveText`). Sin esto no se ofrece guardar. */
   onGuardar?: (texto: string, opciones?: OpcionesGuardado) => Promise<ResultadoGuardado>;
+  onCreateMarkdown?: () => void;
   /** Para los tests: el umbral de la pausa de la vista previa. */
   umbralPausaMs?: number;
 }) {
@@ -166,6 +180,11 @@ export default function MarkdownView({
   // --- Edición (Fase 9) ----------------------------------------------------
   // Un documento nuevo (Fase 17) se escribe: empieza en «Dividido». Uno abierto, a leer.
   const [modo, setModo] = useState<ModoMarkdown>(documento.nuevo ? "dividido" : "lectura");
+  const [herramientas, setHerramientas] = useState(false);
+  const [vistaDivididaMovil, setVistaDivididaMovil] = useState<"izquierda" | "derecha">(
+    "izquierda",
+  );
+  const movil = useMediaQuery("(max-width: 52rem)");
   const modoRef = useRef(modo);
   modoRef.current = modo;
   /** El texto que pinta la vista previa: el del documento hasta que se edita. */
@@ -448,9 +467,15 @@ export default function MarkdownView({
   );
 
   const irDesdeIndice = (id: string) => {
-    irA(articulo.current, id);
     // En pantalla estrecha el índice tapa el texto: se cierra al elegir.
-    if (!esAncha()) setIndiceAbierto(false);
+    // El diálogo devuelve primero el foco al disparador; el fotograma siguiente
+    // lo lleva al encabezado solicitado, que es el destino útil para el lector.
+    if (movil) {
+      setIndiceAbierto(false);
+      requestAnimationFrame(() => irA(articulo.current, id));
+    } else {
+      irA(articulo.current, id);
+    }
   };
 
   const hayIndice = indice.length > 0 && modo === "lectura";
@@ -505,67 +530,197 @@ export default function MarkdownView({
       className="flex min-h-0 flex-1 flex-col"
       data-modo={modo}
     >
-      <div className="flex flex-wrap items-center gap-2 border-b border-border bg-app px-3 py-1.5">
-        {hayIndice && (
+      <h1 ref={titulo} id="titulo-documento" tabIndex={-1} className="sr-only">
+        {documento.name}
+      </h1>
+      {sinGuardar && (
+        <span className="sr-only" data-testid="modificado">
+          {t.modified}
+        </span>
+      )}
+      {!movil ? (
+        <div className="md-toolbar-desktop" role="toolbar" aria-label={t.toolbar}>
+          {hayIndice && (
+            <ToolbarGroup label={t.toc}>
+              <button
+                type="button"
+                className="md-boton"
+                aria-expanded={indiceAbierto}
+                aria-controls={idIndice}
+                title={indiceAbierto ? t.hideToc : t.showToc}
+                onClick={() => setIndiceAbierto((a) => !a)}
+              >
+                <PanelLeft aria-hidden="true" className="size-4 shrink-0" />
+                {t.toc}
+              </button>
+            </ToolbarGroup>
+          )}
+          <ModeSwitch modo={modo} onModo={cambiarModo} />
+          <ToolbarGroup label={t.toolbar} className="ml-auto">
+            {onGuardar && (
+              <button
+                type="button"
+                className="md-boton"
+                title={t.saveShortcut}
+                aria-keyshortcuts="Control+S Meta+S"
+                disabled={guardando}
+                onClick={() => void guardar()}
+              >
+                <Save aria-hidden="true" className="size-4 shrink-0" />
+                {guardando ? t.saving : t.save}
+              </button>
+            )}
+            <button
+              type="button"
+              className="md-boton"
+              aria-haspopup="dialog"
+              disabled={fasePdf !== null}
+              onClick={() => setGuardarComo(true)}
+            >
+              <FileDown aria-hidden="true" className="size-4 shrink-0" />
+              {t.saveAs.button}
+            </button>
+            <button
+              type="button"
+              className="md-boton"
+              aria-label={t.close}
+              title={t.close}
+              onClick={onClose}
+            >
+              <X aria-hidden="true" className="size-4 shrink-0" />
+            </button>
+          </ToolbarGroup>
+        </div>
+      ) : (
+        <div className="md-toolbar-mobile" role="toolbar" aria-label={t.toolbar}>
+          <span className="md-mobile-mode">{t.mode[modo]}</span>
+          {hayIndice && (
+            <button
+              type="button"
+              className="md-boton"
+              aria-expanded={indiceAbierto}
+              onClick={() => setIndiceAbierto(true)}
+            >
+              <PanelLeft aria-hidden="true" className="size-4" />
+              <span>{t.toc}</span>
+            </button>
+          )}
+          {onGuardar && (
+            <button
+              type="button"
+              className="md-boton"
+              title={t.saveShortcut}
+              aria-keyshortcuts="Control+S Meta+S"
+              disabled={guardando}
+              onClick={() => void guardar()}
+            >
+              <Save aria-hidden="true" className="size-4" />
+              <span>{guardando ? t.saving : t.save}</span>
+            </button>
+          )}
           <button
             type="button"
             className="md-boton"
-            aria-expanded={indiceAbierto}
-            aria-controls={idIndice}
-            title={indiceAbierto ? t.hideToc : t.showToc}
-            onClick={() => setIndiceAbierto((a) => !a)}
+            aria-haspopup="dialog"
+            aria-expanded={herramientas}
+            onClick={() => setHerramientas(true)}
           >
-            <PanelLeft aria-hidden="true" className="size-4 shrink-0" />
-            {t.toc}
+            <Settings2 aria-hidden="true" className="size-4" />
+            <span>{t.tools}</span>
           </button>
-        )}
-        <h1
-          ref={titulo}
-          id="titulo-documento"
-          tabIndex={-1}
-          className="min-w-0 flex-1 truncate text-sm font-semibold"
+        </div>
+      )}
+      {movil && herramientas && (
+        <MobileSheet
+          title={t.toolsTitle}
+          closeLabel={t.closeTools}
+          onClose={() => setHerramientas(false)}
+          testId="herramientas-markdown"
         >
-          {documento.name}
-        </h1>
-        {sinGuardar && (
-          <span className="text-xs text-fg-muted" data-testid="modificado">
-            {t.modified}
-          </span>
-        )}
-        <ModeSwitch modo={modo} onModo={cambiarModo} />
-        {onGuardar && (
-          <button
-            type="button"
-            className="md-boton"
-            title={t.saveShortcut}
-            aria-keyshortcuts="Control+S Meta+S"
-            disabled={guardando}
-            onClick={() => void guardar()}
-          >
-            <Save aria-hidden="true" className="size-4 shrink-0" />
-            {guardando ? t.saving : t.save}
-          </button>
-        )}
-        <button
-          type="button"
-          className="md-boton"
-          aria-haspopup="dialog"
-          disabled={fasePdf !== null}
-          onClick={() => setGuardarComo(true)}
-        >
-          <FileDown aria-hidden="true" className="size-4 shrink-0" />
-          {t.saveAs.button}
-        </button>
-        <button
-          type="button"
-          className="md-boton"
-          aria-label={t.close}
-          title={t.close}
-          onClick={onClose}
-        >
-          <X aria-hidden="true" className="size-4 shrink-0" />
-        </button>
-      </div>
+          <div className="ui-sheet-section">
+            <h3>{t.mode.label}</h3>
+            <div className="ui-sheet-grid">
+              <button
+                type="button"
+                className="ui-control"
+                aria-pressed={modo === "lectura"}
+                onClick={() => {
+                  cambiarModo("lectura");
+                  setHerramientas(false);
+                }}
+              >
+                <Eye aria-hidden="true" className="size-4" />
+                {t.mode.lectura}
+              </button>
+              <button
+                type="button"
+                className="ui-control"
+                aria-pressed={modo === "edicion"}
+                onClick={() => {
+                  cambiarModo("edicion");
+                  setHerramientas(false);
+                }}
+              >
+                <Pencil aria-hidden="true" className="size-4" />
+                {t.mode.edicion}
+              </button>
+              <button
+                type="button"
+                className="ui-control"
+                aria-pressed={modo === "dividido"}
+                onClick={() => {
+                  cambiarModo("dividido");
+                  setHerramientas(false);
+                }}
+              >
+                <Columns2 aria-hidden="true" className="size-4" />
+                {t.mode.dividido}
+              </button>
+            </div>
+          </div>
+          <div className="ui-sheet-section">
+            <h3>{t.toolbar}</h3>
+            <div className="ui-sheet-grid">
+              <button
+                type="button"
+                className="ui-control"
+                disabled={fasePdf !== null}
+                onClick={() => {
+                  setGuardarComo(true);
+                  setHerramientas(false);
+                }}
+              >
+                <FileDown aria-hidden="true" className="size-4" />
+                {t.saveAs.button}
+              </button>
+              {onCreateMarkdown && (
+                <button
+                  type="button"
+                  className="ui-control"
+                  onClick={() => {
+                    onCreateMarkdown();
+                    setHerramientas(false);
+                  }}
+                >
+                  <FilePlus aria-hidden="true" className="size-4" />
+                  {messages.open.create}
+                </button>
+              )}
+              <button
+                type="button"
+                className="ui-control"
+                onClick={() => {
+                  onClose();
+                  setHerramientas(false);
+                }}
+              >
+                <X aria-hidden="true" className="size-4" />
+                {t.close}
+              </button>
+            </div>
+          </div>
+        </MobileSheet>
+      )}
       {guardarComo && (
         <GuardarComo
           onMarkdown={() => {
@@ -594,6 +749,30 @@ export default function MarkdownView({
           {t.saveFailed}
         </p>
       )}
+      {modo === "dividido" && (
+        <fieldset className="md-split-mobile-switch">
+          <legend className="sr-only">{t.split.mobileLabel}</legend>
+          <button
+            type="button"
+            aria-pressed={vistaDivididaMovil === "izquierda"}
+            onClick={() => setVistaDivididaMovil("izquierda")}
+          >
+            <Pencil aria-hidden="true" className="size-4" />
+            {t.split.mobileEditor}
+          </button>
+          <button
+            type="button"
+            aria-pressed={vistaDivididaMovil === "derecha"}
+            onClick={() => {
+              refrescarVista(textoActual());
+              setVistaDivididaMovil("derecha");
+            }}
+          >
+            <Eye aria-hidden="true" className="size-4" />
+            {t.split.mobilePreview}
+          </button>
+        </fieldset>
+      )}
       {/* Una sola estructura para los tres modos. Lectura ↔ Dividido comparten la
           vista previa sin volver a montarla (pintar 1 MB cuesta segundos), y el
           editor, una vez cargado, se queda. En Edición la vista previa NO está
@@ -601,6 +780,7 @@ export default function MarkdownView({
           tuviera picos de casi 1 s (medido; docs/ARCHITECTURE.md §4 octies). */}
       <SplitView
         mostrar={modo === "lectura" ? "derecha" : modo === "edicion" ? "izquierda" : "ambos"}
+        vistaMovil={vistaDivididaMovil}
         izquierda={editorMontable}
         refIzquierda={panelEditor}
         derecha={
@@ -621,7 +801,7 @@ export default function MarkdownView({
               </div>
             )}
             <div className="relative flex min-h-0 flex-1">
-              {hayIndice && indiceAbierto && (
+              {hayIndice && indiceAbierto && !movil && (
                 <Indice id={idIndice} entradas={indice} onIr={irDesdeIndice} />
               )}
               {modo !== "edicion" && vista}
@@ -629,6 +809,16 @@ export default function MarkdownView({
           </>
         }
       />
+      {hayIndice && indiceAbierto && movil && (
+        <MobileSheet
+          title={t.toc}
+          closeLabel={t.hideToc}
+          onClose={() => setIndiceAbierto(false)}
+          testId="indice-movil"
+        >
+          <Indice id={idIndice} entradas={indice} onIr={irDesdeIndice} variante="sheet" />
+        </MobileSheet>
+      )}
       <p className="sr-only" aria-live="polite">
         {aviso}
       </p>

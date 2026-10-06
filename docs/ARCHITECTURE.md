@@ -708,7 +708,13 @@ iteración 15): tras cada tecla, Chrome repite el del ratón. Por eso:
 - en Dividido, el panel del editor va por encima en el apilado (`relative z-1`, iteración
   18). Con la vista previa encima, un punto sobre el editor obligaba a recorrer toda la
   vista previa, aunque sus bloques estuvieran saltados: 30–50 ms por tecla con 1 MB +
-  KaTeX.
+KaTeX.
+
+**Presentación móvil.** Hasta `52rem`, Dividido conserva editor y vista previa montados pero
+solo expone uno a la vez mediante el selector Editar/Vista previa. Así no pierde selección,
+historial ni desplazamiento de CodeMirror. La barra permanente se reduce a modo, índice,
+guardar y herramientas; índice y acciones secundarias viven en diálogos nativos
+`<dialog>` presentados como hojas inferiores.
 
 **El parser de Markdown del editor (Lezer) cuesta según dónde se edite** (iteración 18).
 Con muchos bloques de primer nivel, cada transacción reutiliza y reequilibra la lista
@@ -983,9 +989,11 @@ visor PDF, el lector de Markdown o el diálogo. El arranque solo suma el botón 
   (`project.repositoryUrl`), con el mismo mecanismo que la mención a R3ZON.
 - **Favicon SVG con los colores de los tokens escritos** (un SVG de favicon no lee las
   propiedades CSS de la página); `tests/unit/favicon.test.ts` comprueba que coinciden.
-- **D12, medido:** a 375 px ninguna pantalla desplaza en horizontal y ningún control de la
-  interfaz mide menos de 24 × 24 px (`e2e/specs/interfaz.spec.ts`). No cuenta el contenido
-  del documento.
+- **D12, ampliado antes de F18:** desde 320 px ninguna pantalla desplaza en horizontal y los
+  controles móviles importantes miden al menos 44 × 44 px (`e2e/specs/interfaz.spec.ts`).
+  PDF y Markdown usan una barra permanente mínima; `MobileSheet` envuelve un `<dialog>`
+  modal con cierre por botón, fondo o Escape y devuelve el foco al disparador. Las miniaturas
+  y el índice dejan de ocupar columnas laterales en móvil. No cuenta el contenido del documento.
 - **Mención a R3ZON** (`Creditos`), solo sin documento abierto: un pie fino no le quita
   espacio al visor, y con un documento la misma información está en «Acerca de». Su enlace
   usa `Platform.openExternal`, como los de los documentos, sin abrir la CSP (abrir una

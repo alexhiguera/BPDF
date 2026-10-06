@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /*
- * Tokens de diseño de BPDF (docs/PLAN.md §9.2). Paleta inspirada en ChatGPT
- * Dark; oscuro por defecto y único tema en v1 (D10).
+ * Tokens de diseño de BPDF (docs/PLAN.md §9.2). Paleta azul tinta y violeta
+ * compartida con la portada; oscuro por defecto y único tema en v1 (D10).
  *
  * Tailwind 4 «CSS-first»: no hay tailwind.config.js. Los colores son tripletes
  * RGB en `:root` y `@theme` los expone como utilidades (`bg-app`, `text-fg`…).
@@ -16,11 +16,14 @@
 :root {
   color-scheme: dark;
 
-  /* Planos: tres tonos distintos, ninguno negro puro. */
-  --rgb-app: 23 23 23; /* cromo: barra superior, paneles */
-  --rgb-reading: 33 33 33; /* área de lectura, detrás de las páginas */
-  --rgb-page: 43 43 43; /* página PDF oscura, hoja de Markdown */
-  --rgb-elevated: 48 48 48; /* menús, diálogos, campos */
+  /* Planos de trabajo: la misma familia azul tinta de la portada, más sobria. */
+  --rgb-app: 7 11 24; /* cromo: barra superior, paneles */
+  --rgb-reading: 10 15 29; /* área de lectura, detrás de las páginas */
+  --rgb-page: 14 20 37; /* página PDF oscura, hoja de Markdown */
+  --rgb-elevated: 18 25 46; /* menús, diálogos, campos */
+  --rgb-toolbar: 12 18 34;
+  --rgb-hover: 30 39 68;
+  --rgb-active: 46 38 91;
 
   /* Texto. `fg-subtle` solo sobre `app` y `reading`: sobre `page` no llega a 4,5:1. */
   --rgb-fg: 236 236 236;
@@ -28,23 +31,25 @@
   --rgb-fg-subtle: 142 142 142;
 
   /* Bordes y separadores. */
-  --rgb-border: 61 61 61;
+  --rgb-border: 49 59 88;
 
   /* Interacción. El acento es para foco, estado activo y progreso; nunca de fondo
    * bajo texto claro (3,2:1). La acción principal es un botón claro. */
-  --rgb-accent: 16 163 127;
+  --rgb-accent: 139 92 246;
   --rgb-primary: 236 236 236;
   --rgb-primary-fg: 13 13 13;
 
   /* Estados. */
   --rgb-danger: 248 113 113;
+  --rgb-warning: 251 191 36;
+  --rgb-success: 52 211 153;
 
   /* Enlaces de un documento (Markdown): texto sobre `page`, así que 4,5:1. El
    * acento no llega (4,4:1 sobre `page`) y además es el color del foco. */
   --rgb-link: 128 182 255;
 
-  /* Identidad y portada. Son tokens propios de la home: el lector y los
-   * visores conservan la paleta funcional anterior. */
+  /* Identidad compartida. La portada usa estos matices con más expresión;
+   * las zonas de trabajo reutilizan la familia con una densidad más sobria. */
   --rgb-home-bg: 7 11 24;
   --rgb-home-surface: 14 20 37;
   --rgb-home-surface-strong: 18 25 46;
@@ -72,6 +77,9 @@
   --color-reading: rgb(var(--rgb-reading));
   --color-page: rgb(var(--rgb-page));
   --color-elevated: rgb(var(--rgb-elevated));
+  --color-toolbar: rgb(var(--rgb-toolbar));
+  --color-hover: rgb(var(--rgb-hover));
+  --color-active: rgb(var(--rgb-active));
   --color-fg: rgb(var(--rgb-fg));
   --color-fg-muted: rgb(var(--rgb-fg-muted));
   --color-fg-subtle: rgb(var(--rgb-fg-subtle));
@@ -80,6 +88,8 @@
   --color-primary: rgb(var(--rgb-primary));
   --color-primary-fg: rgb(var(--rgb-primary-fg));
   --color-danger: rgb(var(--rgb-danger));
+  --color-warning: rgb(var(--rgb-warning));
+  --color-success: rgb(var(--rgb-success));
   --color-link: rgb(var(--rgb-link));
   --color-home-bg: rgb(var(--rgb-home-bg));
   --color-home-surface: rgb(var(--rgb-home-surface));
@@ -97,6 +107,321 @@ body {
   background-color: var(--color-reading);
   color: var(--color-fg);
   font-family: system-ui, sans-serif;
+}
+
+/* ── Cromo de trabajo compartido ─────────────────────────────────────────── */
+
+.work-header {
+  min-height: 3.5rem;
+  border-color: rgb(var(--rgb-border) / 0.82);
+  background:
+    linear-gradient(90deg, rgb(var(--rgb-brand-violet) / 0.07), transparent 28%),
+    rgb(var(--rgb-app) / 0.97);
+  box-shadow: 0 1px 0 rgb(var(--rgb-fg) / 0.025);
+}
+
+.work-header-actions {
+  padding: 0.25rem;
+  border: 1px solid rgb(var(--rgb-border) / 0.75);
+  border-radius: 0.75rem;
+  background-color: rgb(var(--rgb-toolbar) / 0.88);
+}
+
+.work-header .work-header-actions {
+  flex-wrap: nowrap;
+}
+
+.ui-icon-button,
+.ui-control {
+  display: inline-flex;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 0.55rem;
+  padding-inline: 0.6rem;
+  color: var(--color-fg);
+  font-size: 0.875rem;
+  line-height: 1;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.ui-icon-button:hover,
+.ui-control:hover {
+  background-color: var(--color-hover);
+}
+
+.ui-icon-button:active,
+.ui-control:active {
+  transform: translateY(1px);
+}
+
+.ui-icon-button:disabled,
+.ui-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.ui-icon-button[aria-pressed="true"],
+.ui-control[aria-pressed="true"],
+.ui-control[aria-expanded="true"] {
+  background-color: var(--color-active);
+  box-shadow: inset 0 0 0 1px rgb(var(--rgb-brand-soft) / 0.34);
+}
+
+.ui-button {
+  min-height: 2.5rem;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.ui-button:active {
+  transform: translateY(1px);
+}
+
+.ui-button-primary {
+  border: 1px solid rgb(var(--rgb-brand-soft) / 0.3);
+  background: linear-gradient(135deg, rgb(var(--rgb-brand-violet)), rgb(var(--rgb-brand-blue)));
+  box-shadow: 0 0.4rem 1rem rgb(var(--rgb-brand-blue) / 0.18);
+}
+
+.ui-button-primary:hover {
+  filter: brightness(1.1);
+}
+
+.ui-button-secondary {
+  background-color: rgb(var(--rgb-elevated) / 0.86);
+  box-shadow: inset 0 1px 0 rgb(var(--rgb-fg) / 0.025);
+}
+
+.ui-button-secondary:hover {
+  border-color: rgb(var(--rgb-brand-soft) / 0.32);
+  background-color: var(--color-hover);
+}
+
+.ui-toolbar-group {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.125rem;
+  border: 1px solid rgb(var(--rgb-border) / 0.82);
+  border-radius: 0.75rem;
+  background-color: rgb(var(--rgb-elevated) / 0.72);
+  box-shadow: inset 0 1px 0 rgb(var(--rgb-fg) / 0.025);
+}
+
+.ui-badge {
+  display: inline-flex;
+  min-height: 1.5rem;
+  align-items: center;
+  border: 1px solid rgb(var(--rgb-warning) / 0.32);
+  border-radius: 999px;
+  background-color: rgb(var(--rgb-warning) / 0.09);
+  padding-inline: 0.55rem;
+  color: rgb(var(--rgb-warning));
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.ui-dialog,
+.ui-sheet {
+  color: var(--color-fg);
+  background: transparent;
+}
+
+.ui-dialog::backdrop,
+.ui-sheet::backdrop {
+  background-color: rgb(var(--rgb-app) / 0.82);
+  backdrop-filter: blur(5px);
+}
+
+.ui-dialog {
+  margin: auto;
+  overflow: auto;
+  border: 1px solid rgb(var(--rgb-border) / 0.95);
+  border-radius: 1rem;
+  background:
+    linear-gradient(145deg, rgb(var(--rgb-brand-violet) / 0.08), transparent 35%),
+    var(--color-elevated);
+  box-shadow: 0 1.5rem 5rem rgb(var(--rgb-home-bg) / 0.58);
+}
+
+.ui-dialog-header,
+.ui-sheet-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid rgb(var(--rgb-border) / 0.82);
+  padding: 0.9rem 1rem;
+}
+
+.ui-dialog-header h2,
+.ui-sheet-header h2 {
+  min-width: 0;
+  flex: 1;
+  font-weight: 700;
+}
+
+.ui-dialog-card {
+  border: 1px solid rgb(var(--rgb-border) / 0.78);
+  border-radius: 0.85rem;
+  background-color: rgb(var(--rgb-app) / 0.52);
+  padding: 0.9rem;
+}
+
+.ui-notice {
+  border: 1px solid rgb(var(--rgb-border) / 0.85);
+  border-radius: 0.9rem;
+  background:
+    linear-gradient(145deg, rgb(var(--rgb-brand-blue) / 0.06), transparent 45%),
+    rgb(var(--rgb-elevated) / 0.88);
+  box-shadow: 0 0.8rem 2.5rem rgb(var(--rgb-home-bg) / 0.2);
+}
+
+.ui-notice[data-tone="error"] {
+  border-color: rgb(var(--rgb-danger) / 0.42);
+  background:
+    linear-gradient(145deg, rgb(var(--rgb-danger) / 0.08), transparent 45%),
+    rgb(var(--rgb-elevated) / 0.9);
+}
+
+.ui-spinner {
+  width: 1.35rem;
+  height: 1.35rem;
+  border: 2px solid rgb(var(--rgb-border));
+  border-top-color: rgb(var(--rgb-brand-soft));
+  border-radius: 999px;
+  animation: ui-spin 700ms linear infinite;
+}
+
+@keyframes ui-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ui-sheet {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  border: 0;
+  padding: 0;
+}
+
+.ui-sheet-panel {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  max-height: min(82dvh, 46rem);
+  overflow: hidden;
+  border: 1px solid rgb(var(--rgb-border) / 0.95);
+  border-bottom: 0;
+  border-radius: 1.25rem 1.25rem 0 0;
+  background:
+    linear-gradient(160deg, rgb(var(--rgb-brand-violet) / 0.1), transparent 30%),
+    var(--color-elevated);
+  box-shadow: 0 -1rem 4rem rgb(var(--rgb-home-bg) / 0.48);
+  animation: sheet-enter 160ms ease-out;
+}
+
+.ui-sheet-content {
+  max-height: calc(min(82dvh, 46rem) - 4rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0.85rem 1rem max(1rem, env(safe-area-inset-bottom));
+}
+
+@keyframes sheet-enter {
+  from { transform: translateY(1rem); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.ui-sheet-section + .ui-sheet-section {
+  margin-top: 1rem;
+}
+
+.ui-sheet-section > h3 {
+  margin-bottom: 0.45rem;
+  color: var(--color-fg-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ui-sheet-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.ui-sheet-grid .ui-control {
+  min-height: 2.75rem;
+  justify-content: flex-start;
+  border: 1px solid rgb(var(--rgb-border) / 0.7);
+  background-color: rgb(var(--rgb-app) / 0.45);
+}
+
+@media (max-width: 52rem) {
+  .work-header {
+    min-height: 3rem;
+    padding-inline: 0.65rem;
+  }
+
+  .work-header-actions {
+    flex: none;
+    gap: 0.125rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .work-header-action-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .work-header-actions .ui-button {
+    width: 2.75rem;
+    padding-inline: 0;
+  }
+
+  .work-header h1 {
+    font-size: 0.8rem;
+  }
+
+  .work-header .ui-badge {
+    display: none;
+  }
+
+  .ui-icon-button,
+  .ui-control {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .ui-button {
+    min-height: 2.75rem;
+  }
+
+  .ui-dialog {
+    width: 100%;
+    max-width: none;
+    max-height: min(92dvh, 52rem);
+    margin: auto 0 0;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 1.25rem 1.25rem 0 0;
+  }
 }
 
 /* Foco visible en todo lo enfocable, también fuera de los primitivos. */

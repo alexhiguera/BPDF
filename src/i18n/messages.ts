@@ -151,6 +151,19 @@ export const messages = {
       page: "No se ha podido mostrar esta página.",
     },
     toolbar: "Herramientas del documento",
+    tools: "Herramientas",
+    toolsTitle: "Herramientas del PDF",
+    closeTools: "Cerrar herramientas",
+    groups: {
+      navigation: "Navegación",
+      view: "Vista y zoom",
+      tools: "Herramientas",
+      document: "Documento",
+      page: "Página",
+      zoom: "Zoom",
+      appearance: "Vista",
+      actions: "Acciones",
+    },
     thumbnails: "Miniaturas",
     showThumbnails: "Mostrar miniaturas",
     hideThumbnails: "Ocultar miniaturas",
@@ -327,6 +340,9 @@ export const messages = {
   markdown: {
     loading: "Preparando el documento…",
     toolbar: "Herramientas del documento",
+    tools: "Herramientas",
+    toolsTitle: "Herramientas de Markdown",
+    closeTools: "Cerrar herramientas",
     close: "Cerrar documento",
     /** Edición (Fase 9). */
     mode: {
@@ -338,6 +354,9 @@ export const messages = {
     split: {
       separator: "Ancho del editor",
       value: (porcentaje: number) => `Editor al ${porcentaje} %`,
+      mobileLabel: "Vista del modo dividido",
+      mobileEditor: "Editar",
+      mobilePreview: "Vista previa",
     },
     editor: {
       label: "Texto Markdown. Esc y después Tab para salir del editor",

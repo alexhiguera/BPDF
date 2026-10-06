@@ -10,6 +10,52 @@ bitácora de esa plantilla.
 
 ---
 
+### Iteración 41 — *2026-10-06* — Sistema visual unificado y experiencia móvil
+
+**Contexto.** Segunda pasada visual previa a F18. La portada aprobada ya definía la identidad
+azul tinta, violeta y local-first, pero visor PDF, Markdown, editor y diálogos conservaban la
+densidad y las superficies grises anteriores. La revisión no añade funciones ni cambia parser,
+pdf.js, búsqueda, guardado, impresión, CSP, almacenamiento, KaTeX o Mermaid.
+
+**Sistema compartido.** Los planos `app`, `reading`, `page` y `elevated` pasan a la familia
+navy de la portada; se añaden `toolbar`, `hover`, `active`, `warning` y `success`. Botones,
+controles, grupos, badges, notices, diálogos y hojas inferiores comparten bordes, radios,
+focus y sombras sobrias. `Chrome.tsx` aporta solo tres primitivas pequeñas (`ToolbarGroup`,
+`Badge`, `MobileSheet`) y `useMediaQuery` centraliza el corte reactivo de `52rem`.
+
+**Cabecera y escritorio.** Con documento abierto, la cabecera muestra logo, nombre truncado,
+badge «Sin guardar» y acciones jerarquizadas. La barra PDF queda agrupada en miniaturas,
+navegación, vista y herramientas, conservando el roving tabindex. Markdown agrupa índice,
+modos y documento; lector, CodeMirror y SplitView reciben superficies y separadores coherentes.
+Preferencias, Guardar como, contraseña, descarte, atajos, carga y errores usan el mismo cromo.
+
+**Móvil y tablet.** Desde 320 px, PDF deja visibles solo cerrar, página, búsqueda y
+Herramientas; página, zoom, vista y acciones viven en una hoja inferior, y miniaturas en otra
+hoja superpuesta. Markdown deja visibles modo, índice, guardar y Herramientas; el índice es
+modal y Dividido alterna Editar/Vista previa sin desmontar CodeMirror. Preferencias y Guardar
+como ocupan una hoja alta. Acciones importantes miden al menos 44 px; no se añadieron gestos.
+
+**Accesibilidad y pruebas.** Los sheets son `<dialog>` modales: cierran por botón, fondo o
+Escape y devuelven el foco. El índice móvil, después de cerrar, enfoca el encabezado elegido.
+Contraste ampliado a toolbar/hover/active y warning/success. Nuevos E2E cubren sheets, foco,
+Escape, búsqueda y miniaturas PDF, Dividido móvil y 320/390/430/768 px sin overflow. La
+cabecera deja un solo `h1` semántico en el visor.
+
+**Revisión visual.** Build local inspeccionada en 19 capturas: desktop (home, PDF, PDF con
+miniaturas, Preferencias y Markdown en Lectura/Edición/Dividido), móvil 375 px (home, PDF,
+Herramientas, búsqueda, miniaturas, Markdown en los tres modos, Guardar como y Preferencias)
+y tablet 768 px (PDF y Markdown). No queda ninguna pantalla principal con la paleta antigua;
+los visores mantienen deliberadamente menos glow que la portada.
+
+**Verificación.** `lint`, `typecheck`, `test:run` (**1126** en 58 ficheros), `build`,
+`build:verificar`, `docs:enlaces` (339) y `docs:validar` (36 páginas) ✅. Chromium:
+**141/141** en la pasada final; una ejecución previa superó la red de 30 s para Markdown de
+1 MB bajo carga y pasó aislada. Compatibilidad: 257 pasan y 13 se omiten por diseño en paralelo; los
+12 fallos por saturación/temporización pasaron después por motor con un worker (Firefox 10/10,
+WebKit 2/2). Arranque: **101,2 KB gzip**, antes **99,3 KB** (+1,9 KB; límite 150 KB).
+`npm audit`: las mismas 4 bajas transitivas de KaTeX/Mermaid ya aceptadas, ninguna nueva.
+Sin commit, push, publicación ni cierre de F18.
+
 ### Iteración 40 — *2026-10-06* — Portada de producto e identidad visual de libro
 
 **Contexto.** Antes de la publicación final, la pantalla vacía necesitaba dejar de parecer un

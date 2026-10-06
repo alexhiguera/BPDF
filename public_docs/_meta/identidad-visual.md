@@ -12,8 +12,8 @@ Fuentes: [`src/styles/globals.css`](../../src/styles/globals.css) (tokens),
 
 ## Tema
 
-**Solo oscuro** en v1 (D10: sin tema claro). El lector conserva su paleta neutra y la portada
-añade una identidad azul y violeta sobre un fondo más profundo. Los colores son tripletes RGB
+**Solo oscuro** en v1 (D10: sin tema claro). Portada, visores, editor y diálogos comparten
+una identidad azul tinta y violeta; las zonas de trabajo la aplican de forma más sobria. Los colores son tripletes RGB
 en `:root`, y un test calcula el contraste WCAG de cada par que se usa junto
 (`tests/unit/tokens.test.ts`).
 
@@ -21,17 +21,19 @@ en `:root`, y un test calcula el contraste WCAG de cada par que se usa junto
 
 | Token | Hex | Uso |
 |---|---|---|
-| `--rgb-app` | `#171717` | Cromo del lector: barra superior y paneles |
-| `--rgb-reading` | `#212121` | Área de lectura, detrás de las páginas |
-| `--rgb-page` | `#2b2b2b` | Página PDF en modo oscuro, hoja de Markdown |
-| `--rgb-elevated` | `#303030` | Menús, diálogos, campos, bloques de código |
-| `--rgb-border` | `#3d3d3d` | Bordes y separadores |
+| `--rgb-app` | `#070b18` | Cromo del lector: cabecera y paneles |
+| `--rgb-reading` | `#0a0f1d` | Área de lectura, detrás de las páginas |
+| `--rgb-page` | `#0e1425` | Página PDF en modo oscuro, hoja de Markdown |
+| `--rgb-elevated` | `#12192e` | Menús, diálogos, campos, bloques de código |
+| `--rgb-toolbar` / `hover` / `active` | `#0c1222` / `#1e2744` / `#2e265b` | Barras, interacción y selección |
+| `--rgb-border` | `#313b58` | Bordes y separadores |
 | `--rgb-fg` | `#ececec` | Texto principal; la hoja del icono |
 | `--rgb-fg-muted` | `#b4b4b4` | Texto secundario (válido sobre los cuatro fondos) |
 | `--rgb-fg-subtle` | `#8e8e8e` | Solo sobre `app` y `reading` |
-| `--rgb-accent` | `#10a37f` | Foco, estado activo, progreso; la esquina del icono. **Nunca** de fondo con texto blanco (3,2:1) |
+| `--rgb-accent` | `#8b5cf6` | Foco, estado activo y progreso |
 | `--rgb-primary` / `--rgb-primary-fg` | `#ececec` / `#0d0d0d` | Botón principal: claro con texto oscuro |
 | `--rgb-danger` | `#f87171` | Errores |
+| `--rgb-warning` / `--rgb-success` | `#fbbf24` / `#34d399` | Advertencias y confirmación/privacidad |
 | `--rgb-link` | `#80b6ff` | Enlaces de un Markdown |
 | `--rgb-home-bg` | `#070b18` | Fondo de la portada y del icono |
 | `--rgb-home-surface` / `--rgb-home-surface-strong` | `#0e1425` / `#12192e` | Tarjetas y acciones de la portada |
@@ -50,9 +52,8 @@ Colores de código (resaltado de sintaxis, cada uno ≥ 4,5:1 sobre su fondo): p
 
 ## Contrastes (WCAG)
 
-- `fg` sobre `page`: ≈ 12:1.
-- `fg-muted` sobre `page`: ≈ 6,8:1.
-- `accent` sobre `reading`: ≈ 5:1.
+- `fg` y `fg-muted` sobre los planos de trabajo: ≥ 4,5:1.
+- `accent` sobre `toolbar`, `hover` y `active`: ≥ 3:1.
 - `fg` sobre los dos extremos del degradado principal: ≥ 4,5:1.
 - `fg` y `fg-muted` sobre las superficies de la portada: ≥ 4,5:1.
 
@@ -66,8 +67,8 @@ Colores de código (resaltado de sintaxis, cada uno ≥ 4,5:1 sobre su fondo): p
 
 ## Radios
 
-- Botones, campos y la mayoría de controles: `0.375rem` (6 px; `rounded-md` de Tailwind 4).
-- Elementos pequeños: `0.25rem` (4 px). Paneles grandes: `0.5rem` (8 px).
+- Botones y campos: `0.75rem`; grupos de herramientas: `0.875rem`; paneles y diálogos: `1rem`.
+- Elementos pequeños y badges: entre `0.45rem` y `999px` según su función.
 - Portada: acciones `0.8rem`; tarjetas y panel de privacidad `1rem`.
 - Icono: 7 de 32 (≈ 22 %).
 

@@ -64,6 +64,21 @@ describe("tokens de diseño", () => {
     expect(contraste(fg, fondo)).toBeGreaterThanOrEqual(minimo);
   });
 
+  const SUPERFICIES_DE_TRABAJO = ["toolbar", "hover", "active"];
+  it.each([
+    ...SUPERFICIES_DE_TRABAJO.flatMap((fondo) => [
+      ["fg", fondo, 4.5],
+      ["fg-muted", fondo, 4.5],
+      ["accent", fondo, 3],
+    ]),
+    ["warning", "app", 4.5],
+    ["warning", "elevated", 4.5],
+    ["success", "app", 4.5],
+    ["success", "elevated", 4.5],
+  ] as [string, string, number][])("%s sobre %s alcanza %s:1", (fg, fondo, minimo) => {
+    expect(contraste(fg, fondo)).toBeGreaterThanOrEqual(minimo);
+  });
+
   // Fase 17: el PDF claro redefine los tokens dentro de su copia (impresion.css). Mismos
   // pares y mismos mínimos que en la app: un PDF claro también se lee con lector o impreso.
   describe("PDF claro (impresion.css)", () => {

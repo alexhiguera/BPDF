@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
 import { messages } from "../../src/i18n/messages";
+import { recolorearRgb } from "../../src/pdf/dark/recolor";
 import {
   ALTO,
   ANCHO,
@@ -26,8 +27,10 @@ const t = messages.pdf;
 const FIXTURES = "tests/fixtures/pdf";
 const OSCURO = `${FIXTURES}/modo-oscuro/modo-oscuro.pdf`;
 const VISOR_PDF = `${FIXTURES}/visor/visor.pdf`;
-const PAGINA = [43, 43, 43]; // --rgb-page
-const TEXTO = [236, 236, 236]; // --rgb-fg
+const TEXTO = [236, 236, 236] as const; // --rgb-fg
+// El algoritmo conserva el tono del píxel original: el papel blanco (croma 0)
+// toma la luminosidad del token azul, por lo que su salida es un gris equivalente.
+const PAGINA = recolorearRgb([255, 255, 255], { pagina: [14, 20, 37], texto: TEXTO });
 const PT_A_CSS = 96 / 72;
 
 type Fichero = string | { name: string; mimeType: string; buffer: Buffer };

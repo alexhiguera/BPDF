@@ -14,16 +14,22 @@ export function Indice({
   id,
   entradas,
   onIr,
+  variante = "lateral",
 }: {
   id: string;
   entradas: readonly EntradaIndice[];
   onIr: (id: string) => void;
+  variante?: "lateral" | "sheet";
 }) {
   return (
     <nav
       id={id}
       aria-label={messages.markdown.tocLabel}
-      className="md-indice absolute inset-y-0 left-0 z-10 w-72 max-w-[85vw] overflow-auto border-r border-border bg-app p-3 lg:static lg:z-auto lg:shrink-0"
+      className={
+        variante === "sheet"
+          ? "md-indice md-indice-sheet"
+          : "md-indice absolute inset-y-0 left-0 z-10 w-72 max-w-[85vw] overflow-auto border-r border-border bg-app p-3 lg:static lg:z-auto lg:shrink-0"
+      }
     >
       <ol className="flex flex-col gap-0.5 text-sm">
         {entradas.map((e) => (

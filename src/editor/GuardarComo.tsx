@@ -1,3 +1,4 @@
+import { FileDown, FileText, Moon, Sun } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { messages } from "@/i18n/messages";
@@ -54,7 +55,7 @@ export function GuardarComo({
     etiqueta: string,
     desactivada = false,
   ) => (
-    <label className="flex items-center gap-2 text-sm">
+    <label className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-app/45 px-3 text-sm has-checked:border-accent has-checked:bg-active">
       <input
         type="radio"
         name={grupo}
@@ -64,6 +65,15 @@ export function GuardarComo({
         onChange={() => cambiar(valor)}
         className="size-4 accent-accent"
       />
+      {valor === "markdown" ? (
+        <FileText aria-hidden="true" className="size-4" />
+      ) : valor === "pdf" ? (
+        <FileDown aria-hidden="true" className="size-4" />
+      ) : valor === "claro" ? (
+        <Sun aria-hidden="true" className="size-4" />
+      ) : (
+        <Moon aria-hidden="true" className="size-4" />
+      )}
       {etiqueta}
     </label>
   );
@@ -77,11 +87,11 @@ export function GuardarComo({
         e.preventDefault();
         onCancelar();
       }}
-      className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-md border border-border bg-elevated p-0 text-fg backdrop:bg-app/80"
+      className="ui-dialog w-[min(28rem,calc(100vw-2rem))] p-0"
     >
       <form
         method="dialog"
-        className="flex flex-col gap-3 p-4"
+        className="flex flex-col gap-4 p-4"
         onSubmit={(e) => {
           e.preventDefault();
           if (formato === "pdf") onPdf(tema);
@@ -91,12 +101,12 @@ export function GuardarComo({
         <h2 id={idTitulo} className="text-base font-semibold">
           {t.title}
         </h2>
-        <fieldset className="flex flex-col gap-1.5">
+        <fieldset className="ui-dialog-card flex flex-col gap-2">
           <legend className="mb-1 text-sm font-medium text-fg-muted">{t.format}</legend>
           {opcion(`${nombre}-formato`, "markdown", formato, setFormato, t.markdown)}
           {opcion(`${nombre}-formato`, "pdf", formato, setFormato, t.pdf)}
         </fieldset>
-        <fieldset className="flex flex-col gap-1.5" disabled={formato !== "pdf"}>
+        <fieldset className="ui-dialog-card flex flex-col gap-2" disabled={formato !== "pdf"}>
           <legend className="mb-1 text-sm font-medium text-fg-muted">{t.theme}</legend>
           {opcion(`${nombre}-tema`, "claro", tema, setTema, t.light, formato !== "pdf")}
           {opcion(`${nombre}-tema`, "oscuro", tema, setTema, t.dark, formato !== "pdf")}

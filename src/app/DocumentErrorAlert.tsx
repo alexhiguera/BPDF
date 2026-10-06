@@ -1,3 +1,4 @@
+import { CircleAlert } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { project } from "@/config/project";
 import type { DocumentError, DocumentErrorCode } from "@/documents/errors";
@@ -41,9 +42,11 @@ export function DocumentErrorAlert({
   return (
     <div
       role="alert"
-      className="mx-auto mt-6 flex w-full max-w-xl flex-col gap-2 rounded-md border border-danger bg-app p-4"
+      className="ui-notice mx-auto mt-6 flex w-[calc(100%-2rem)] max-w-xl flex-col gap-2 p-4"
+      data-tone="error"
     >
-      <p className="font-medium wrap-anywhere text-danger">
+      <p className="flex items-start gap-2 font-medium wrap-anywhere text-danger">
+        <CircleAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
         {error.fileName ? t.title(error.fileName) : t.titleNoFile}
       </p>
       <p className="text-fg-muted">{reason(error)}</p>

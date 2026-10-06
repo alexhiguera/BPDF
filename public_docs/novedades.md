@@ -28,7 +28,11 @@ BPDF».
 
 - **Nueva portada e identidad visual.** La pantalla inicial presenta BPDF como producto, con
   accesos claros a abrir archivos, abrir carpetas y crear Markdown, un nuevo icono de libro y
-  un resumen de sus funciones y su privacidad local.
+  un resumen de sus funciones y su privacidad local. El mismo sistema azul/violeta continúa
+  ahora en el visor PDF, Markdown, editor, preferencias y diálogos.
+- **Interfaz móvil centrada en el documento.** PDF y Markdown usan barras compactas y hojas
+  inferiores para las herramientas, miniaturas e índice. En Dividido se alterna entre Editar
+  y Vista previa sin perder el estado del editor.
 - **Código abierto.** El repositorio de BPDF es público, con licencia Apache-2.0. «Acerca de
   BPDF» enlaza a él (**Código fuente en GitHub**).
 - **Documentación oficial**, con guías de cada función, referencia, preguntas frecuentes y

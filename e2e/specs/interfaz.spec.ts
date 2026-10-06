@@ -109,10 +109,19 @@ test.describe("pantalla estrecha (D12, 375 px)", () => {
     await pdfListo(page);
     await comprobarEstrecha(page, "PDF");
     await page.getByRole("button", { name: t.search, exact: true }).click();
-    await page.getByRole("button", { name: t.showThumbnails }).click();
     await expect(page.getByRole("searchbox")).toBeVisible();
+    await page.getByRole("button", { name: t.tools, exact: true }).click();
+    const herramientasPdf = page.getByRole("dialog", { name: t.toolsTitle });
+    await expect(herramientasPdf).toBeVisible();
+    await herramientasPdf.getByRole("button", { name: t.showThumbnails }).click();
+    await expect(page.getByRole("dialog", { name: t.thumbnails })).toBeVisible();
     await comprobarEstrecha(page, "PDF con búsqueda y miniaturas");
-    await page.getByRole("button", { name: t.shortcuts }).click();
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: t.tools, exact: true }).click();
+    await page
+      .getByRole("dialog", { name: t.toolsTitle })
+      .getByRole("button", { name: t.shortcuts })
+      .click();
     await expect(page.getByRole("dialog", { name: t.help.title })).toBeVisible();
     await comprobarEstrecha(page, "ayuda de atajos");
     await page.keyboard.press("Escape");
@@ -131,20 +140,55 @@ test.describe("pantalla estrecha (D12, 375 px)", () => {
     await expect(page.getByRole("article")).toBeVisible();
     await comprobarEstrecha(page, "Markdown");
     await page.getByRole("button", { name: messages.markdown.toc }).click();
+    await expect(page.getByRole("dialog", { name: messages.markdown.toc })).toBeVisible();
     await expect(page.getByRole("navigation", { name: messages.markdown.tocLabel })).toBeVisible();
     await comprobarEstrecha(page, "Markdown con el índice");
-    await page.getByRole("button", { name: messages.markdown.mode.edicion }).click();
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: messages.markdown.tools, exact: true }).click();
+    await page
+      .getByRole("dialog", { name: messages.markdown.toolsTitle })
+      .getByRole("button", { name: messages.markdown.mode.edicion })
+      .click();
     await expect(page.getByRole("textbox", { name: messages.markdown.editor.label })).toBeVisible();
     await comprobarEstrecha(page, "edición");
     await page.getByRole("textbox", { name: messages.markdown.editor.label }).press("End");
     await page.keyboard.type(" cambio");
-    await page.getByRole("button", { name: messages.markdown.mode.dividido }).click();
+    await page.getByRole("button", { name: messages.markdown.tools, exact: true }).click();
+    await page
+      .getByRole("dialog", { name: messages.markdown.toolsTitle })
+      .getByRole("button", { name: messages.markdown.mode.dividido })
+      .click();
+    await expect(
+      page.getByRole("button", { name: messages.markdown.split.mobileEditor }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("article")).toBeHidden();
+    await page.getByRole("button", { name: messages.markdown.split.mobilePreview }).click();
+    await expect(page.getByRole("article")).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: messages.markdown.editor.label, includeHidden: true }),
+    ).toBeHidden();
     await comprobarEstrecha(page, "dividido");
     await abrirFichero(page, PDF);
     await expect(page.getByRole("dialog", { name: messages.discard.title })).toBeVisible();
     await comprobarEstrecha(page, "cambios sin guardar");
     limpia(v);
   });
+});
+
+test("responsive: 320, 390, 430 y 768 px sin desbordamiento", async ({ page }) => {
+  const v = await abrir(page);
+  for (const width of [320, 390, 430, 768]) {
+    await page.setViewportSize({ width, height: width === 768 ? 900 : 740 });
+    await comprobarEstrecha(page, `portada ${width}px`);
+  }
+  await abrirFichero(page, PDF);
+  await pdfListo(page);
+  for (const width of [320, 390, 430, 768]) {
+    await page.setViewportSize({ width, height: width === 768 ? 900 : 740 });
+    await comprobarEstrecha(page, `PDF ${width}px`);
+    await expect(page.getByRole("button", { name: t.tools, exact: true })).toBeVisible();
+  }
+  limpia(v);
 });
 
 test("título de la ventana: siempre el del producto, nunca el nombre del documento", async ({

@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { cabecerasPara } from "../../src/config/security-headers";
 import { messages } from "../../src/i18n/messages";
+import { recolorearRgb } from "../../src/pdf/dark/recolor";
 import { crearPdfFormulario, FORMULARIO } from "../../tests/fixtures/pdf/visor/generar.mjs";
 import { soloChromium } from "../navegadores";
 import { leerPortapapeles } from "../portapapeles";
@@ -22,7 +23,10 @@ import { abrir, type Vigilancia } from "../vigilancia";
 
 const CLAVES = ["bpdf:positions", "bpdf:prefs"];
 const OSCURO = "tests/fixtures/pdf/modo-oscuro/modo-oscuro.pdf";
-const PAGINA = [43, 43, 43]; // --rgb-page
+const PAGINA = recolorearRgb([255, 255, 255], {
+  pagina: [14, 20, 37],
+  texto: [236, 236, 236],
+});
 
 type Fichero = string | { name: string; mimeType: string; buffer: Buffer };
 
@@ -208,7 +212,7 @@ test("formulario PDF (D14): los campos se ven pero no se pueden rellenar, y su J
     (x1 + x2) / 2,
     (y1 + y2) / 2,
   ];
-  const distancia = (a: number[], b: number[]) =>
+  const distancia = (a: readonly number[], b: readonly number[]) =>
     Math.max(...a.map((c, i) => Math.abs(c - (b[i] ?? 0))));
   expect(distancia(await color(FORMULARIO.vacio), PAGINA)).toBeLessThanOrEqual(3);
   expect(distancia(await color(centro(FORMULARIO.campo)), PAGINA)).toBeGreaterThan(100);

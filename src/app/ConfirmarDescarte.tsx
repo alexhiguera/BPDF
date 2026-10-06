@@ -52,7 +52,7 @@ export function ConfirmarDescarte({
         e.preventDefault();
         onResponder(false);
       }}
-      className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-md border border-border bg-elevated p-0 text-fg backdrop:bg-app/80"
+      className="ui-dialog w-[min(28rem,calc(100vw-2rem))] p-0"
     >
       <div className="flex flex-col gap-3 p-4">
         <h2 id={idTitulo} className="text-base font-semibold">

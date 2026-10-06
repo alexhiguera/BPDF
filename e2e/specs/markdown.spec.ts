@@ -312,11 +312,11 @@ test("tema oscuro: la hoja, el texto y los enlaces usan los tokens, sin filtros"
     };
   });
   expect(estilos).toEqual({
-    fondo: "rgb(43, 43, 43)",
+    fondo: "rgb(14, 20, 37)",
     texto: "rgb(236, 236, 236)",
     enlace: "rgb(128, 182, 255)",
     subrayado: "underline",
-    fondoCodigo: "rgb(23, 23, 23)",
+    fondoCodigo: "rgb(7, 11, 24)",
     filtros: 0,
     esquema: "dark",
   });

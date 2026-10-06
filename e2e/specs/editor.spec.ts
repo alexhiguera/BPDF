@@ -179,7 +179,7 @@ test("modos: escribir en edición, verlo en lectura y en dividido; nada se pierd
   await expect(modo(page, "edicion")).toHaveAttribute("aria-pressed", "true");
   await expect(articulo(page)).toBeHidden();
   await teclearAlFinal(page, "\n\n## Añadido");
-  await expect(page.getByText(t.modified)).toBeVisible();
+  await expect(page.getByRole("banner").getByText(t.modified)).toBeVisible();
   await modo(page, "lectura").click();
   await expect(articulo(page).getByRole("heading", { name: "Añadido" })).toBeVisible();
   await modo(page, "dividido").click();
@@ -316,7 +316,7 @@ test("guardar sin showSaveFilePicker: Ctrl+S descarga el texto nuevo y el docume
   const v = await cargar(page, texto("guardar.md", "# Original"));
   await modo(page, "edicion").click();
   await teclearAlFinal(page, "\n\nCambiado.");
-  await expect(page.getByText(t.modified)).toBeVisible();
+  await expect(page.getByRole("banner").getByText(t.modified)).toBeVisible();
   const [descarga] = await Promise.all([
     page.waitForEvent("download"),
     page.keyboard.press("Control+s"),
@@ -575,21 +575,24 @@ test("separador: se mueve con el teclado y ningún panel desaparece", async ({ p
   limpia(v);
 });
 
-test("pantalla estrecha: en dividido los paneles se apilan y siguen usables", async ({ page }) => {
+test("pantalla estrecha: dividido alterna editor y vista previa sin desmontarlos", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 800 });
   const v = await cargar(page, texto("movil.md", "# Móvil\n\ntexto"));
-  await modo(page, "dividido").click();
+  await page.getByRole("button", { name: t.tools, exact: true }).click();
+  await page
+    .getByRole("dialog", { name: t.toolsTitle })
+    .getByRole("button", { name: t.mode.dividido })
+    .click();
   await expect(editor(page)).toBeVisible();
-  await expect(articulo(page)).toBeVisible();
+  await expect(articulo(page)).toBeHidden();
   await expect(page.getByRole("separator")).toBeHidden();
-  const [a, b] = await page
-    .getByTestId("paneles")
-    .evaluate((p) =>
-      [...p.children]
-        .filter((c) => getComputedStyle(c).display !== "none")
-        .map((c) => c.getBoundingClientRect()),
-    );
-  expect(b!.top).toBeGreaterThanOrEqual(a!.bottom - 1);
+  await page.getByRole("button", { name: t.split.mobilePreview }).click();
+  await expect(articulo(page)).toBeVisible();
+  await expect(editor(page)).toBeHidden();
+  await page.getByRole("button", { name: t.split.mobileEditor }).click();
+  await expect(editor(page)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   limpia(v);
 });

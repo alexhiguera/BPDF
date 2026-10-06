@@ -39,9 +39,9 @@ export function AyudaAtajos({
       ref={dialogo}
       aria-labelledby={idTitulo}
       onClose={onCerrar}
-      className="m-auto max-h-[85vh] w-[min(40rem,calc(100vw-2rem))] overflow-auto rounded-md border border-border bg-elevated p-0 text-fg backdrop:bg-app/80"
+      className="ui-dialog max-h-[88vh] w-[min(40rem,calc(100vw-2rem))] p-0"
     >
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+      <div className="ui-dialog-header">
         <h2 id={idTitulo} className="flex-1 text-base font-semibold">
           {t.title}
         </h2>
@@ -50,7 +50,7 @@ export function AyudaAtajos({
           aria-label={t.close}
           title={t.close}
           onClick={() => dialogo.current?.close()}
-          className="inline-flex size-8 items-center justify-center rounded-md hover:bg-app"
+          className="ui-icon-button"
         >
           <X aria-hidden="true" className="size-4" />
         </button>

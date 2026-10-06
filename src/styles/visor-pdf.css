@@ -137,3 +137,152 @@
   outline: 2px solid var(--color-accent);
   outline-offset: 0;
 }
+
+/* Cromo del visor: grupos discretos en escritorio y barra mínima en móvil. */
+.pdf-toolbar {
+  position: relative;
+  border-color: rgb(var(--rgb-border) / 0.82);
+  box-shadow: 0 0.5rem 1.5rem rgb(var(--rgb-home-bg) / 0.16);
+}
+
+.pdf-close-desktop {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.75rem;
+  display: inline-flex;
+  padding: 0.125rem;
+  border: 1px solid rgb(var(--rgb-border) / 0.82);
+  border-radius: 0.75rem;
+  background-color: var(--color-elevated);
+}
+
+.pdf-toolbar-mobile {
+  display: none;
+}
+
+.pdf-toolbar input {
+  border-color: rgb(var(--rgb-border) / 0.9);
+  background-color: rgb(var(--rgb-app) / 0.7);
+}
+
+.pdf-thumbnails {
+  scrollbar-color: rgb(var(--rgb-border)) transparent;
+}
+
+.pdf-thumbnails button {
+  border: 1px solid transparent;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.pdf-thumbnails button[aria-current="page"] {
+  border-color: rgb(var(--rgb-brand-soft) / 0.55);
+  background-color: var(--color-active);
+  outline: 0;
+  box-shadow: 0 0.4rem 1.2rem rgb(var(--rgb-home-bg) / 0.32);
+}
+
+.pdf-thumbnails-sheet {
+  width: 100%;
+  max-height: calc(min(82dvh, 46rem) - 5rem);
+  border: 0;
+  background: transparent;
+}
+
+.pdf-thumbnails-sheet ol {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  align-items: start;
+}
+
+@media (max-width: 52rem) {
+  .pdf-toolbar-desktop {
+    display: none;
+  }
+
+  .pdf-toolbar-mobile {
+    display: flex;
+    min-height: 3.25rem;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.45rem;
+  }
+
+  .pdf-toolbar-mobile .ui-control {
+    flex: none;
+  }
+
+  .pdf-mobile-page {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    color: var(--color-fg-muted);
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pdf-sheet-page {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .pdf-sheet-page > .ui-control {
+    min-height: 2.75rem;
+    border: 1px solid rgb(var(--rgb-border) / 0.7);
+    background-color: rgb(var(--rgb-app) / 0.45);
+  }
+
+  [role="search"] {
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+    min-height: 3.4rem;
+    padding: 0.3rem 0.45rem;
+    background-color: var(--color-toolbar);
+  }
+
+  [role="search"] input[type="search"] {
+    width: auto;
+    min-width: 0;
+    flex: 1;
+    min-height: 2.75rem;
+  }
+
+  [role="search"] button {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  [role="search"] button:nth-of-type(-n + 2) {
+    display: none;
+  }
+
+  [role="search"] [data-testid="estado-busqueda"] {
+    max-width: 5.5rem;
+    overflow: hidden;
+    font-size: 0.72rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  [data-testid="visor-pdf"] > footer {
+    display: none;
+  }
+}
+
+@media (max-width: 22rem) {
+  .pdf-toolbar-mobile .ui-control:last-child span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  [role="search"] [data-testid="estado-busqueda"] {
+    display: none;
+  }
+}

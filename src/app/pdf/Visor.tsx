@@ -8,7 +8,9 @@ import {
   useRef,
   useState,
 } from "react";
+import { MobileSheet } from "@/components/ui/Chrome";
 import { messages } from "@/i18n/messages";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import { cn } from "@/lib/utils";
 import {
   type Coincidencia,
@@ -520,6 +522,7 @@ export function Visor({
 
   // --- Render -------------------------------------------------------------
   const anchoContenido = Math.max(disposicion.ancho, area.ancho);
+  const movil = useMediaQuery("(max-width: 52rem)");
   const paginasConMarco = continua ? vivas : [estado.pagina];
   const marcoDe = (numero: number, i: number) => ({
     top: disposicion.arriba[i] ?? SEPARACION,
@@ -564,15 +567,35 @@ export function Visor({
         />
       )}
       <div className="flex min-h-0 flex-1">
-        {estado.miniaturas && (
-          <PanelMiniaturas
-            controlador={controlador}
-            tamanos={girados}
-            pagina={estado.pagina}
-            parametros={{ rotacion: estado.rotacion, dpr, modo: estado.modo }}
-            onIr={(n) => despachar({ tipo: "ir", pagina: n })}
-          />
-        )}
+        {estado.miniaturas &&
+          (movil ? (
+            <MobileSheet
+              title={t.thumbnails}
+              closeLabel={t.hideThumbnails}
+              onClose={() => despachar({ tipo: "miniaturas" })}
+              testId="miniaturas-movil"
+            >
+              <PanelMiniaturas
+                variante="sheet"
+                controlador={controlador}
+                tamanos={girados}
+                pagina={estado.pagina}
+                parametros={{ rotacion: estado.rotacion, dpr, modo: estado.modo }}
+                onIr={(n) => {
+                  despachar({ tipo: "ir", pagina: n });
+                  despachar({ tipo: "miniaturas" });
+                }}
+              />
+            </MobileSheet>
+          ) : (
+            <PanelMiniaturas
+              controlador={controlador}
+              tamanos={girados}
+              pagina={estado.pagina}
+              parametros={{ rotacion: estado.rotacion, dpr, modo: estado.modo }}
+              onIr={(n) => despachar({ tipo: "ir", pagina: n })}
+            />
+          ))}
         <div
           ref={lector}
           onScroll={alDesplazar}

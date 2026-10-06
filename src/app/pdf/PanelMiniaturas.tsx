@@ -20,12 +20,14 @@ const t = messages.pdf;
  * no desplazan el área de lectura.
  */
 export function PanelMiniaturas({
+  variante = "lateral",
   controlador,
   tamanos,
   pagina,
   parametros,
   onIr,
 }: {
+  variante?: "lateral" | "sheet";
   controlador: ControladorVisor;
   /** Tamaños en puntos, ya girados. */
   tamanos: readonly Tamano[];
@@ -89,7 +91,10 @@ export function PanelMiniaturas({
     <nav
       ref={panel}
       aria-label={t.thumbnails}
-      className="w-44 shrink-0 overflow-y-auto border-r border-border bg-app p-2"
+      className={cn(
+        "pdf-thumbnails overflow-y-auto bg-app p-2",
+        variante === "lateral" ? "w-44 shrink-0 border-r border-border" : "pdf-thumbnails-sheet",
+      )}
       data-testid="miniaturas"
     >
       <ol

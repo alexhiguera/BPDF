@@ -72,9 +72,9 @@ export default function PreferencesDialog({
       aria-labelledby={`${id}-titulo`}
       aria-describedby={`${id}-intro`}
       onClose={onCerrar}
-      className="m-auto max-h-[85vh] w-[min(36rem,calc(100vw-2rem))] overflow-auto rounded-md border border-border bg-elevated p-0 text-fg backdrop:bg-app/80"
+      className="ui-dialog max-h-[88vh] w-[min(42rem,calc(100vw-2rem))] p-0"
     >
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+      <div className="ui-dialog-header sticky top-0 z-1 bg-elevated/95">
         <h2 id={`${id}-titulo`} className="flex-1 text-base font-semibold">
           {t.title}
         </h2>
@@ -83,12 +83,12 @@ export default function PreferencesDialog({
           aria-label={t.close}
           title={t.close}
           onClick={() => dialogo.current?.close()}
-          className="inline-flex size-8 items-center justify-center rounded-md hover:bg-app"
+          className="ui-icon-button"
         >
           <X aria-hidden="true" className="size-4" />
         </button>
       </div>
-      <div className="flex flex-col gap-5 px-4 py-3 text-sm">
+      <div className="flex flex-col gap-4 p-4 text-sm">
         <p id={`${id}-intro`} className="text-fg-muted">
           {t.intro}
         </p>
@@ -180,7 +180,7 @@ export default function PreferencesDialog({
           </div>
         </Grupo>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-border pt-3">
+        <div className="ui-dialog-card flex flex-wrap items-center gap-3">
           <Button
             variant="secondary"
             onClick={() => {
@@ -201,7 +201,7 @@ export default function PreferencesDialog({
             salir de ese mecanismo, y `target` y `rel` quedan como red. */}
         <section
           aria-labelledby={`${id}-acerca`}
-          className="flex flex-col gap-1 border-t border-border pt-3 text-fg-muted"
+          className="ui-dialog-card flex flex-col gap-1 text-fg-muted"
         >
           <h3 id={`${id}-acerca`} className="font-semibold text-fg">
             {t.about.title(project.name)}
@@ -244,7 +244,10 @@ function Grupo({
   children: ReactNode;
 }) {
   return (
-    <fieldset className="flex flex-col gap-2" aria-describedby={pista ? idPista : undefined}>
+    <fieldset
+      className="ui-dialog-card flex flex-col gap-2"
+      aria-describedby={pista ? idPista : undefined}
+    >
       <legend className="mb-1 font-semibold">{titulo}</legend>
       {pista && (
         <p id={idPista} className="text-fg-muted">
@@ -276,7 +279,7 @@ function Selector({
         id={id}
         value={valor}
         onChange={(e) => onCambio(e.target.value)}
-        className="rounded-md border border-border bg-app px-2 py-1 text-fg"
+        className="h-10 max-w-full rounded-lg border border-border bg-app px-3 text-fg"
       >
         {opciones.map(([v, texto]) => (
           <option key={v} value={v}>

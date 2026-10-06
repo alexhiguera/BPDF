@@ -156,7 +156,7 @@ function coloresDelTema(desde: Element | null): ColoresDiagrama {
     return `#${partes.map((n) => n.toString(16).padStart(2, "0")).join("")}`;
   };
   return {
-    fondo: hex("page", "#2b2b2b"),
+    fondo: hex("page", "#0e1425"),
     nodo: hex("elevated", "#303030"),
     texto: hex("fg", "#ececec"),
     linea: hex("fg-muted", "#b4b4b4"),

@@ -70,7 +70,7 @@ export function DialogoContrasena({
         e.preventDefault();
         cancelar();
       }}
-      className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-md border border-border bg-elevated p-0 text-fg backdrop:bg-app/80"
+      className="ui-dialog w-[min(28rem,calc(100vw-2rem))] p-0"
     >
       <form
         noValidate
@@ -105,7 +105,7 @@ export function DialogoContrasena({
           onChange={(e) => setValor(e.target.value)}
           aria-invalid={incorrecta || undefined}
           aria-describedby={incorrecta ? idError : undefined}
-          className={`h-9 rounded-md border bg-app px-2 text-fg ${incorrecta ? "border-danger" : "border-border"}`}
+          className={`h-11 rounded-lg border bg-app px-3 text-fg ${incorrecta ? "border-danger" : "border-border"}`}
         />
         {incorrecta && (
           <p id={idError} role="alert" className="text-sm text-danger">

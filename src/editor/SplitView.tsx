@@ -30,11 +30,14 @@ export function SplitView({
   derecha,
   refIzquierda,
   mostrar = "ambos",
+  vistaMovil = "izquierda",
 }: {
   izquierda: ReactNode;
   derecha: ReactNode;
   refIzquierda?: RefObject<HTMLDivElement | null>;
   mostrar?: "izquierda" | "derecha" | "ambos";
+  /** En «Dividido» estrecho, cuál de los dos paneles se muestra (ambos siguen montados). */
+  vistaMovil?: "izquierda" | "derecha";
 }) {
   const ambos = mostrar === "ambos";
   const [proporcion, setProporcion] = useState(50);
@@ -58,10 +61,12 @@ export function SplitView({
       style={estilo}
       data-testid="paneles"
       data-mostrar={mostrar}
+      data-vista-movil={vistaMovil}
     >
       <div
         ref={refIzquierda}
         id={idIzquierda}
+        data-panel="izquierda"
         hidden={mostrar === "derecha"}
         // Con los dos paneles, el izquierdo (el editor) va por encima en el orden de
         // pintado. Tras cada tecla, Chrome repite el hit test del ratón; recorre las capas
@@ -118,6 +123,7 @@ export function SplitView({
       />
       <div
         hidden={mostrar === "izquierda"}
+        data-panel="derecha"
         className={
           ambos
             ? "flex min-h-0 min-w-0 flex-1 flex-col border-t border-border md:border-t-0"

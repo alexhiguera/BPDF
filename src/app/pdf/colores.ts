@@ -12,6 +12,6 @@ function token(nombre: string, porDefecto: Rgb): Rgb {
 
 /** Colores de destino del modo oscuro: la página (`--rgb-page`) y el texto (`--rgb-fg`). */
 export const coloresOscuro = (): ColoresOscuro => ({
-  pagina: token("--rgb-page", [43, 43, 43]),
+  pagina: token("--rgb-page", [14, 20, 37]),
   texto: token("--rgb-fg", [236, 236, 236]),
 });
