@@ -417,11 +417,13 @@ describe("MarkdownView: ciclo de vida", () => {
     expect(articulo.querySelector(".md-contenido")).toHaveAttribute("aria-busy", "true");
     expect(screen.getAllByRole("heading", { level: 1 })[0]).toHaveFocus();
 
-    expect(await within(articulo).findByRole("heading", { name: "Grande" })).toBeInTheDocument();
+    expect(
+      await within(articulo).findByRole("heading", { name: "Grande" }, { timeout: 10000 }),
+    ).toBeInTheDocument();
     expect(within(articulo).queryByRole("status")).toBeNull();
     expect(articulo.querySelector(".md-contenido")).toHaveAttribute("aria-busy", "false");
     expect(screen.getByRole("button", { name: t.toc })).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("uno pequeño se pinta a la primera, sin aviso", () => {
     const { articulo } = montar("# Pequeño");

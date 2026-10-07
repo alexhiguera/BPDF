@@ -2,7 +2,7 @@
 id: novedades
 title: "Novedades de BPDF"
 sidebar_label: "Novedades"
-sidebar_position: 2
+sidebar_position: 10
 slug: /novedades
 description: "Qué versión de BPDF está publicada, qué puede hacer y qué ha cambiado en cada versión. Versión actual: 1.0.0, la primera estable y open source."
 keywords: [bpdf, novedades, versión, cambios, 1.0.0]
