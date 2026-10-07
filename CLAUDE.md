@@ -31,10 +31,11 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   source y documentación final) dejó preparada la publicación (repositorio listo para
   hacerse público, `public_docs/` completa y como GitHub Wiki generada, versión 1.0.0); su
   cierre pasó a la 18. La 17 (crear Markdown y exportar a PDF por la impresión del
-  navegador; ARCHITECTURE §4 duodecies) se cerró el *2026-10-06*. Siguiente: **Fase 18**,
-  publicación final de v1.0.0 (repo público, Wiki, `docs.r3zon.com`, etiqueta y release;
-  las acciones externas las hace el usuario: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md),
-  «Publicación final»). La app es una SPA estática de Vite + React (D1)
+  navegador; ARCHITECTURE §4 duodecies) se cerró el *2026-10-06*. La **Fase 18 está EN
+  CURSO**: el repositorio ya es público y su metadata está completa; la Wiki y
+  `docs.r3zon.com/bpdf` están preparados localmente. Quedan el commit/push autorizados por el
+  usuario, CI, despliegues y verificación de producción, seguridad manual, etiqueta y release
+  ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), «Publicación final»). La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
   oscuro selectivo en un worker, búsqueda avanzada, pantalla completa, atajos de una tecla

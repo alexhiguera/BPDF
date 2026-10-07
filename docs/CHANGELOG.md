@@ -10,6 +10,71 @@ bitácora de esa plantilla.
 
 ---
 
+### Iteración 44 — *2026-10-07* — F18 reanudada: metadata y publicación preparadas
+
+**Estado.** El incidente WebKit de la iteración 43 queda cerrado: la lectura atómica del E2E
+se conserva con el mismo gesto y tolerancia, sin esperas ni cambios funcionales, y no se añade
+una limitación de v1. La F18 pasa a **EN CURSO**; no se cierra ni se crea etiqueta o release.
+
+**Repositorio público.** Mediante la API de GitHub se completaron la descripción, la web
+`https://bpdf.r3zon.com` y los 13 topics acordados. Issues ya estaba activo; Wiki quedó
+activada; Discussions continúa desactivado. Se crearon las etiquetas `fallo` y `mejora`.
+Private Vulnerability Reporting y Dependabot Alerts siguen desactivados y requieren la acción
+manual indicada al usuario.
+
+**Wiki y documentación.** `npm run wiki:generar -- ../BPDF.wiki` produjo 38 ficheros desde
+`public_docs/`, con Home, Sidebar y Footer. GitHub todavía no crea `BPDF.wiki.git` hasta que se
+guarde la primera página; publicarla requiere un commit/push separado, no autorizado todavía.
+En R3ZON-Docusaurus se completó el alta local de BPDF y su identidad acotada a `/bpdf`: icono
+oficial, paleta navy/violeta y sin ornamentos dentro de lectura. `typecheck` y el build pasan;
+se sincronizan 36/36 páginas con JSON-LD, `llms.txt`, guías, FAQ, novedades y referencia, sin
+placeholders. La revisión local a 1440 y 390 px no encontró overflow, errores de consola ni
+peticiones externas. Vercel CLI no está autenticado y el despliegue normal requiere el push.
+
+**Release y lo pendiente.** El texto de v1.0.0 queda preparado en
+`.github/RELEASE_v1.0.0.md`, derivado de `public_docs/novedades.md`. Quedan commit/push, CI,
+publicar Wiki y Docusaurus, verificar producción, seguridad manual, tag y release. También se
+registra la última ronda posterior a F18 pedida por el usuario. Sin commit ni push.
+
+### Iteración 43 — *2026-10-07* — Diagnóstico de sincronía en WebKit antes de publicar
+
+**Causa.** El fallo de `editor.spec.ts` no era una desincronización de BPDF. En WebKit, una
+rueda grande continúa desplazando durante varios fotogramas; el test leía primero el encabezado
+del editor y después el de la vista previa en dos llamadas distintas. La traza mostró entre
+87 y 136 ms entre ambas lecturas, con los dos paneles todavía avanzando. Una lectura atómica
+en el mismo trabajo del navegador siempre encontró la misma sección.
+
+**`content-visibility`.** Los bloques de fórmulas fuera de pantalla usan la altura intrínseca
+de 4 rem y, al materializarse, pasan a unos 780 px en este documento. Eso alarga la ventana de
+layout móvil, pero no rompe el algoritmo: la clave de caché incluye `scrollHeight` y las
+anclas se recalculan. Como sondas temporales, desactivar la regla, usar 36/48 rem, materializar
+la zona de destino o esperar al layout eliminaron el síntoma. No queda ningún cambio de CSS,
+altura estimada, rendimiento ni `sincronia.ts`.
+
+**Corrección.** El E2E toma ahora editor y vista previa dentro de un solo `page.evaluate`, de
+forma que compara un único layout. Se conserva exactamente la diferencia máxima de una sección:
+sin `skip`, esperas mayores ni tolerancias nuevas. No cambia código funcional.
+
+**Verificación.** Escenario crítico, 10/10 en Chromium, Firefox y WebKit; batería relacionada,
+11/11 por motor (documento pequeño, 1 MB, KaTeX, Mermaid, ambos sentidos, TOC y móvil); unitario
+de sincronía, 14/14; WebKit serial completo, 134 pasan y 7 se omiten por diseño; `lint`,
+`typecheck` y `git diff --check`, en verde. El benchmark de compatibilidad pasa 2/2 y conserva
+el perfil de rendimiento conocido. No se añade una limitación de WebKit/Safari. La F18 sigue
+**EN CURSO / BLOQUEADA PARA PUBLICACIÓN** por instrucción del usuario; sin commit, push, tag,
+release, Wiki ni publicación de documentación.
+
+### Iteración 42 — *2026-10-07* — Cierre de las comprobaciones manuales de v1
+
+**Comprobaciones cerradas.** El usuario confirma como realizadas las pruebas manuales que
+quedaban abiertas: lector de pantalla; Safari real en macOS e iOS; composición IME en Firefox
+y Safari; gestores de contraseñas; atajos con otras distribuciones de teclado; soltar carpetas;
+y más PDF y formularios reales. También quedan comprobados el favicon SVG y los casos que
+requerían confirmación en Safari y Firefox. Se retiran de `TAREAS_PENDIENTES.md`, junto con el
+apartado informativo «Fuera de v1 / mejoras»; las mejoras siguen documentadas en `mejoras.md`.
+
+**Alcance.** Solo cambia el registro documental: no hay cambios de código, UI, comportamiento,
+compatibilidad ni criterios de la F18, que continúa abierta hasta completar la publicación.
+
 ### Iteración 41 — *2026-10-06* — Sistema visual unificado y experiencia móvil
 
 **Contexto.** Segunda pasada visual previa a F18. La portada aprobada ya definía la identidad

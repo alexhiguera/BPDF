@@ -1,9 +1,8 @@
-<h1 align="center">
-  <a href="https://bpdf.r3zon.com">
-    <img src="public/favicon.svg" alt="BPDF Logo" width="40" height="40" align="center">
-  </a>
-  <strong>BPDF</strong>
-</h1>
+<p align="center">
+  <img src="public/favicon.svg" alt="BPDF" width="96" height="96">
+</p>
+
+<h1 align="center">BPDF</h1>
 
 <p align="center">
   <strong>Visor y editor open source de PDF y Markdown, pensado para leer en modo oscuro.</strong>

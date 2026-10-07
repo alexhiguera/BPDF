@@ -490,21 +490,33 @@ for (const formulas of [false, true]) {
     await expect
       .poll(() => vista.evaluate((a) => a.scrollTop), { timeout: 5000 })
       .toBeGreaterThan(500);
-    const arribaEditor = await page.getByTestId("editor-markdown").evaluate((el) => {
-      const scroller = el.shadowRoot?.querySelector(".cm-scroller") as HTMLElement;
-      const lineas = [...(el.shadowRoot?.querySelectorAll(".cm-line") ?? [])] as HTMLElement[];
-      const caja = scroller.getBoundingClientRect();
-      const visible = lineas.filter((l) => l.getBoundingClientRect().bottom > caja.top);
-      return visible.map((l) => l.textContent ?? "").find((t) => t.startsWith("## Sección")) ?? "";
+    // WebKit reparte una rueda grande entre varios fotogramas. Las dos lecturas tienen que
+    // pertenecer al mismo layout: si se hacen en dos `evaluate`, el editor puede seguir
+    // avanzando mientras Playwright resuelve el segundo locator y se comparan instantes
+    // distintos (la traza mostraba hasta 136 ms entre ellos).
+    const { n, cercano } = await page.evaluate(() => {
+      const el = document.querySelector<HTMLElement>('[data-testid="editor-markdown"]');
+      const raiz = el?.shadowRoot;
+      const scroller = raiz?.querySelector<HTMLElement>(".cm-scroller");
+      const vista = document.querySelector<HTMLElement>("article");
+      if (!raiz || !scroller || !vista) return { n: 0, cercano: 0 };
+      const lineas = [...raiz.querySelectorAll<HTMLElement>(".cm-line")];
+      const cajaEditor = scroller.getBoundingClientRect();
+      const arribaEditor =
+        lineas
+          .filter((l) => l.getBoundingClientRect().bottom > cajaEditor.top)
+          .map((l) => l.textContent ?? "")
+          .find((t) => t.startsWith("## Sección")) ?? "";
+      const cajaVista = vista.getBoundingClientRect();
+      const encabezado = [...vista.querySelectorAll<HTMLElement>("h2")].find(
+        (h) => h.getBoundingClientRect().bottom > cajaVista.top,
+      );
+      return {
+        n: Number(arribaEditor.replace("## Sección ", "")),
+        cercano: Number((encabezado?.textContent ?? "").replace("Sección ", "")),
+      };
     });
-    const n = Number(arribaEditor.replace("## Sección ", ""));
     expect(n).toBeGreaterThan(1);
-    const cercano = await vista.evaluate((a) => {
-      const caja = a.getBoundingClientRect();
-      const hs = [...a.querySelectorAll("h2")] as HTMLElement[];
-      const visible = hs.find((h) => h.getBoundingClientRect().bottom > caja.top);
-      return Number((visible?.textContent ?? "").replace("Sección ", ""));
-    });
     expect(Math.abs(cercano - n)).toBeLessThanOrEqual(1);
     // La vista previa manda al revés, sin bucle: el editor sigue a la vista previa.
     await vista.hover();
