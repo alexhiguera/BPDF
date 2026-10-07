@@ -57,7 +57,7 @@ web); conserva su número, sin trabajo pendiente.
 | 15 | Distribución web | Incluye la publicación web (antes no tenía fase). **Reescrita** el *2026-10-03* sin la parte de escritorio (D19). ✅ **Cerrada** (*2026-10-04*), verificada en producción |
 | 16 | Open source y documentación final | Igual; la licencia ya existe desde F1. ✅ **Implementada**: su trabajo preparó la publicación, que se absorbe en la F18 |
 | 17 | Crear Markdown y exportar a PDF | **Nueva** (*2026-10-04*), antes de publicar v1. ✅ **Cerrada** (*2026-10-06*) |
-| 18 | Publicación final de BPDF v1.0.0 | **Nueva** (*2026-10-04*): hereda de la F16 la publicación. **EN CURSO** (*2026-10-07*): metadata completa; Wiki y Docusaurus preparados, aún sin push, despliegue, tag ni release |
+| 18 | Publicación final de BPDF v1.0.0 | **Nueva** (*2026-10-04*): hereda de la F16 la publicación. ✅ **Cerrada / aprobada** (*2026-10-07*): infraestructura pública, documentación, producción y CI verificadas; tag y release quedan para después del cierre técnico final |
 
 Paralelizables (si hay dos sesiones a la vez): **F7–F9** con **F5–F6**. Todas tocan
 `src/app/App.tsx` en un punto (montar el visor en lugar de `DocumentSummary`, ya hecho en F5 y F7): conflicto
@@ -152,7 +152,8 @@ dependencias nuevas, sin cambios de CSP y sin ninguna petición de red.
   lo suyo al desmontarse ([PLAN.md](PLAN.md) §4.2, [ARCHITECTURE.md](ARCHITECTURE.md) §4 bis).
 - `Platform` con `pickDocument()` y `openDroppedFile(file)`; cada fase añade el método
   que use ([ELECTRON.md](ELECTRON.md) §3).
-- `readDocument(file, id?)` es la única validación, también para Electron.
+- `readDocument(file)` es la única validación. El parámetro opcional de id que se ideó para
+  Electron se retiró en el cierre de v1: la aplicación web siempre genera su id opaco.
 
 **Desviaciones respecto a la especificación**, por si una fase posterior se apoya en ella:
 
@@ -1267,16 +1268,17 @@ T-3 y T-4 decididos y escritos.
 > IME sobre una selección, con CDP. Memoria real con CDP (`npm run bench:memoria`). PDF de 1000
 > páginas y CPU frenada ×4 (`BPDF_CPU`). **Listas cuadráticas: regresión de micromark 4.0.3,
 > fijado en 4.0.2** (`override`, aprobado temporalmente hasta el arreglo de micromark#246).
-> **Limitaciones conocidas de v1, aceptadas:** Markdown de ~1 MB en ~3 s; en el WebKit de
-> Playwright en Linux, Dividido con 1 MB + KaTeX va muy lento (rendimiento, no funciones;
-> sin confirmar en Safari real); Trusted Types sin adoptar. **CI:** job `compat` en `e2e.yml`
+> **Limitaciones conocidas de v1, aceptadas:** Markdown de ~1 MB en ~3 s y Trusted Types sin
+> adoptar. La medición lenta de Dividido con 1 MB + KaTeX en WebKit de Playwright/Linux se
+> reclasificó en el cierre técnico: es una diferencia del entorno y una comprobación post-v1
+> en Safari real, no un fallo funcional. **CI:** job `compat` en `e2e.yml`
 > con Firefox y WebKit.
 >
 > **Diferencias con el alcance escrito abajo:** el corpus grande se genera en los propios
 > benchmarks (`crearPdfGrande(1000)`, los generadores de Markdown), sin `scripts/` nuevos; no
 > hay `rendimiento.spec.ts` aparte (las cifras son de máquina: van en los benchmarks, que no son
-> tests); el `.md` de 5 MB no se midió (1 MB ya decide); la revisión con un lector de pantalla
-> queda para el usuario (TAREAS).
+> tests); el `.md` de 5 MB no se midió (1 MB ya decide). La revisión con lector de pantalla y
+> el resto de comprobaciones manuales se completaron después (iteración 42).
 
 **Objetivo.** Medir con documentos reales y grandes y corregir lo que falle; auditoría de
 accesibilidad de pantallas completas.
@@ -1494,10 +1496,14 @@ documento; el diálogo real de impresión, probado a mano en cada navegador.
 
 ## Fase 18 — Publicación final de BPDF v1.0.0
 
-> **EN CURSO** (*2026-10-07*). La Fase 17 está cerrada. El incidente E2E de sincronía en
-> WebKit quedó resuelto como una medición no atómica del test, sin cambio funcional ni nueva
-> limitación. Metadata del repositorio completa; Wiki y Docusaurus preparados localmente.
-> Aún no hay commit, push, despliegue final, etiqueta ni release.
+> ✅ **CERRADA / APROBADA** (*2026-10-07*). Repositorio público con metadata, Issues,
+> etiquetas, reporte privado de vulnerabilidades y alertas de Dependabot; Wiki publicada;
+> `docs.r3zon.com/bpdf` integrado y desplegado; producción
+> verificada; CI, Chromium, Firefox, WebKit y Security en verde; versión 1.0.0 preparada.
+> Una ejecución de WebKit se canceló durante `playwright install --with-deps webkit` por los
+> mirrors del runner, antes de ejecutar ningún E2E; el rerun instaló WebKit, ejecutó la suite
+> y terminó verde. No fue un fallo de BPDF. El tag y la GitHub Release se harán después del
+> cierre técnico final de v1.
 
 **Objetivo.** Publicar BPDF v1.0.0: el cierre que la Fase 16 dejó preparado, ya con la Fase 17
 dentro de la primera versión pública (la versión sigue siendo 1.0.0: no se ha publicado nada).
@@ -1517,7 +1523,8 @@ dentro de la primera versión pública (la versión sigue siendo 1.0.0: no se ha
   `public_docs/novedades.md`);
 - comprobación final de documentación y enlaces.
 
-**Quién.** El usuario autoriza por separado cada commit y push y crea la etiqueta y la release.
-Private Vulnerability Reporting y Dependabot Alerts se activan manualmente en GitHub. La fase
-no se cierra hasta que Wiki y documentación estén publicadas, CI y producción estén verificadas
-y existan la etiqueta y la GitHub Release.
+**Resultado.** La F16 preparó el open source y la documentación; la F17 añadió Crear Markdown,
+Guardar como y Exportar a PDF; la F18 publicó y verificó la infraestructura final. El cierre
+técnico definitivo de v1 también está completado: **BPDF v1.0.0 — DESARROLLO FINALIZADO /
+LISTO PARA TAG Y RELEASE**. El usuario autoriza por separado cada commit y push y crea la
+etiqueta y la release; todavía no se han hecho.

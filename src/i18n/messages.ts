@@ -42,7 +42,14 @@ const teclas = {
 export const messages = {
   app: {
     skipToContent: "Saltar al contenido",
-    noscript: "BPDF necesita JavaScript para funcionar.",
+    backHome: "Volver a BPDF",
+    noscriptTitle: "BPDF necesita JavaScript",
+    noscriptBody:
+      "Activa JavaScript en este navegador para abrir y leer tus documentos de forma local.",
+  },
+  notFound: {
+    title: "Página no encontrada",
+    body: "La dirección no existe. BPDF funciona desde su página principal.",
   },
   emptyState: {
     title: "Tu lector de PDF y Markdown",
@@ -475,9 +482,10 @@ export const messages = {
     },
   },
   error: {
-    title: "Algo ha fallado",
-    body: "Puedes volver a intentarlo.",
-    retry: "Reintentar",
+    title: "Ha ocurrido un error",
+    body: "BPDF no ha podido continuar. Tus documentos no se han enviado ni guardado fuera de este dispositivo.",
+    reload: "Recargar BPDF",
+    home: "Volver al inicio",
   },
 } as const;
 

@@ -26,14 +26,12 @@ export type LocalFile = Pick<File, "name" | "size" | "slice" | "arrayBuffer">;
  * - Markdown: se lee entero, se decodifica y solo se conserva el texto.
  *
  * Nada del contenido se interpreta ni se ejecuta aquí, y nada sale del
- * dispositivo. La plataforma solo aporta el fichero. (`id` admite uno dado: se
- * pensó para que una versión Electron, cancelada (D19), asignara el suyo; hoy solo
- * lo usan los tests.)
+ * dispositivo. La plataforma solo aporta el fichero. El identificador es
+ * siempre interno y opaco: la antigua entrada opcional para Electron se retiró
+ * al cerrar v1 porque no tenía ningún consumidor web.
  */
-export async function readDocument(
-  file: LocalFile,
-  id: string = nextDocumentId(),
-): Promise<OpenedDocument> {
+export async function readDocument(file: LocalFile): Promise<OpenedDocument> {
+  const id = nextDocumentId();
   const name = displayName(file.name, messages.document.untitled);
   const kind = kindFromName(name);
   if (!kind) throw new DocumentError("unsupported", { fileName: name });

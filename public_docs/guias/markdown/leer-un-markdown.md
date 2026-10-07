@@ -8,7 +8,7 @@ description: "BPDF muestra los Markdown con tablas, listas de tareas, notas al p
 keywords: [leer markdown, gfm, índice, notas al pie, copiar código]
 tags: [markdown, lectura]
 last_update:
-  date: 2026-10-04
+  date: 2026-10-07
   author: Equipo R3ZON
 r3zon:
   tipo: guia
@@ -58,13 +58,14 @@ pedir nada a internet. Lo muestra para que sepas que estaba ahí.
 
 ### ¿Puedo imprimir el Markdown formateado?
 
-BPDF no tiene función de imprimir. Puedes usar la impresión del navegador, pero el resultado
-no está preparado para papel.
+Sí. Usa **Guardar como… → PDF (.pdf)** y elige colores claros u oscuros. BPDF prepara el
+documento para papel y abre la impresión del navegador; allí eliges **Guardar como PDF**
+([Exportar a PDF](exportar-a-pdf.md)).
 
 ## Qué leer después
 
 - [Editar un Markdown](editar-un-markdown.md)
 - [Fórmulas](formulas.md) y [diagramas](diagramas.md)
 
-> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-04.
+> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-07.
 > https://docs.r3zon.com/bpdf/guias/markdown/leer-un-markdown

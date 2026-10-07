@@ -154,7 +154,8 @@ export default function VisorPdf({
         {documento.name}
       </h1>
       {carga.fase === "cargando" && (
-        <p role="status" className="text-fg-muted">
+        <p role="status" className="ui-notice flex items-center gap-3 px-4 py-3 text-fg-muted">
+          <span aria-hidden="true" className="ui-spinner" />
           {t.loading}
         </p>
       )}

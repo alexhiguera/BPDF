@@ -10,12 +10,18 @@ import { revisarDist } from "./lib/dist.mjs";
 
 // Node 24 ejecuta TypeScript sin compilar: la fuente es la misma que usa la build.
 const { robotsTxt, sitemapXml } = await import("../src/config/public-site.ts");
+const { siteUrl } = await import("../src/config/project.ts");
 
 if (!existsSync("dist/index.html")) {
   console.error("✗ No hay build: ejecuta antes `npm run build`.");
   process.exit(1);
 }
-const problemas = revisarDist({ dir: "dist", robots: robotsTxt(), sitemap: sitemapXml() });
+const problemas = revisarDist({
+  dir: "dist",
+  robots: robotsTxt(),
+  sitemap: sitemapXml(),
+  site: siteUrl(),
+});
 if (problemas.length === 0) {
   console.log("✓ dist/ es publicable: dominio, robots, sitemap y recursos del propio sitio.");
   process.exit(0);

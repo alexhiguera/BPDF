@@ -392,7 +392,8 @@ Se publica en:
 
 🌐 **[docs.r3zon.com/bpdf](https://docs.r3zon.com/bpdf)**
 
-y también puede generarse para la **GitHub Wiki**.
+y en la **[GitHub Wiki](https://github.com/alexhiguera/BPDF/wiki)**. Las dos salen de la
+misma fuente; la Wiki no se edita a mano:
 
 ```bash
 npm run wiki:generar -- ../BPDF.wiki

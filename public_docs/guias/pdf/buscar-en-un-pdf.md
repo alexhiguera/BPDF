@@ -8,7 +8,7 @@ description: "Busca texto en un PDF con Ctrl/⌘+F: BPDF resalta las coincidenci
 keywords: [buscar en pdf, ctrl+f, coincidencias, mayúsculas, palabra completa]
 tags: [pdf, busqueda]
 last_update:
-  date: 2026-10-04
+  date: 2026-10-07
   author: Equipo R3ZON
 r3zon:
   tipo: guia
@@ -35,6 +35,8 @@ o F3. Puede distinguir mayúsculas y buscar palabras completas.
 ## Qué tener en cuenta
 
 - En un PDF largo, la búsqueda avanza página a página e indica cuántas ha revisado.
+- Si termina sin coincidencias, muestra **Sin resultados** y desactiva los botones anterior y
+  siguiente hasta que cambies la búsqueda.
 - Busca en el texto que trae el PDF. Un PDF escaneado no tiene texto: BPDF te avisa de que
   sus páginas son imágenes.
 
@@ -60,5 +62,5 @@ No. Se hace en tu dispositivo, sobre el PDF abierto.
 - [Atajos del visor](atajos-del-visor.md)
 - [Miniaturas](miniaturas.md)
 
-> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-04.
+> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-07.
 > https://docs.r3zon.com/bpdf/guias/pdf/buscar-en-un-pdf

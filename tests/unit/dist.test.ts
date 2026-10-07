@@ -7,6 +7,7 @@ import { revisarDist } from "../../scripts/lib/dist.mjs";
 /** Una build mínima y publicable, que cada test estropea de una forma. */
 const ROBOTS = "User-agent: *\nAllow: /\n\nSitemap: https://bpdf.test/sitemap.xml\n";
 const SITEMAP = "<urlset><url><loc>https://bpdf.test/</loc></url></urlset>\n";
+const SITE = "https://bpdf.test";
 const BASE: Record<string, string> = {
   "index.html":
     '<link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/assets/i.css"><script type="module" src="/assets/i.js"></script>',
@@ -25,7 +26,7 @@ function build(cambios: Record<string, string | null> = {}) {
     mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
     writeFileSync(path.join(dir, rel), texto);
   }
-  return revisarDist({ dir, robots: ROBOTS, sitemap: SITEMAP }).join("\n");
+  return revisarDist({ dir, robots: ROBOTS, sitemap: SITEMAP, site: SITE }).join("\n");
 }
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
@@ -80,5 +81,20 @@ describe("revisarDist", () => {
 
   it("no confunde la palabra «localhost» de un mensaje de error con una URL", () => {
     expect(build({ "assets/i.js": 'TypeError(`File URL host must be "localhost"`)' })).toBe("");
+  });
+
+  it("acepta el canonical absoluto del sitio oficial", () => {
+    expect(
+      build({
+        "index.html":
+          '<link rel="canonical" href="https://bpdf.test/"><link rel="icon" href="/favicon.svg">',
+      }),
+    ).toBe("");
+  });
+
+  it("rechaza un canonical de otro origen", () => {
+    expect(build({ "index.html": '<link rel="canonical" href="https://otro.test/">' })).toMatch(
+      /fuera de la build/,
+    );
   });
 });

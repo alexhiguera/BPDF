@@ -8,7 +8,7 @@ import type { RecursoLocal } from "@/documents/types";
 import { messages } from "@/i18n/messages";
 import { formatBytes } from "@/lib/format";
 import { clasificarImagen } from "../url-policy";
-import { useAcciones, useImagenes, useImpresion } from "./acciones";
+import { useAcciones, useDentroDeEnlace, useImagenes, useImpresion } from "./acciones";
 
 const t = messages.markdown.image;
 
@@ -29,6 +29,7 @@ type Fallo = Exclude<Resolucion["estado"], "ok"> | "rota";
  */
 export function Imagen({ src, alt, title }: Props) {
   const { abrirExterno } = useAcciones();
+  const dentroDeEnlace = useDentroDeEnlace();
   const { recursos } = useImagenes();
   const destino = clasificarImagen(src);
   const descripcion = alt?.trim() || t.noAlt;
@@ -49,18 +50,20 @@ export function Imagen({ src, alt, title }: Props) {
         ayuda={title ?? t.remoteHint}
         tipo="remota"
       >
-        <a
-          href={destino.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => {
-            e.preventDefault();
-            abrirExterno(destino.url);
-          }}
-          onAuxClick={(e) => e.preventDefault()}
-        >
-          {t.openRemote}
-        </a>
+        {!dentroDeEnlace && (
+          <a
+            href={destino.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => {
+              e.preventDefault();
+              abrirExterno(destino.url);
+            }}
+            onAuxClick={(e) => e.preventDefault()}
+          >
+            {t.openRemote}
+          </a>
+        )}
       </Marcador>
     );
   }

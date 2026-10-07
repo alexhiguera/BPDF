@@ -10,6 +10,52 @@ bitácora de esa plantilla.
 
 ---
 
+### Iteración 46 — *2026-10-07* — Cierre técnico definitivo de BPDF v1.0.0
+
+**Estados límite.** Se añade una página 404 estática y coherente con BPDF, se convierte el
+`noscript` en una salida útil y se completa el error global con recuperación segura. Los
+estados de carga de PDF, Markdown y Mermaid comparten el indicador del sistema; la búsqueda
+PDF anuncia sus resultados dinámicos. Un marcador de imagen remota dentro de un enlace deja
+de producir anchors anidados: conserva el enlace exterior y la política sigue bloqueando la
+carga. No cambia ningún motor de documento ni su algoritmo.
+
+**Deuda cerrada.** `readDocument` deja de aceptar el identificador heredado de Electron y lo
+genera siempre internamente. El salto residual de WebKit no reaparece en 20 repeticiones
+seriales después de las correcciones semánticas existentes; el E2E de 200 ms ya usa reloj
+virtual y es determinista. KaTeX transitivo, el `override` de micromark y la medición del caso
+extremo en Safari quedan como seguimientos post-v1 justificados, ninguno bloqueante. El E2E
+de 200 ms pausa ahora el reloj virtual antes del gesto: la carga del runner ya no consume el
+intervalo medido, sin cambiar el timeout ni la espera funcional. La compatibilidad limita a
+dos workers solo en local para que Firefox y WebKit no dejen sin CPU al servidor de preview;
+CI conserva su concurrencia.
+
+**Documentación.** Se auditan la documentación interna y las 36 páginas públicas contra el
+código. Se corrigen la exportación PDF desde Markdown, el Dividido móvil, el panel móvil de
+miniaturas, la persistencia de ese panel y el estado «Sin resultados». La auditoría final
+queda consolidada en [`auditoria.md`](auditoria.md).
+
+**Verificación final.** `lint`, tipos, 1.128 tests Vitest, 142 E2E Chromium, 271 E2E de
+compatibilidad (13 omisiones justificadas), build, límite de 102,5 KB gzip, verificador de
+`dist`, 324 enlaces, 36 páginas públicas y `git diff --check`, en verde. Producción pasa 6/6
+smokes y sus cabeceras coinciden con la fuente. `npm audit` conserva 4 avisos bajos del mismo
+KaTeX transitivo aceptado. Resultado: **BPDF v1.0.0 — DESARROLLO FINALIZADO / LISTO PARA TAG Y
+RELEASE**; sin commit, push, etiqueta ni release en esta iteración.
+
+### Iteración 45 — *2026-10-07* — F18 cerrada y aprobada
+
+**Publicación.** La F18 queda **CERRADA / APROBADA**: repositorio público con metadata,
+Issues, etiquetas, reporte privado de vulnerabilidades y alertas de Dependabot; Wiki publicada desde `public_docs/`; BPDF integrado y desplegado en
+`docs.r3zon.com/bpdf`; producción verificada; versión 1.0.0 preparada. La F16 preparó el open
+source y la documentación, la F17 añadió Crear Markdown y Exportar a PDF, y la F18 publicó y
+verificó la infraestructura final. La etiqueta y la GitHub Release se reservan para después
+del cierre técnico definitivo.
+
+**CI.** CI, Security y los E2E de Chromium, Firefox y WebKit están en verde. Una ejecución de
+WebKit quedó cancelada durante `npx playwright install --with-deps webkit`, tras problemas de
+los mirrors de Ubuntu y antes de ejecutar ningún test. El rerun instaló WebKit, arrancó la
+suite y terminó verde: se clasifica como incidencia transitoria de infraestructura del runner,
+sin cambios de código, tests, tiempos ni workflow.
+
 ### Iteración 44 — *2026-10-07* — F18 reanudada: metadata y publicación preparadas
 
 **Estado.** El incidente WebKit de la iteración 43 queda cerrado: la lectura atómica del E2E

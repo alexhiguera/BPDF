@@ -1,13 +1,14 @@
 # Estructura del repositorio
 
-Estado tras la Fase 8 (*2026-09-30*). Cada fase actualiza este árbol con lo que crea; lo
-que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas vacías).
+Estado final de BPDF v1.0.0 (*2026-10-07*). El árbol recoge la aplicación web, sus pruebas y
+la documentación que se publica desde este repositorio.
 
 ```text
 ├── CLAUDE.md                 reglas de trabajo (personas y agentes)
 ├── README.md                 qué es BPDF y cómo arrancarlo
 ├── LICENSE                   Apache-2.0
 ├── index.html                entrada de Vite; sin scripts en línea
+├── 404.html                  error estático propio, usable aunque React no llegue a cargar
 ├── mermaid.html              segunda entrada: el marco aislado de Mermaid (F8), con su propia CSP
 ├── vite.config.ts            build estática, workers como módulos ES, cabeceras de `preview`, plugin de BPDF
 ├── vercel.json               cabeceras HTTP de la web publicada: GENERADO (`npm run cabeceras:vercel`)
@@ -44,6 +45,7 @@ que está marcado «llega en Fx» todavía **no existe** (no se crean carpetas v
 │   │   └── public-site.ts    robots.txt y sitemap.xml (fechas literales)
 │   ├── i18n/messages.ts      TODOS los textos visibles (D2)
 │   ├── styles/globals.css    Tailwind 4 + tokens de diseño
+│   ├── styles/static.css     estilos mínimos compartidos por 404 y estado sin JavaScript
 │   ├── styles/visor-pdf.css  capa de texto de pdf.js (adaptada), enlaces y resaltado; con el visor
 │   ├── styles/markdown.css   estilos del CONTENIDO de un Markdown (todo bajo .md-contenido); con el visor
 │   ├── documents/            el documento abierto, sin UI ni plataforma

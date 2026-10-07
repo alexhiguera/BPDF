@@ -12,7 +12,7 @@ quien lo usa está en [`public_docs/`](../public_docs/README.md) (publicada en
 - **La bitácora** ([CHANGELOG.md](CHANGELOG.md)) cuenta cada iteración de desarrollo con su
   porqué, lo descartado y los errores del camino. No es el registro de cambios para usuarios,
   que está en [`public_docs/novedades.md`](../public_docs/novedades.md).
-- Las fases (F0–F16), las decisiones (D-n) y las tareas son la historia y el estado del
+- Las fases (F0–F18), las decisiones (D-n) y las tareas son la historia y el estado del
   proyecto: [FASES.md](FASES.md), [PLAN.md](PLAN.md) §14 y
   [TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md).
 
@@ -41,10 +41,10 @@ quien lo usa está en [`public_docs/`](../public_docs/README.md) (publicada en
 - [TEMPLATE.md](TEMPLATE.md) — de qué plantilla nace BPDF y por qué se separó.
 
 ### Seguimiento
-- [TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md) — fases y decisiones abiertas. **Fuente de
-  verdad del estado.**
+- [TAREAS_PENDIENTES.md](TAREAS_PENDIENTES.md) — seguimientos post-v1 que siguen abiertos.
+  **Fuente de verdad del estado pendiente.**
 - [CHANGELOG.md](CHANGELOG.md) — bitácora de iteraciones, con el porqué.
-- [auditoria.md](auditoria.md) — auditorías de seguridad y estado de cada hallazgo.
+- [auditoria.md](auditoria.md) — auditoría final de v1 y estado de los hallazgos de seguridad.
 - [mejoras.md](mejoras.md) — propuestas con lo que las desbloquea.
 
 ## Cómo contribuir a estos documentos

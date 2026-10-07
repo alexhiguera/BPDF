@@ -400,25 +400,23 @@ describe("App: PDF con contraseña (Fase 6, D13)", () => {
 });
 
 describe("ErrorBoundary", () => {
-  it("sustituye un render que falla por un aviso con reintento, y reintentar lo recupera", async () => {
+  it("sustituye un render que falla por una salida segura, accesible y sin detalles técnicos", async () => {
     // React registra el error en consola; aquí es esperado.
     const consola = vi.spyOn(console, "error").mockImplementation(() => {});
-    let falla = true;
-    function Fragil() {
-      if (falla) throw new Error("fallo de prueba");
-      return <p>recuperado</p>;
+    function Fragil(): never {
+      throw new Error("fallo de prueba");
     }
 
-    render(
+    const { container } = render(
       <ErrorBoundary>
         <Fragil />
       </ErrorBoundary>,
     );
     expect(screen.getByRole("heading", { name: messages.error.title })).toBeInTheDocument();
-
-    falla = false;
-    fireEvent.click(screen.getByRole("button", { name: messages.error.retry }));
-    expect(screen.getByText("recuperado")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: messages.error.reload })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: messages.error.home })).toHaveAttribute("href", "/");
+    expect(container).not.toHaveTextContent("fallo de prueba");
+    expect(await axe(container)).toHaveNoViolations();
     consola.mockRestore();
   });
 });

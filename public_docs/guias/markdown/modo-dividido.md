@@ -8,7 +8,7 @@ description: "El modo Dividido de BPDF muestra el texto del Markdown y su result
 keywords: [modo dividido, vista previa markdown, editor y vista previa, separador]
 tags: [markdown, edicion, dividido]
 last_update:
-  date: 2026-10-04
+  date: 2026-10-07
   author: Equipo R3ZON
 r3zon:
   tipo: guia
@@ -34,8 +34,9 @@ que el texto. Arrastra el separador, o usa ← y →, para repartir el ancho.
 
 ## Qué tener en cuenta
 
-- En pantallas estrechas, el editor y la vista previa se apilan uno sobre otro y no hay
-  separador.
+- En pantallas estrechas **no aparecen dos columnas estrechas a la vez**: el selector
+  **Editar | Vista previa** alterna entre ambas sin desmontar el editor. Los modos
+  **Lectura**, **Edición** y **Dividido** están en **Herramientas**; no hay separador.
 - Con un documento muy grande, la vista previa **se pausa** mientras escribes, para no
   interrumpirte: pulsa **Actualizar la vista previa** para verla al día.
 - Con un Markdown muy grande lleno de fórmulas, escribir en **Dividido** puede ir lento; en
@@ -52,5 +53,5 @@ que el texto. Arrastra el separador, o usa ← y →, para repartir el ancho.
 - [Editar un Markdown](editar-un-markdown.md)
 - [Un Markdown grande tarda](../../problemas/un-markdown-grande-tarda.md)
 
-> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-04.
+> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-07.
 > https://docs.r3zon.com/bpdf/guias/markdown/modo-dividido

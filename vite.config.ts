@@ -1,8 +1,9 @@
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, type Plugin } from "vite";
 import { constantesDeCompilacion } from "./src/config/compilacion.ts";
-import { htmlLang, project } from "./src/config/project.ts";
+import { htmlLang, project, siteUrl } from "./src/config/project.ts";
 import { robotsTxt, sitemapXml } from "./src/config/public-site.ts";
 import {
   cabecerasPara,
@@ -38,7 +39,12 @@ function bpdf(esBuild: boolean): Plugin {
         .replace(/<html lang="[^"]*">/, `<html lang="${html(htmlLang)}">`)
         .replaceAll("__BPDF_NAME__", html(project.name))
         .replaceAll("__BPDF_DESCRIPTION__", html(project.description))
-        .replaceAll("__BPDF_NOSCRIPT__", html(messages.app.noscript));
+        .replaceAll("__BPDF_SITE_URL__", html(siteUrl()))
+        .replaceAll("__BPDF_NOSCRIPT_TITLE__", html(messages.app.noscriptTitle))
+        .replaceAll("__BPDF_NOSCRIPT_BODY__", html(messages.app.noscriptBody))
+        .replaceAll("__BPDF_NOT_FOUND_TITLE__", html(messages.notFound.title))
+        .replaceAll("__BPDF_NOT_FOUND_BODY__", html(messages.notFound.body))
+        .replaceAll("__BPDF_BACK_HOME__", html(messages.app.backHome));
       if (!esBuild) return sustituido;
       return {
         html: sustituido,
@@ -55,6 +61,28 @@ function bpdf(esBuild: boolean): Plugin {
       };
     },
     configurePreviewServer(servidor) {
+      // La aplicación solo tiene una URL pública. Vercel sirve `404.html` con
+      // estado 404 de forma nativa; aquí se responde directamente porque el
+      // servidor estático de Vite convertiría el estado en 200 al servirla.
+      servidor.middlewares.use((peticion, respuesta, siguiente) => {
+        const ruta = new URL(peticion.url ?? "/", "http://localhost").pathname;
+        const paginaConocida = ["/", "/index.html", "/404.html", RUTA_MARCO_MERMAID].includes(ruta);
+        const ultimoSegmento = ruta.split("/").at(-1) ?? "";
+        if (!paginaConocida && !ultimoSegmento.includes(".")) {
+          for (const [nombre, valor] of Object.entries(cabecerasPara(ruta))) {
+            respuesta.setHeader(nombre, valor);
+          }
+          respuesta.statusCode = 404;
+          respuesta.setHeader("Content-Type", "text/html; charset=utf-8");
+          respuesta.end(
+            peticion.method === "HEAD"
+              ? undefined
+              : readFileSync(path.resolve(servidor.config.build.outDir, "404.html")),
+          );
+          return;
+        }
+        siguiente();
+      });
       servidor.middlewares.use((peticion, respuesta, siguiente) => {
         for (const [nombre, valor] of Object.entries(cabecerasPara(peticion.url ?? "/"))) {
           respuesta.setHeader(nombre, valor);
@@ -94,6 +122,7 @@ export default defineConfig(({ command }) => ({
       // Fase 8: la app y el marco aislado de Mermaid (`mermaid.html`).
       input: {
         index: path.resolve(import.meta.dirname, "index.html"),
+        "404": path.resolve(import.meta.dirname, "404.html"),
         mermaid: path.resolve(import.meta.dirname, "mermaid.html"),
       },
     },

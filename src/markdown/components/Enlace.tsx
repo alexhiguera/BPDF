@@ -3,7 +3,7 @@ import type { ExtraProps } from "react-markdown";
 import { messages } from "@/i18n/messages";
 import { idsCandidatos } from "../toc";
 import { clasificarEnlace } from "../url-policy";
-import { useAcciones } from "./acciones";
+import { ContextoDentroDeEnlace, useAcciones } from "./acciones";
 
 const t = messages.markdown.link;
 
@@ -43,7 +43,7 @@ export function Enlace({ node: _node, href, children, title, ...resto }: Props) 
         }}
         onAuxClick={(e) => e.preventDefault()}
       >
-        {children}
+        <ContextoDentroDeEnlace value={true}>{children}</ContextoDentroDeEnlace>
       </a>
     );
   }
@@ -59,7 +59,7 @@ export function Enlace({ node: _node, href, children, title, ...resto }: Props) 
           irASeccion(destino.fragmento);
         }}
       >
-        {children}
+        <ContextoDentroDeEnlace value={true}>{children}</ContextoDentroDeEnlace>
       </a>
     );
   }

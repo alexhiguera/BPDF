@@ -113,7 +113,11 @@ export function BarraBusqueda({
       >
         <ChevronDown aria-hidden="true" className="size-4" />
       </button>
-      <span className="text-sm text-fg-muted tabular-nums" data-testid="estado-busqueda">
+      <span
+        role="status"
+        className="text-sm text-fg-muted tabular-nums"
+        data-testid="estado-busqueda"
+      >
         {estado}
       </span>
       <button

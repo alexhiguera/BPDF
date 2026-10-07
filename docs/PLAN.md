@@ -620,9 +620,9 @@ reales):
 |---|---|
 | Primera página de un PDF de 1000 páginas < 1,5 s | ✅ 0,95 s (con la CPU frenada ×4: 1,3 s) |
 | Ninguna tarea larga > 200 ms al navegar un PDF | ✅ ninguna (×4: máx. 179 ms) |
-| Ninguna tarea larga > 200 ms al teclear | ✅ salvo la excepción de la Fase 9 (Dividido con 1 MB + KaTeX: máx. 224 ms en Chromium) y, en el WebKit de Playwright en Linux, ese mismo caso (P50 ~400 ms): **limitación conocida de v1**, sin confirmar en Safari real |
+| Ninguna tarea larga > 200 ms al teclear | ✅ en documentos habituales. El caso extremo de Dividido con 1 MB + KaTeX midió máx. 224 ms en Chromium; WebKit de Playwright en Linux, con render por software, DPR 2 y CPU limitada, midió P50 ~400 ms. No es un fallo funcional ni evidencia equivalente a Safari real; queda una medición post-v1 |
 | Memoria estable al abrir y cerrar | ✅ el montón vuelve a 6–9 MiB, workers y URL `blob:` a 0 (`bench:memoria`, CDP) |
-| Arranque ≤ 150 KB gzip | ✅ 95,1 KB |
+| Arranque ≤ 150 KB gzip | ✅ 102,5 KB en el cierre de v1 (95,1 KB al cerrar la Fase 13) |
 
 **Las que esperaban a evidencia, decididas en la Fase 13:**
 
@@ -646,9 +646,9 @@ reales):
 | Unitario | Vitest (`node`) | Detección de tipo y límites; política de URLs; slugs y TOC; esquema y migración de preferencias; huellas; mapeo de color del modo oscuro (función pura); cálculo de regiones de imagen a partir de un operator list sintético; contraste de tokens |
 | Componentes | Vitest + jsdom + Testing Library + jest-axe | Barra de herramientas, estado vacío, errores, `MarkdownView` con el corpus de XSS, `CodeBlock` (copiar), TOC, preferencias |
 | Seguridad | Vitest | **Corpus de XSS de Markdown** ([SEGURIDAD.md](SEGURIDAD.md) §3.3): el DOM resultante no contiene `<script>`, atributos `on*`, `href`/`src` con protocolos no permitidos, `<iframe>`, `<object>`, `<embed>`, `<svg>` en línea |
-| Render real | Playwright (Chromium) | PDF: páginas, navegación, zoom, búsqueda, selección y copia, enlaces, rotación; **muestreo de píxeles** del modo oscuro (fondo oscuro, texto claro, región de imagen con sus colores originales) sobre fixtures conocidos |
+| Render real | Playwright (Chromium, Firefox y WebKit) | Suite principal en Chromium y compatibilidad completa en Firefox/WebKit: PDF, Markdown, editor y recorridos responsive. Incluye **muestreo de píxeles** del modo oscuro sobre fixtures conocidos |
 | Casos límite | Vitest + Playwright | PDF vacío, truncado, no-PDF con extensión `.pdf`, cifrado, con JavaScript, con enlaces `javascript:`/`file:`/`launch`; Markdown no UTF-8, enorme, con anidamiento patológico |
-| E2E | Playwright | Recorridos: abrir por selector y por arrastre; PDF → buscar → ir a página; Markdown → editar → guardar (descarga); CSP sin violaciones (escucha de `securitypolicyviolation`) |
+| E2E | Playwright | Recorridos: abrir por selector y por arrastre; PDF → buscar → ir a página; Markdown → editar → guardar; creación y exportación; teclado y touch; 320–1440 px; accesibilidad; CSP, consola y red vigiladas. El mismo núcleo se ejecuta en Chromium, Firefox y WebKit |
 
 **Fixtures** en `tests/fixtures/` (PDF y Markdown pequeños, generados o creados a mano,
 con su procedencia y licencia en un `README.md` del directorio). Nunca documentos de
@@ -661,7 +661,7 @@ terceros sin licencia clara.
   fuente (`src/config/security-headers.ts`) y se generan para el hosting (`vercel.json`,
   `npm run cabeceras:vercel`, desde la iteración 11).
 - **Sin escritorio** (D19): ni empaquetado, ni instaladores, ni firma de binarios.
-- **Open source** (✅ preparado en la Fase 16; se publica en la Fase 18): `LICENSE` (D3), `README.md` del producto, `CONTRIBUTING.md`,
+- **Open source** (✅ preparado en la Fase 16 y publicado en la Fase 18): `LICENSE` (D3), `README.md` del producto, `CONTRIBUTING.md`,
   `SECURITY.md` (reporte privado por GitHub Security Advisories), `CODE_OF_CONDUCT.md`
   (Contributor Covenant), plantillas de issue/PR, `docs/` como documentación de
   arquitectura, `CHANGELOG` de versiones para usuarios (distinto de la bitácora interna,

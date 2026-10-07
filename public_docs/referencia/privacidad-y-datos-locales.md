@@ -8,7 +8,7 @@ description: "BPDF procesa tus documentos en tu dispositivo: sin servidor, sin c
 keywords: [privacidad, local, sin servidor, sin telemetría, localstorage, datos]
 tags: [referencia, privacidad, seguridad]
 last_update:
-  date: 2026-10-04
+  date: 2026-10-07
   author: Equipo R3ZON
 r3zon:
   tipo: referencia
@@ -40,7 +40,7 @@ si lo pulsas, en una pestaña nueva y sin decir a esa web desde dónde llegas.
 
 | Qué | Dónde | Contiene |
 |---|---|---|
-| Preferencias (`bpdf:prefs`) | Almacenamiento local del navegador | Colores, zoom y vista de PDF; letra y ancho de Markdown; atajos de una tecla; si recordar posiciones |
+| Preferencias (`bpdf:prefs`) | Almacenamiento local del navegador | Colores, zoom, vista y estado de miniaturas de PDF; letra y ancho de Markdown; atajos de una tecla; si recordar posiciones |
 | Posiciones (`bpdf:positions`) | Almacenamiento local del navegador | Por cada PDF (hasta 50): una huella del archivo, página, zoom y fecha de lectura |
 
 Nada más: ni cookies, ni otros almacenamientos, ni cachés de documentos. Borrarlo:
@@ -58,5 +58,5 @@ El código es público (Apache-2.0), en el repositorio enlazado desde **Preferen
 de BPDF». En las herramientas de desarrollo del navegador, la pestaña de red muestra que, al
 abrir un documento, no sale ninguna petición fuera de `bpdf.r3zon.com`.
 
-> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-04.
+> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-07.
 > https://docs.r3zon.com/bpdf/referencia/privacidad-y-datos-locales

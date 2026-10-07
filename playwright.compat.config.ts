@@ -11,6 +11,10 @@ import base from "./playwright.config";
  */
 export default defineConfig({
   ...base,
+  // En local, Firefox y WebKit comparten máquina: varios procesos pesados pueden
+  // dejar sin CPU hasta al `vite preview` y agotar 30 s en `page.goto`. CI ya
+  // limita Playwright por defecto; allí no se cambia la concurrencia.
+  workers: process.env.CI ? undefined : 2,
   projects: [
     { name: "firefox", use: { ...devices["Desktop Firefox"] } },
     { name: "webkit", use: { ...devices["Desktop Safari"] } },

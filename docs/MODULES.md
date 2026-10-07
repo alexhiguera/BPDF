@@ -13,9 +13,9 @@ Qué hay hoy en BPDF y en qué estado. Leyenda: ✅ completo · 🚧 provisional
 | CSP y cabeceras de seguridad | ✅ F2 (base; se amplía por fase) · ✅ F12 (CSP definitiva, `Permissions-Policy` ampliada; verificadas en producción) | `src/config/security-headers.ts` |
 | Tests: unitarios, componentes, a11y, guardarraíles, E2E | ✅ | `tests/`, `e2e/` |
 | CI: calidad, tamaño del arranque, E2E, seguridad de dependencias | ✅ | `.github/workflows/` |
-| `public_docs/` con contrato y validador | ✅ F16: documentación pública completa (34 páginas) validada contra el contrato del hub; registro de cambios para usuarios, `novedades.md` (F15) | `public_docs/`, `scripts/validar-public-docs.mjs`, `scripts/lib/public-docs.mjs` |
-| GitHub Wiki generada desde `public_docs/` | ✅ F16 (preparada; la publica el usuario) | `scripts/generar-wiki.mjs`, `scripts/lib/wiki.mjs` |
-| Repositorio open source: README, `NOTICE`, CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, plantillas de issue y PR | ✅ F16 (hacerlo público: el usuario) | raíz, `.github/` |
+| `public_docs/` con contrato y validador | ✅ F16/F18: documentación pública completa (36 páginas), integrada en `docs.r3zon.com/bpdf`; registro de cambios para usuarios, `novedades.md` (F15) | `public_docs/`, `scripts/validar-public-docs.mjs`, `scripts/lib/public-docs.mjs` |
+| GitHub Wiki generada desde `public_docs/` | ✅ F18: publicada; `public_docs/` sigue siendo la fuente canónica | `scripts/generar-wiki.mjs`, `scripts/lib/wiki.mjs` |
+| Repositorio open source: README, `NOTICE`, CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, plantillas de issue y PR | ✅ F16/F18: repositorio público con metadata, Issues, etiquetas, reporte privado y alertas de Dependabot | raíz, `.github/` |
 | Documentación interna y plan | ✅ | `docs/` |
 | Apertura de archivos (selector, `Ctrl/Cmd+O`, arrastre, validación) | ✅ F3 | `src/documents/`, `src/app/DropZone.tsx`, `src/app/DocumentErrorAlert.tsx` |
 | Capa de plataforma (web) | ✅ F3 (la única: sin escritorio, D19) | `src/platform/` |

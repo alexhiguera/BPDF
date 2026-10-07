@@ -207,6 +207,16 @@ describe("MarkdownView: imágenes remotas y sin recursos", () => {
     expect(onOpenExternal).toHaveBeenCalledWith("https://example.com/logo.png");
   });
 
+  it("una imagen remota enlazada conserva solo el enlace exterior, sin anidar anchors", () => {
+    const { articulo, en, onOpenExternal } = montar(
+      "[![enlazada](https://tracker.example/imagen.png)](https://example.com/)",
+    );
+    expect(articulo.querySelectorAll("a")).toHaveLength(1);
+    expect(en.queryByRole("link", { name: t.image.openRemote })).not.toBeInTheDocument();
+    fireEvent.click(en.getByRole("link"));
+    expect(onOpenExternal).toHaveBeenCalledWith("https://example.com/");
+  });
+
   it("local sin recursos entregados: marcador que explica cómo verla", () => {
     const { articulo } = montar("![Logo](./logo.png)\n\n![](images/example.jpg)");
     expect(articulo.querySelector("img")).toBeNull();

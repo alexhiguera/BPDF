@@ -12,9 +12,10 @@ pública, la GitHub Wiki y la publicación final de v1.0.0 ([FASES.md](FASES.md)
   proyecto en Vercel (repositorio, dominio) no vive en este repositorio. El build es el
   mismo en local, en CI y en Vercel: sin variables de entorno ni secretos.
 - **Build:** `npm run build` produce en `dist/` un sitio **estático** (HTML, JS, CSS, fuentes,
-  `favicon.svg`, `robots.txt`, `sitemap.xml`) con dos páginas: la app (`index.html`) y el
-  marco aislado de Mermaid (`mermaid.html`, Fase 8). Sin funciones de servidor. El hosting
-  devuelve **404** para rutas inexistentes (sin reescribirlas a `index.html`).
+  `favicon.svg`, `robots.txt`, `sitemap.xml`) con tres páginas: la app (`index.html`), la 404
+  ligera (`404.html`) y el marco aislado de Mermaid (`mermaid.html`, Fase 8). Sin funciones
+  de servidor. Vercel sirve la página propia con estado **404** para rutas inexistentes, sin
+  reescribirlas a `index.html`; `vite preview` reproduce ese comportamiento para los E2E.
 - **`npm run build:verificar`** (Fase 15, también en CI) comprueba que `dist/` es publicable:
   `robots.txt` y `sitemap.xml` iguales a los de `public-site.ts`, ningún `app.example.com`,
   ninguna URL de desarrollo, ningún recurso fuera del propio sitio en el HTML ni en el CSS y
@@ -34,8 +35,9 @@ pública, la GitHub Wiki y la publicación final de v1.0.0 ([FASES.md](FASES.md)
 - **`sitemap.xml`:** solo `https://bpdf.r3zon.com/`. BPDF es una herramienta de una sola
   vista: no tiene más páginas que indexar, y `mermaid.html` es un marco interno. La fecha
   (`lastmod`) es literal y se cambia a mano cuando cambia lo que se ve en `/` (CLAUDE.md §9).
-- **Sin canonical ni metadatos de otro dominio:** el HTML lleva título, descripción y
-  `application-name`; ninguna URL absoluta. SEO avanzado: fuera de v1.
+- **Canonical oficial:** el HTML lleva título, descripción, `application-name` y
+  `rel="canonical"` a `https://bpdf.r3zon.com/`. La 404 lleva `noindex`; el marco de Mermaid
+  no es una página pública. SEO avanzado: fuera de v1.
 - Un test (`tests/unit/project.test.ts`) falla si el dominio deja de ser el oficial o si
   `example.com` vuelve a `project.ts`, `public-site.ts`, `index.html`, `vercel.json` o
   `public_docs/`.
@@ -166,10 +168,15 @@ ninguno se edita a mano:
   `push` a `main` podría hacer los pasos 2–4 con el `GITHUB_TOKEN`; no existe todavía, a
   propósito: la primera publicación la revisa una persona.
 
-## Publicación final de v1.0.0 (Fase 18)
+## Publicación final de v1.0.0 (Fase 18, cerrada)
 
-Lo hace quien mantiene el proyecto, en este orden, en la Fase 18 (después de cerrar la 17, que
-entra en la primera versión pública, y del commit y el push):
+La infraestructura de publicación quedó **CERRADA / APROBADA** el *2026-10-07*: repositorio,
+metadata, Issues, etiquetas, reporte privado de vulnerabilidades, alertas de Dependabot,
+Wiki, documentación y producción están públicos; CI, Security y
+los E2E de los tres motores terminaron en verde. La primera ejecución de WebKit se canceló
+instalando dependencias del runner y no llegó a ejecutar tests; el rerun real pasó. La etiqueta
+y la release se hacen después del cierre técnico final, completado el *2026-10-07*. Estado:
+**BPDF v1.0.0 — DESARROLLO FINALIZADO / LISTO PARA TAG Y RELEASE**. El procedimiento completo es:
 
 1. **CI en verde** en `main` (CI, E2E con sus tres navegadores, Security).
 2. **Producción:** `npm run test:humo`, `npm run cabeceras:verificar -- https://bpdf.r3zon.com`

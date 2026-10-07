@@ -8,7 +8,7 @@ description: "Abre el panel de miniaturas del visor PDF de BPDF con su botón o 
 keywords: [miniaturas pdf, panel de páginas, ir a página, navegar pdf]
 tags: [pdf, miniaturas]
 last_update:
-  date: 2026-10-04
+  date: 2026-10-07
   author: Equipo R3ZON
 r3zon:
   tipo: guia
@@ -36,18 +36,20 @@ botón, ahora **Ocultar miniaturas**, o T de nuevo, la cierra.
   abajo aparecen al llegar a ellas.
 - Si los atajos de una tecla están desactivados en **Preferencias**, T no hace nada; el botón
   sigue funcionando.
+- BPDF recuerda si dejaste las miniaturas abiertas para el siguiente PDF en este navegador.
 
 ## Lo que no es evidente
 
 - **Las miniaturas también van en modo oscuro**, con los mismos colores que la página.
 - **Con el teclado:** lleva el foco al panel con Tab, muévete con ↑ y ↓ y pulsa Intro o
   Espacio para ir a la página.
-- **En pantallas estrechas**, el panel ocupa sitio del documento: ciérralo para leer.
+- **En pantallas estrechas**, se abren en una hoja inferior desplazable, por encima del
+  documento. El botón **Cerrar miniaturas** devuelve el espacio completo a la lectura.
 
 ## Qué leer después
 
 - [Zoom y vistas](zoom-y-vistas.md)
 - [Atajos del visor](atajos-del-visor.md)
 
-> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-04.
+> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-07.
 > https://docs.r3zon.com/bpdf/guias/pdf/miniaturas

@@ -192,10 +192,13 @@ test("modos: escribir en edición, verlo en lectura y en dividido; nada se pierd
 test("dividido: la vista previa se refresca 200 ms después de la última tecla, no antes", async ({
   page,
 }) => {
-  await page.clock.install();
+  // Instalar no pausa el reloj: se deja avanzar durante la carga y se congela justo
+  // antes del gesto. Así la carga del runner no consume parte de los 200 ms medidos.
+  await page.clock.install({ time: new Date("2030-01-01T00:00:00Z") });
   const v = await cargar(page, texto("reloj.md", "# Antes"));
   await modo(page, "dividido").click();
   await expect(editor(page)).toBeVisible();
+  await page.clock.pauseAt(new Date("2030-01-01T01:00:00Z"));
   await editor(page).click();
   await page.keyboard.press("Control+End");
   // CodeMirror aplica cada tecla un instante después (con el reloj parado, también

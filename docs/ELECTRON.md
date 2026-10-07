@@ -70,12 +70,11 @@ interface Platform {
 `Apertura` es un documento (`OpenedDocument`) o una elección entre varios Markdown de una
 carpeta. `null`: el usuario canceló. Rechaza con `DocumentError` si lo elegido no vale.
 
-Devuelve documentos y no `File` porque en Electron el diálogo lo abre el main, que lee
-los ficheros y asigna un id ligado a su ruta. Las dos implementaciones terminan en
-`abrirSeleccion` → `readDocument(file, id?)` ([`src/documents/seleccion.ts`](../src/documents/seleccion.ts),
-[`src/documents/read.ts`](../src/documents/read.ts)): misma validación (extensión, tamaño,
-contenido, recursos) y mismo modelo, y la de Electron pasa el id del main. Cómo encaja la
-Fase 14:
+Esta propuesta histórica hacía que Electron asignara un id ligado a la ruta y que las dos
+implementaciones terminaran en `abrirSeleccion` → `readDocument(file, id?)`. Esa firma ya no
+existe: al cancelar Electron (D19), el cierre de v1 retiró el parámetro sin consumidores y la
+web genera siempre un id opaco en [`src/documents/read.ts`](../src/documents/read.ts). El diseño
+que se había previsto para la Fase 14 era:
 
 - `pickDocument()` / `pickFolder()` → `window.bpdf.openDialog({ carpeta })` → `{ id, name,
   bytes }` (y las imágenes con rutas relativas a la carpeta, nunca absolutas) →

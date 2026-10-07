@@ -8,7 +8,7 @@ description: "BPDF funciona en Chrome y Edge 111, Firefox 128 y Safari 16.4 o po
 keywords: [navegadores, chrome, firefox, safari, edge, compatibilidad, móvil]
 tags: [referencia, navegadores]
 last_update:
-  date: 2026-10-04
+  date: 2026-10-07
   author: Equipo R3ZON
 r3zon:
   tipo: referencia
@@ -46,14 +46,14 @@ se prueban.
 
 ## Cómo se prueba
 
-Cada cambio de BPDF pasa una batería de pruebas automáticas en Chromium, Firefox y WebKit (el
-motor de Safari). En Safari real, algunos casos muy pesados (un Markdown de alrededor de 1 MB
-con muchas fórmulas en modo dividido) no se han medido.
+Cada cambio de BPDF pasa una batería de pruebas automáticas en Chromium, Firefox y WebKit. El
+WebKit automatizado corre en Linux y no sustituye una medición de rendimiento en Safari real;
+el caso extremo de alrededor de 1 MB con muchas fórmulas en modo dividido no se ha medido allí.
 
 ## Qué pasa con un navegador antiguo
 
 Con una versión anterior a las de la tabla, BPDF puede no cargar o fallar al abrir
 documentos. Actualiza el navegador ([Navegador no compatible](../problemas/navegador-no-compatible.md)).
 
-> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-04.
+> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-07.
 > https://docs.r3zon.com/bpdf/referencia/navegadores-compatibles

@@ -1,6 +1,6 @@
 # Stack tecnológico
 
-Estado tras la Fase 13 (*2026-10-04*; la Fase 13 fijó `micromark` en 4.0.2 con un `override` y añadió `@axe-core/playwright` en desarrollo; la Fase 10 reinstaló `zod` para las preferencias guardadas; la Fase 9 añadió el editor, CodeMirror 6: `@codemirror/*` y `@lezer/highlight`; la Fase 8, `remark-math`, `katex` y `mermaid`): la Fase 4 añadió `pdfjs-dist` (el motor de PDF) y la
+Estado final de v1.0.0 (*2026-10-07*; la Fase 13 fijó `micromark` en 4.0.2 con un `override` y añadió `@axe-core/playwright` en desarrollo; la Fase 10 reinstaló `zod` para las preferencias guardadas; la Fase 9 añadió el editor, CodeMirror 6: `@codemirror/*` y `@lezer/highlight`; la Fase 8, `remark-math`, `katex` y `mermaid`): la Fase 4 añadió `pdfjs-dist` (el motor de PDF) y la
 Fase 7 el pipeline de Markdown (`react-markdown`, `remark-gfm`) y el resaltado de código
 (`lowlight`, `highlight.js`). El stack **objetivo** y el motivo de cada pieza están en
 [PLAN.md](PLAN.md); cada fase añade aquí lo que instala. BPDF es solo web (D19,

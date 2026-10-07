@@ -8,7 +8,7 @@ description: "Qué versión de BPDF está publicada, qué puede hacer y qué ha 
 keywords: [bpdf, novedades, versión, cambios, 1.0.0]
 tags: [novedades]
 last_update:
-  date: 2026-10-06
+  date: 2026-10-07
   author: Equipo R3ZON
 r3zon:
   tipo: referencia
@@ -40,6 +40,8 @@ BPDF».
 - **Crear Markdown**: un documento nuevo, vacío, en modo **Dividido**.
 - **Guardar como…**: el Markdown en otro destino, o **exportado a PDF**, claro u oscuro, con
   la impresión del navegador y sin nada de BPDF en el PDF.
+- **Estados de cierre cuidados:** página 404 propia, fallo inesperado recuperable, aviso útil
+  sin JavaScript y estados coherentes de carga, búsqueda y guardado.
 
 ## Qué trae la versión 0.1.0
 
@@ -83,5 +85,5 @@ cambios de comportamiento y límites que desaparecen. Los arreglos internos que 
 nada visible no se anotan. Las versiones siguen SemVer: un cambio que notas sube la segunda
 cifra; un arreglo, la tercera.
 
-> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-06.
+> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-07.
 > https://docs.r3zon.com/bpdf/novedades

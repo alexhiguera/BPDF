@@ -889,11 +889,12 @@ en Dividido (iteraciones 16–18).
 - Guardar en web siempre pide destino la primera vez de cada documento (el navegador no da
   acceso al fichero abierto). Firefox y Safari no tienen `showSaveFilePicker`: descargan.
 - Probado en Chromium, Firefox y WebKit (Fase 13, §4 undecies): Shadow DOM con hojas
-  construibles, escribir y pegar sobre una selección, deshacer, Ctrl/⌘+S y la descarga. **En
-  WebKit, Dividido con 1 MB + KaTeX va muy lento** (P50 ~400 ms por tecla, medido con el
-  WebKit de Playwright en Linux; sin confirmar en Safari real): limitación conocida de v1
-  (§4 undecies).
-- IME: componer sobre una selección, comprobado en Chromium (CDP); en Firefox y Safari, a mano.
+  construibles, escribir y pegar sobre una selección, deshacer, Ctrl/⌘+S y la descarga. En el
+  WebKit de Playwright/Linux, Dividido con 1 MB + KaTeX midió P50 ~400 ms por tecla; el cierre
+  técnico lo clasifica como diferencia del entorno, no como fallo funcional ni como medida
+  equivalente a Safari real (§4 undecies).
+- IME: componer sobre una selección, comprobado en Chromium (CDP) y manualmente en Firefox y
+  Safari (iteración 42).
 
 ### 4 nonies. Preferencias y posición de lectura (Fase 10)
 
@@ -1127,16 +1128,14 @@ Ninguna es una mejora clara y proporcionada para v1: la 2 no quita la mitad del 
 toca medio lector. Se mantiene, con la regresión de micromark ya corregida: es una
 limitación conocida de los documentos grandes en v1.
 
-**Limitaciones conocidas de v1 (aceptadas al cerrar la fase):**
+**Conclusiones de compatibilidad y rendimiento (actualizadas en el cierre de v1):**
 
-- **WebKit, Dividido con 1 MB + KaTeX: limitación conocida de v1** (decisión del usuario,
-  *2026-10-04*). Los recorridos funcionales de WebKit pasan todos (editor incluido); lo que
-  falla es el **rendimiento en ese escenario extremo**, un Markdown de ~1 MB con fórmulas en el
-  modo Dividido: ~400 ms de mediana y hasta ~8 s por pulsación (dos mediciones). La medida es
-  del **WebKit de Playwright en Linux**: no se ha confirmado en Safari real, y no se puede dar
-  por hecho que Safari se comporte igual. Firefox no lo sufre (máx. 40 ms). No se añade nada
-  para esquivarlo (ni detección de Safari, ni cambiar de modo, ni otra vista previa): queda como
-  comprobación futura en Safari real (TAREAS).
+- **WebKit Linux, Dividido con 1 MB + KaTeX:** al cerrar la Fase 13 se aceptó provisionalmente
+  como limitación de rendimiento. El cierre técnico de v1 la reclasifica: los recorridos
+  funcionales pasan y la medida (~400 ms de mediana, con picos mayores) procede de Playwright
+  en Linux con render por software, DPR 2 y CPU limitada. No equivale a Safari real. No se
+  añade detección ni degradación; medir el extremo en Safari queda como comprobación post-v1
+  (TAREAS), no como limitación funcional de BPDF.
 - Markdown de ~1 MB: unos 3 s hasta verlo (arriba).
 - Trusted Types: no adoptado (Fase 12; abajo).
 - El `<input type="file">` retenido entre aperturas solo se observa con las herramientas de
@@ -1144,10 +1143,10 @@ limitación conocida de los documentos grandes en v1.
 
 **En CI** (`e2e.yml`, job `compat`): la suite E2E corre también en Firefox y WebKit, un job
 por navegador, en paralelo con el de Chromium; lo que solo da Chromium se salta con su motivo
-y un fallo en cualquiera de los dos rompe el workflow. Una carrera residual en WebKit (saltar
-de página justo después de un desplazamiento rápido, 1 de cada 20 ejecuciones con la máquina
-cargada; antes del arreglo del campo, 2 de 8) queda como intermitente: el reintento de CI la
-marca como tal en el informe (TAREAS).
+y un fallo en cualquiera de los dos rompe el workflow. La antigua carrera de WebKit al saltar
+de página después de un desplazamiento rápido queda cerrada tras los arreglos semánticos: el
+escenario pasó 20/20 repeticiones seriales en el cierre técnico, sin ampliar tiempos ni
+tolerancias.
 
 **Trusted Types (T-4), revisado tras la compatibilidad:** nada cambia el análisis de la
 Fase 12 (sigue sin adoptarse en v1). La compatibilidad no añadió sumideros nuevos, y WebKit

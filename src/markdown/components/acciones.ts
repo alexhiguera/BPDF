@@ -56,3 +56,8 @@ export const useDiagramas = () => useContext(ContextoDiagramas);
 export const ContextoImpresion = createContext(false);
 
 export const useImpresion = () => useContext(ContextoImpresion);
+
+/** Evita que el marcador de una imagen remota cree un `<a>` dentro de otro enlace Markdown. */
+export const ContextoDentroDeEnlace = createContext(false);
+
+export const useDentroDeEnlace = () => useContext(ContextoDentroDeEnlace);

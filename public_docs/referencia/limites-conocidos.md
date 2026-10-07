@@ -8,7 +8,7 @@ description: "Tamaños máximos, funciones que BPDF no tiene y casos lentos cono
 keywords: [límites, tamaño máximo, rendimiento, ocr, formularios, tema claro]
 tags: [referencia, limites]
 last_update:
-  date: 2026-10-04
+  date: 2026-10-07
   author: Equipo R3ZON
 r3zon:
   tipo: referencia
@@ -56,10 +56,10 @@ Markdown de alrededor de 1 MB tarda unos segundos en aparecer.
   documento…»).
 - **Escribir en «Dividido» con un Markdown muy grande lleno de fórmulas** puede ir lento. La
   vista previa se pausa y ofrece **Actualizar la vista previa**; en **Edición** se escribe
-  fluido. En pruebas con el motor de Safari ese caso fue especialmente lento; no se ha medido
-  en Safari real.
+  fluido. El WebKit automatizado de Playwright en Linux fue especialmente lento en ese caso;
+  ese entorno no equivale a Safari real, donde el extremo no se ha medido.
 - **Un PDF muy grande en un equipo modesto** tarda más en pintar cada página; el resto de la
   app sigue respondiendo.
 
-> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-04.
+> Fuente: documentación oficial de BPDF (R3ZON). Actualizado el 2026-10-07.
 > https://docs.r3zon.com/bpdf/referencia/limites-conocidos

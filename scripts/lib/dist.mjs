@@ -33,10 +33,10 @@ function ficheros(dir, base = dir) {
 }
 
 /**
- * @param {{ dir: string, robots: string, sitemap: string }} p
+ * @param {{ dir: string, robots: string, sitemap: string, site: string }} p
  * @returns {string[]} problemas
  */
-export function revisarDist({ dir, robots, sitemap }) {
+export function revisarDist({ dir, robots, sitemap, site }) {
   const problemas = [];
   const todos = ficheros(dir);
   const leer = (rel) => readFileSync(path.join(dir, rel), "utf8");
@@ -60,6 +60,8 @@ export function revisarDist({ dir, robots, sitemap }) {
     }
     if (rel.endsWith(".html")) {
       for (const [, url] of texto.matchAll(/\b(?:src|href)="([^"]*)"/g)) {
+        // El canonical absoluto es metadato, no un recurso solicitado por la página.
+        if (url === `${site}/`) continue;
         if (!url.startsWith("/") || url.startsWith("//") || url.startsWith("/src/")) {
           problemas.push(`${rel}: recurso fuera de la build: ${url}`);
         }

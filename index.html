@@ -1,6 +1,6 @@
 <!doctype html>
 <!--
-  Los __BPDF_*__ y el lang de <html> los pone vite.config.ts con los valores de
+    La identidad y el lang de <html> los pone vite.config.ts con los valores de
   src/config/project.ts y src/i18n/messages.ts (fuente única). En la build se
   añade además la CSP como <meta> (src/config/security-headers.ts).
   Sin scripts en línea: lo exige la CSP (script-src 'self').
@@ -12,12 +12,24 @@
     <meta name="color-scheme" content="dark" />
     <meta name="description" content="__BPDF_DESCRIPTION__" />
     <meta name="application-name" content="__BPDF_NAME__" />
+    <link rel="canonical" href="__BPDF_SITE_URL__/" />
     <!-- Fase 11: del propio origen (CSP), SVG con los colores de los tokens. -->
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/src/styles/static.css" />
     <title>__BPDF_NAME__</title>
   </head>
   <body>
-    <noscript>__BPDF_NOSCRIPT__</noscript>
+    <noscript>
+      <main class="static-page">
+        <section class="static-card" aria-labelledby="noscript-title">
+          <img src="/favicon.svg" alt="" width="88" height="88" />
+          <p class="static-brand">__BPDF_NAME__</p>
+          <h1 id="noscript-title">__BPDF_NOSCRIPT_TITLE__</h1>
+          <p>__BPDF_NOSCRIPT_BODY__</p>
+          <a href="/">__BPDF_BACK_HOME__</a>
+        </section>
+      </main>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -119,7 +119,8 @@ export function Diagrama({ fuente }: { fuente: string }) {
           {t.errors[estado.motivo]}
         </p>
       ) : (
-        <p className="md-diagrama-aviso" aria-live="polite">
+        <p className="md-diagrama-aviso flex items-center gap-2" role="status">
+          <span aria-hidden="true" className="ui-spinner ui-spinner-sm" />
           {t.drawing}
         </p>
       )}

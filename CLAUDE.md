@@ -24,18 +24,24 @@ Son los hechos que cambian cómo se interpreta cualquier medición o tarea. Mant
   producción ([`docs/auditoria.md`](docs/auditoria.md), Auditoría 1; T-4, Trusted Types: no
   adoptado en v1, riesgo aceptado). La 13 (accesibilidad, rendimiento y compatibilidad) se
   cerró el *2026-10-04* (ARCHITECTURE §4 undecies): Firefox y WebKit corren la suite E2E
-  también en CI; limitaciones de v1 aceptadas: Markdown de ~1 MB en ~3 s y, en WebKit,
-  Dividido con 1 MB + KaTeX muy lento. La 15 (distribución web; la 14 se canceló) se
-  cerró el *2026-10-04*, verificada en producción: dominio oficial, versión 0.1.0 y registro
-  de cambios para usuarios ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). La 16 (open
+  también en CI; limitaciones de v1 aceptadas: Markdown de ~1 MB en ~3 s. La lentitud de
+  Dividido con 1 MB + KaTeX en WebKit Linux quedó finalmente como medición de entorno y
+  comprobación post-v1 en Safari real, no como fallo funcional. La 15 (distribución web; la 14 se canceló) se
+  cerró el *2026-10-04*, verificada en producción: dominio oficial, primera versión publicada
+  (0.1.0) y registro de cambios para usuarios ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). La 16 (open
   source y documentación final) dejó preparada la publicación (repositorio listo para
   hacerse público, `public_docs/` completa y como GitHub Wiki generada, versión 1.0.0); su
   cierre pasó a la 18. La 17 (crear Markdown y exportar a PDF por la impresión del
-  navegador; ARCHITECTURE §4 duodecies) se cerró el *2026-10-06*. La **Fase 18 está EN
-  CURSO**: el repositorio ya es público y su metadata está completa; la Wiki y
-  `docs.r3zon.com/bpdf` están preparados localmente. Quedan el commit/push autorizados por el
-  usuario, CI, despliegues y verificación de producción, seguridad manual, etiqueta y release
-  ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), «Publicación final»). La app es una SPA estática de Vite + React (D1)
+  navegador; ARCHITECTURE §4 duodecies) se cerró el *2026-10-06*. La **Fase 18 se cerró y
+  aprobó el 2026-10-07**: repositorio público con metadata, Issues, etiquetas, reporte privado
+  de vulnerabilidades y alertas de Dependabot; Wiki y
+  `docs.r3zon.com/bpdf` publicados; producción verificada; CI, Chromium, Firefox, WebKit y
+  Security en verde; versión 1.0.0 preparada. Una cancelación previa instalando las
+  dependencias de WebKit fue infraestructura transitoria del runner: el E2E no llegó a
+  arrancar y el rerun completo pasó. El cierre técnico final terminó también el 2026-10-07:
+  **BPDF v1.0.0 — DESARROLLO FINALIZADO / LISTO PARA TAG Y RELEASE**. El tag y la GitHub
+  Release aún no se han creado ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), «Publicación
+  final»). La app es una SPA estática de Vite + React (D1)
   que abre un PDF o un Markdown local (selector o arrastre), un documento a la vez (D16).
   Los PDF se leen en un visor propio sobre pdf.js (D17, build `legacy`: D18) con modo
   oscuro selectivo en un worker, búsqueda avanzada, pantalla completa, atajos de una tecla

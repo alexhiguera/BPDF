@@ -482,7 +482,8 @@ export default function MarkdownView({
   const editorMontable = editorCargado && (
     <Suspense
       fallback={
-        <p role="status" className="p-4 text-fg-muted">
+        <p role="status" className="flex items-center gap-3 p-4 text-fg-muted">
+          <span aria-hidden="true" className="ui-spinner ui-spinner-sm" />
           {t.editor.loading}
         </p>
       }
@@ -517,7 +518,8 @@ export default function MarkdownView({
             </ContextoImagenes>
           </ContextoAcciones>
         ) : (
-          <p role="status" className="text-fg-muted">
+          <p role="status" className="flex items-center justify-center gap-3 text-fg-muted">
+            <span aria-hidden="true" className="ui-spinner ui-spinner-sm" />
             {t.loading}
           </p>
         )}
@@ -734,8 +736,9 @@ export default function MarkdownView({
       {fasePdf === "preparando" && (
         <p
           role="status"
-          className="border-b border-border bg-app px-3 py-1.5 text-sm text-fg-muted"
+          className="flex items-center gap-2 border-b border-border bg-app px-3 py-1.5 text-sm text-fg-muted"
         >
+          <span aria-hidden="true" className="ui-spinner ui-spinner-sm" />
           {t.pdf.preparing}
         </p>
       )}

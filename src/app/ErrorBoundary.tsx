@@ -1,6 +1,9 @@
+import { Home, RotateCcw, TriangleAlert } from "lucide-react";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
+import { project } from "@/config/project";
 import { messages } from "@/i18n/messages";
+import { LogoBpdf } from "./LogoBpdf";
 
 type Props = { children: ReactNode };
 type State = { failed: boolean };
@@ -26,12 +29,27 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!this.state.failed) return this.props.children;
     const t = messages.error;
     return (
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-6">
-        <h1 className="text-2xl font-semibold">{t.title}</h1>
-        <p className="text-fg-muted">{t.body}</p>
-        <div>
-          <Button onClick={() => this.setState({ failed: false })}>{t.retry}</Button>
-        </div>
+      <main className="static-page">
+        <section className="ui-notice mx-auto flex w-full max-w-lg flex-col items-center gap-4 p-6 text-center">
+          <LogoBpdf className="size-20" />
+          <p className="font-bold tracking-widest text-brand-soft">{project.name}</p>
+          <TriangleAlert aria-hidden="true" className="size-7 text-danger" />
+          <h1 className="text-2xl font-semibold">{t.title}</h1>
+          <p className="text-fg-muted">{t.body}</p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button onClick={() => window.location.reload()}>
+              <RotateCcw aria-hidden="true" className="size-4" />
+              {t.reload}
+            </Button>
+            <a
+              href="/"
+              className="ui-button ui-button-secondary inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-fg"
+            >
+              <Home aria-hidden="true" className="size-4" />
+              {t.home}
+            </a>
+          </div>
+        </section>
       </main>
     );
   }

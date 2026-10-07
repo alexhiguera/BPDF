@@ -79,13 +79,36 @@ test("robots.txt y sitemap.xml se generan con el dominio del proyecto", async ({
   const sitemap = await request.get("/sitemap.xml");
   expect(sitemap.status()).toBe(200);
   expect(await sitemap.text()).toContain(`<loc>https://${project.domain}/</loc>`);
+  const html = await (await request.get("/index.html")).text();
+  expect(html).toContain(`rel="canonical" href="https://${project.domain}/"`);
 });
 
-test("una ruta que no existe da 404 (sin fallback de SPA ni rutas del SaaS)", async ({
+test("el HTML explica con la identidad de BPDF que JavaScript es necesario", async ({
+  request,
+}) => {
+  const html = await (await request.get("/index.html")).text();
+  expect(html).toContain(`<noscript>`);
+  expect(html).toContain(messages.app.noscriptTitle);
+  expect(html).toContain(messages.app.noscriptBody);
+  expect(html).toContain(`href="/"`);
+  expect(html).not.toContain("__BPDF_");
+});
+
+test("una ruta que no existe muestra la 404 propia sin fallback de SPA", async ({
+  page,
   request,
 }) => {
   for (const ruta of ["/no-existe", "/login", "/inicio", "/api/health"]) {
     const res = await request.get(ruta, { maxRedirects: 0 });
     expect(res.status(), ruta).toBe(404);
+    expect(await res.text(), ruta).toContain(messages.notFound.title);
   }
+  const respuesta = await page.goto("/no-existe");
+  expect(respuesta?.status()).toBe(404);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(messages.notFound.title);
+  await expect(page.getByRole("link", { name: messages.app.backHome })).toHaveAttribute(
+    "href",
+    "/",
+  );
+  await expect(page.getByTestId("bpdf-logo")).toHaveCount(0);
 });
